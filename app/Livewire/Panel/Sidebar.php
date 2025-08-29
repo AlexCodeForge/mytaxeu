@@ -22,6 +22,7 @@ class Sidebar extends Component
 
         $adminLinks = [
             ['label' => 'Admin', 'icon' => 'fa-cog', 'route' => 'admin.index'],
+            ['label' => 'Usuarios', 'icon' => 'fa-users', 'route' => 'admin.users.index'],
         ];
 
         $this->links = $baseLinks;

@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'credits',
     ];
 
     /**
@@ -44,11 +45,17 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'credits' => 'integer',
         ];
     }
 
     public function isAdmin(): bool
     {
         return (bool) ($this->is_admin ?? false);
+    }
+
+    public function uploads()
+    {
+        return $this->hasMany(Upload::class);
     }
 }
