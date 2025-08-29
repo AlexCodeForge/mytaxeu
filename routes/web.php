@@ -8,9 +8,11 @@ use App\Livewire\Admin\Users\Index as AdminUsersIndexPage;
 
 Route::get('/', [LandingPageController::class, 'index'])->name('landing');
 
-Route::get('dashboard', DashboardPage::class)
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('dashboard', DashboardPage::class)->name('dashboard');
+    Route::get('uploads', \App\Livewire\Uploads\Index::class)->name('uploads.index');
+    Route::get('uploads/new', \App\Livewire\Uploads\UploadCsv::class)->name('uploads.create');
+});
 
 Route::view('profile', 'profile')
     ->middleware(['auth'])

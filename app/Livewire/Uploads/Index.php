@@ -63,7 +63,7 @@ class Index extends Component
     public function deleteUpload(int $uploadId): void
     {
         $upload = Upload::findOrFail($uploadId);
-        
+
         $this->authorize('delete', $upload);
 
         // Delete file from storage
@@ -102,6 +102,6 @@ class Index extends Component
             'uploads' => $this->getUploads(),
             'statusCounts' => $this->getStatusCounts(),
             'allStatuses' => Upload::STATUSES,
-        ]);
+        ])->layout('layouts.panel');
     }
 }

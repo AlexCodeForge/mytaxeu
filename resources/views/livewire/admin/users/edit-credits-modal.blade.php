@@ -1,9 +1,11 @@
 <div>
     @if($showModal)
         <!-- Modal Backdrop -->
-        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+             wire:click="closeModal">
             <!-- Modal Container -->
-            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all"
+                 wire:click.stop>
                 <!-- Modal Header -->
                 <div class="flex items-center justify-between p-6 border-b border-gray-200">
                     <div>
@@ -13,7 +15,7 @@
                             <p class="text-xs text-gray-500">Créditos actuales: <span class="font-semibold">{{ number_format($user->credits) }}</span></p>
                         @endif
                     </div>
-                    <button 
+                    <button
                         wire:click="closeModal"
                         class="text-gray-400 hover:text-gray-600 transition-colors"
                         type="button"
@@ -29,9 +31,9 @@
                         <label class="block text-sm font-medium text-gray-700 mb-3">Operación</label>
                         <div class="grid grid-cols-2 gap-3">
                             <label class="relative">
-                                <input 
-                                    type="radio" 
-                                    wire:model="operation" 
+                                <input
+                                    type="radio"
+                                    wire:model="operation"
                                     value="add"
                                     class="sr-only peer"
                                 >
@@ -41,9 +43,9 @@
                                 </div>
                             </label>
                             <label class="relative">
-                                <input 
-                                    type="radio" 
-                                    wire:model="operation" 
+                                <input
+                                    type="radio"
+                                    wire:model="operation"
                                     value="subtract"
                                     class="sr-only peer"
                                 >
@@ -63,8 +65,8 @@
                         <label for="creditsChange" class="block text-sm font-medium text-gray-700 mb-2">
                             Cantidad de Créditos
                         </label>
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             id="creditsChange"
                             wire:model="creditsChange"
                             min="1"
@@ -76,22 +78,7 @@
                         @enderror
                     </div>
 
-                    <!-- Reason -->
-                    <div>
-                        <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">
-                            Motivo <span class="text-red-500">*</span>
-                        </label>
-                        <textarea 
-                            id="reason"
-                            wire:model="reason"
-                            rows="3"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary resize-none"
-                            placeholder="Describe el motivo del ajuste de créditos..."
-                        ></textarea>
-                        @error('reason')
-                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
+
 
                     <!-- Preview -->
                     @if($user && $creditsChange > 0)
@@ -113,8 +100,8 @@
                                     <span>Nuevo total:</span>
                                     <span>
                                         @php
-                                            $newTotal = $operation === 'add' 
-                                                ? $user->credits + $creditsChange 
+                                            $newTotal = $operation === 'add'
+                                                ? $user->credits + $creditsChange
                                                 : $user->credits - $creditsChange;
                                         @endphp
                                         {{ number_format(max(0, $newTotal)) }}
@@ -131,9 +118,15 @@
                         </div>
                     @enderror
 
+                    @error('modal')
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p class="text-red-600 text-sm">{{ $message }}</p>
+                        </div>
+                    @enderror
+
                     <!-- Modal Footer -->
                     <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                        <button 
+                        <button
                             type="button"
                             wire:click="closeModal"
                             class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -141,7 +134,7 @@
                         >
                             Cancelar
                         </button>
-                        <button 
+                        <button
                             type="submit"
                             class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                             wire:loading.attr="disabled"

@@ -39,7 +39,7 @@ class UploadCsv extends Component
     public function upload(): void
     {
         $this->authorize('create', Upload::class);
-        
+
         $this->validate();
 
         if (! $this->csvFile) {
@@ -67,7 +67,7 @@ class UploadCsv extends Component
             $uuid = Str::uuid();
             $extension = $this->csvFile->getClientOriginalExtension() ?: 'csv';
             $filename = $uuid . '.' . $extension;
-            
+
             // Storage path pattern: uploads/{user_id}/{uuid}.csv
             $storagePath = 'uploads/' . auth()->id() . '/' . $filename;
 
@@ -95,7 +95,7 @@ class UploadCsv extends Component
 
             // Dispatch the processing job
             \App\Jobs\ProcessUploadJob::dispatch($upload->id);
-            
+
             // Update status to queued
             $upload->update(['status' => Upload::STATUS_QUEUED]);
 
@@ -112,7 +112,7 @@ class UploadCsv extends Component
         } catch (\Exception $e) {
             $this->uploading = false;
             $this->uploadProgress = '';
-            
+
             logger()->error('Upload failed', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
@@ -131,6 +131,6 @@ class UploadCsv extends Component
 
     public function render()
     {
-        return view('livewire.uploads.upload-csv');
+        return view('livewire.uploads.upload-csv')->layout('layouts.panel');
     }
 }

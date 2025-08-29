@@ -16,12 +16,10 @@ class EditCreditsModal extends Component
     public bool $showModal = false;
     public ?User $user = null;
     public int $creditsChange = 0;
-    public string $reason = '';
     public string $operation = 'add'; // add or subtract
 
     protected array $rules = [
         'creditsChange' => 'required|integer|min:1',
-        'reason' => 'required|string|min:3|max:255',
         'operation' => 'required|in:add,subtract',
     ];
 
@@ -29,9 +27,6 @@ class EditCreditsModal extends Component
         'creditsChange.required' => 'La cantidad de créditos es obligatoria.',
         'creditsChange.integer' => 'La cantidad debe ser un número entero.',
         'creditsChange.min' => 'La cantidad debe ser mayor a 0.',
-        'reason.required' => 'El motivo es obligatorio.',
-        'reason.min' => 'El motivo debe tener al menos 3 caracteres.',
-        'reason.max' => 'El motivo no puede exceder 255 caracteres.',
         'operation.required' => 'La operación es obligatoria.',
         'operation.in' => 'La operación debe ser agregar o quitar.',
     ];
@@ -40,7 +35,7 @@ class EditCreditsModal extends Component
     public function openModal(int $userId): void
     {
         $this->authorize('manage-users');
-        
+
         $this->user = User::findOrFail($userId);
         $this->resetForm();
         $this->showModal = true;
@@ -55,7 +50,6 @@ class EditCreditsModal extends Component
     protected function resetForm(): void
     {
         $this->creditsChange = 0;
-        $this->reason = '';
         $this->operation = 'add';
         $this->resetErrorBag();
     }
@@ -63,7 +57,7 @@ class EditCreditsModal extends Component
     public function updateCredits(): void
     {
         $this->authorize('manage-users');
-        
+
         $this->validate();
 
         if (! $this->user) {
@@ -71,7 +65,7 @@ class EditCreditsModal extends Component
             return;
         }
 
-        $newCredits = $this->operation === 'add' 
+        $newCredits = $this->operation === 'add'
             ? $this->user->credits + $this->creditsChange
             : $this->user->credits - $this->creditsChange;
 
@@ -91,7 +85,6 @@ class EditCreditsModal extends Component
             'amount' => $this->creditsChange,
             'old_credits' => $this->user->credits - ($this->operation === 'add' ? $this->creditsChange : -$this->creditsChange),
             'new_credits' => $newCredits,
-            'reason' => $this->reason,
         ]);
 
         $this->dispatch('credits-updated');

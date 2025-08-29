@@ -18,6 +18,8 @@ class Sidebar extends Component
 
         $baseLinks = [
             ['label' => 'Dashboard', 'icon' => 'fa-chart-line', 'route' => 'dashboard'],
+            ['label' => 'Mis Archivos', 'icon' => 'fa-file-csv', 'route' => 'uploads.index'],
+            ['label' => 'Subir CSV', 'icon' => 'fa-upload', 'route' => 'uploads.create'],
         ];
 
         $adminLinks = [

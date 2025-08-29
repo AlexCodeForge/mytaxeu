@@ -1,16 +1,17 @@
 <div>
     <div class="glass-white p-6 rounded-xl shadow-lg">
-        <div class="flex justify-between items-center mb-6">
+                                <div class="flex justify-between items-center mb-6">
             <div>
                 <h3 class="text-lg font-semibold text-gray-900">Gestión de Usuarios</h3>
                 <p class="text-sm text-gray-600 mt-1">{{ $users->total() }} usuarios registrados</p>
             </div>
-            
+
+
             <!-- Search Input -->
             <div class="flex items-center space-x-4">
                 <div class="relative">
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         wire:model.live.debounce.300ms="search"
                         placeholder="Buscar usuarios..."
                         class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
@@ -24,14 +25,14 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Users Table -->
         <div class="data-table overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-gray-50 sticky top-0">
                     <tr>
                         <th class="px-4 py-3 text-left">
-                            <button 
+                            <button
                                 wire:click="sortBy('name')"
                                 class="flex items-center text-xs font-medium text-gray-500 uppercase hover:text-gray-700"
                             >
@@ -44,7 +45,7 @@
                             </button>
                         </th>
                         <th class="px-4 py-3 text-left">
-                            <button 
+                            <button
                                 wire:click="sortBy('credits')"
                                 class="flex items-center text-xs font-medium text-gray-500 uppercase hover:text-gray-700"
                             >
@@ -58,7 +59,7 @@
                         </th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
                         <th class="px-4 py-3 text-left">
-                            <button 
+                            <button
                                 wire:click="sortBy('created_at')"
                                 class="flex items-center text-xs font-medium text-gray-500 uppercase hover:text-gray-700"
                             >
@@ -78,8 +79,8 @@
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    <img 
-                                        class="h-8 w-8 rounded-full" 
+                                    <img
+                                        class="h-8 w-8 rounded-full"
                                         src="https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=1e40af&color=fff"
                                         alt="{{ $user->name }}"
                                     >
@@ -109,7 +110,7 @@
                                 <div class="text-xs text-gray-400">{{ $user->created_at->diffForHumans() }}</div>
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                <button 
+                                <button
                                     wire:click="openEditCreditsModal({{ $user->id }})"
                                     class="text-primary hover:text-blue-900 mr-3 inline-flex items-center"
                                     wire:loading.attr="disabled"
@@ -128,7 +129,7 @@
                                     @if($search)
                                         <i class="fas fa-search text-2xl mb-2"></i>
                                         <p>No se encontraron usuarios que coincidan con "{{ $search }}"</p>
-                                        <button 
+                                        <button
                                             wire:click="$set('search', '')"
                                             class="text-primary hover:text-blue-700 mt-2"
                                         >
@@ -164,4 +165,5 @@
 
     <!-- Include the Edit Credits Modal -->
     <livewire:admin.users.edit-credits-modal @credits-updated="$refresh" />
+
 </div>
