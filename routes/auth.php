@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -10,6 +11,9 @@ Route::middleware('guest')->group(function () {
 
     Volt::route('login', 'pages.auth.login')
         ->name('login');
+
+    // Non-JS fallback for login POST
+    Route::post('login', LoginController::class)->name('login.post');
 
     Volt::route('forgot-password', 'pages.auth.forgot-password')
         ->name('password.request');

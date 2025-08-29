@@ -1,3 +1,21 @@
+// Landing bundle: reuse base app bootstrap
+import './app.js';
+
+// Minimal interactive behaviors used in landing.blade.php
+window.toggleMobileMenu = function toggleMobileMenu() {
+    const el = document.getElementById('mobile-menu');
+    if (!el) return;
+    el.classList.toggle('hidden');
+};
+
+window.toggleFaq = function toggleFaq(index) {
+    const content = document.getElementById(`faq-content-${index}`);
+    const icon = document.getElementById(`faq-icon-${index}`);
+    if (!content || !icon) return;
+    content.classList.toggle('hidden');
+    icon.classList.toggle('rotate-45');
+};
+
 // Smooth scrolling
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {

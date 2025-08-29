@@ -80,7 +80,7 @@
                         <button class="bg-yellow-400 text-black px-8 py-4 rounded-xl font-black text-lg hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-2xl">
                             <i class="fas fa-rocket mr-2"></i>EMPEZAR GRATIS HOY
                         </button>
-                        <button class="glass text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white hover:bg-opacity-20 transition-all">
+                        <button class="glass bg-white/80 text-black px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white transition-all">
                             <i class="fas fa-play mr-2"></i>Ver Demo
                         </button>
                     </div>
@@ -180,7 +180,7 @@
                 </p>
             </div>
 
-            <div class="grid lg:grid-cols-2 gap-12 items-center mb-16">
+            <div class="grid lg:grid-cols-2 gap-12 items-center mb-16 landing-contrast">
                 <div>
                     <h3 class="text-3xl font-bold text-gray-900 mb-6">
                         <i class="fas fa-robot text-primary mr-3"></i>
@@ -189,19 +189,19 @@
                     <ul class="space-y-4">
                         <li class="flex items-start">
                             <i class="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
-                            <span class="text-lg"><strong>Clasificación automática</strong> de miles de transacciones en segundos</span>
+                            <span class="text-lg text-gray-800"><strong>Clasificación automática</strong> de miles de transacciones en segundos</span>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
-                            <span class="text-lg"><strong>Generación instantánea</strong> de informes para modelos 349 y 369</span>
+                            <span class="text-lg text-gray-800"><strong>Generación instantánea</strong> de informes para modelos 349 y 369</span>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
-                            <span class="text-lg"><strong>Validación en tiempo real</strong> de números de IVA</span>
+                            <span class="text-lg text-gray-800"><strong>Validación en tiempo real</strong> de números de IVA</span>
                         </li>
                     </ul>
                 </div>
-                <div class="glass p-8 rounded-3xl">
+                <div class="glass p-8 rounded-3xl bg-white/90 text-gray-900">
                     <div class="text-center">
                         <div class="text-6xl font-black text-primary mb-4">8h → 15min</div>
                         <p class="text-xl text-gray-700">Reducción de tiempo por cliente</p>
@@ -209,7 +209,7 @@
                 </div>
             </div>
 
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <div class="grid lg:grid-cols-2 gap-12 items-center landing-contrast">
                 <div class="lg:order-2">
                     <h3 class="text-3xl font-bold text-gray-900 mb-6">
                         <i class="fas fa-shield-alt text-green-500 mr-3"></i>
@@ -218,15 +218,15 @@
                     <ul class="space-y-4">
                         <li class="flex items-start">
                             <i class="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
-                            <span class="text-lg"><strong>Elimina multas</strong> por declaraciones incorrectas</span>
+                            <span class="text-lg text-gray-800"><strong>Elimina multas</strong> por declaraciones incorrectas</span>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
-                            <span class="text-lg"><strong>Cumplimiento automático</strong> con normativas europeas</span>
+                            <span class="text-lg text-gray-800"><strong>Cumplimiento automático</strong> con normativas europeas</span>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
-                            <span class="text-lg"><strong>Documentación completa</strong> para inspecciones</span>
+                            <span class="text-lg text-gray-800"><strong>Documentación completa</strong> para inspecciones</span>
                         </li>
                     </ul>
                 </div>
@@ -280,7 +280,7 @@
                 </div>
 
                 <!-- Business Plan (Highlighted) -->
-                <div class="glass p-8 rounded-3xl relative border-4 border-yellow-400 transform scale-105">
+                <div class="bg-white p-8 rounded-3xl relative border-4 border-yellow-400 transform scale-105 shadow-2xl">
                     <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
                         <span class="bg-yellow-400 text-black px-4 py-2 rounded-full font-bold text-sm">MÁS POPULAR</span>
                     </div>
