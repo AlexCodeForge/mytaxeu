@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Replace JavaScript smooth scrolling with CSS */
+html {
+    scroll-behavior: smooth;
+}
+
 /* Minimal utilities ported from template */
 .glass {
   background: rgba(255, 255, 255, 0.1);

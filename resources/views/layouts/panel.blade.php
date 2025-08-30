@@ -39,7 +39,6 @@
     </div>
 
     @livewireScripts
-    @vite(['resources/js/panel.js'])
     @stack('scripts')
 </body>
 </html>

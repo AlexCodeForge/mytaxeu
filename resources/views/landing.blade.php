@@ -3,13 +3,22 @@
 @section('title', 'MyTaxEU - Automatiza la Gestión Fiscal de Amazon')
 @push('head')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    @vite(['resources/css/landing.css', 'resources/js/landing.js'])
+    @vite(['resources/css/landing.css'])
 @endpush
 
 @section('body')
-<div class="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen">
+<div class="bg-gradient-to-br from-blue-50 via-white to-blue-100 min-h-screen" x-data="{
+    observeIntersection() {
+        return {
+            fadeIn: false,
+            init() {
+                this.$el.classList.add('opacity-0', 'translate-y-8', 'transition-all', 'duration-700');
+            }
+        }
+    }
+}">
     <!-- Navigation -->
-    <nav class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-md shadow-lg border-b border-blue-100">
+    <nav class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-md shadow-lg border-b border-blue-100" x-data="{ mobileMenuOpen: false }">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <div class="flex-shrink-0">
@@ -36,24 +45,24 @@
 
                 <!-- Mobile menu button -->
                 <div class="md:hidden">
-                    <button onclick="toggleMobileMenu()" class="text-gray-800 hover:text-primary focus:outline-none focus:text-primary">
-                        <i class="fas fa-bars text-xl"></i>
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-800 hover:text-primary focus:outline-none focus:text-primary">
+                        <i class="fas text-xl" :class="mobileMenuOpen ? 'fa-times' : 'fa-bars'"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Mobile Navigation Menu -->
-            <div id="mobile-menu" class="md:hidden hidden">
+            <div x-show="mobileMenuOpen" x-transition class="md:hidden">
                 <div class="px-2 pt-2 pb-3 space-y-1 bg-white/95 backdrop-blur-md rounded-lg mt-2 shadow-lg border border-blue-100">
-                    <a href="#inicio" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">Inicio</a>
-                    <a href="#beneficios" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">Beneficios</a>
-                    <a href="#precios" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">Precios</a>
-                    <a href="#faq" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">FAQ</a>
+                    <a href="#inicio" @click="mobileMenuOpen = false" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">Inicio</a>
+                    <a href="#beneficios" @click="mobileMenuOpen = false" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">Beneficios</a>
+                    <a href="#precios" @click="mobileMenuOpen = false" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">Precios</a>
+                    <a href="#faq" @click="mobileMenuOpen = false" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">FAQ</a>
                     <div class="border-t border-blue-100 pt-2">
-                        <a href="admin.html" class="block px-3 py-2 text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">
+                        <a href="admin.html" @click="mobileMenuOpen = false" class="block px-3 py-2 text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">
                             <i class="fas fa-cog mr-2"></i>Admin
                         </a>
-                        <button class="w-full mt-2 bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all">
+                        <button @click="mobileMenuOpen = false" class="w-full mt-2 bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all">
                             Empezar Gratis
                         </button>
                     </div>
@@ -407,7 +416,12 @@
     </section>
 
     <!-- FAQ Section -->
-    <section id="faq" class="py-20 bg-gray-50">
+    <section id="faq" class="py-20 bg-gray-50" x-data="{
+        openFaq: null,
+        toggleFaq(index) {
+            this.openFaq = this.openFaq === index ? null : index;
+        }
+    }">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
                 <h2 class="text-4xl font-bold text-gray-900 mb-6">
@@ -417,31 +431,31 @@
 
             <div class="space-y-6">
                 <div class="glass-dark p-6 rounded-xl">
-                    <button class="w-full text-left font-semibold text-lg text-gray-900 flex justify-between items-center" onclick="toggleFaq(1)">
+                    <button @click="toggleFaq(1)" class="w-full text-left font-semibold text-lg text-gray-900 flex justify-between items-center">
                         ¿Realmente puedo ahorrar 8 horas por cliente?
-                        <i class="fas fa-plus transform transition-transform" id="faq-icon-1"></i>
+                        <i class="fas transform transition-transform duration-200" :class="openFaq === 1 ? 'fa-minus rotate-180' : 'fa-plus'"></i>
                     </button>
-                    <div class="mt-4 text-gray-600 hidden" id="faq-content-1">
+                    <div x-show="openFaq === 1" x-transition class="mt-4 text-gray-600">
                         <p>Sí. Nuestros usuarios reportan una reducción media de 8 horas por cliente al mes. La automatización elimina la clasificación manual de transacciones, la validación de IVA y la generación de informes.</p>
                     </div>
                 </div>
 
                 <div class="glass-dark p-6 rounded-xl">
-                    <button class="w-full text-left font-semibold text-lg text-gray-900 flex justify-between items-center" onclick="toggleFaq(2)">
+                    <button @click="toggleFaq(2)" class="w-full text-left font-semibold text-lg text-gray-900 flex justify-between items-center">
                         ¿Qué pasa si cometo un error en las declaraciones?
-                        <i class="fas fa-plus transform transition-transform" id="faq-icon-2"></i>
+                        <i class="fas transform transition-transform duration-200" :class="openFaq === 2 ? 'fa-minus rotate-180' : 'fa-plus'"></i>
                     </button>
-                    <div class="mt-4 text-gray-600 hidden" id="faq-content-2">
+                    <div x-show="openFaq === 2" x-transition class="mt-4 text-gray-600">
                         <p>Con MyTaxEU, los errores son prácticamente imposibles. El sistema valida automáticamente cada transacción y clasifica según la normativa vigente. Garantizamos precisión del 99.8%.</p>
                     </div>
                 </div>
 
                 <div class="glass-dark p-6 rounded-xl">
-                    <button class="w-full text-left font-semibold text-lg text-gray-900 flex justify-between items-center" onclick="toggleFaq(3)">
+                    <button @click="toggleFaq(3)" class="w-full text-left font-semibold text-lg text-gray-900 flex justify-between items-center">
                         ¿Cuánto tiempo necesito para ver resultados?
-                        <i class="fas fa-plus transform transition-transform" id="faq-icon-3"></i>
+                        <i class="fas transform transition-transform duration-200" :class="openFaq === 3 ? 'fa-minus rotate-180' : 'fa-plus'"></i>
                     </button>
-                    <div class="mt-4 text-gray-600 hidden" id="faq-content-3">
+                    <div x-show="openFaq === 3" x-transition class="mt-4 text-gray-600">
                         <p>Los resultados son inmediatos. Desde el primer cliente que proceses, ya estarás ahorrando tiempo. El setup inicial toma menos de 30 minutos.</p>
                     </div>
                 </div>
