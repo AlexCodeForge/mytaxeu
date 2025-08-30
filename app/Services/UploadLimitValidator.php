@@ -26,11 +26,11 @@ class UploadLimitValidator
         if ($user) {
             return $this->validateUserUpload($user, $lineCount);
         }
-        
+
         if ($ipAddress) {
             return $this->validateIpUpload($ipAddress, $lineCount);
         }
-        
+
         return [
             'allowed' => false,
             'reason' => 'Unable to identify user or IP address',
@@ -43,6 +43,15 @@ class UploadLimitValidator
      */
     private function validateUserUpload(User $user, int $lineCount): array
     {
+        // Admin users have no limits
+        if ($user->isAdmin()) {
+            return [
+                'allowed' => true,
+                'limit' => PHP_INT_MAX,
+                'is_admin' => true,
+            ];
+        }
+
         // Check for custom user limits first
         $userLimit = $this->getUserLimit($user);
         $limit = $userLimit ? $userLimit->csv_line_limit : self::FREE_TIER_LINE_LIMIT;
@@ -50,7 +59,7 @@ class UploadLimitValidator
         if ($lineCount > $limit) {
             return [
                 'allowed' => false,
-                'reason' => $userLimit 
+                'reason' => $userLimit
                     ? 'File exceeds your current upload limit'
                     : 'File exceeds free tier limit',
                 'limit' => $limit,
@@ -105,6 +114,11 @@ class UploadLimitValidator
      */
     public function getCurrentLimit(User $user): int
     {
+        // Admin users have unlimited uploads
+        if ($user->isAdmin()) {
+            return PHP_INT_MAX;
+        }
+
         $userLimit = $this->getUserLimit($user);
         return $userLimit ? $userLimit->csv_line_limit : self::FREE_TIER_LINE_LIMIT;
     }
@@ -127,7 +141,7 @@ class UploadLimitValidator
             $tracking = IpUploadTracking::findOrCreateForIp($ipAddress);
             $tracking->incrementUsage($lineCount);
         }
-        
+
         // Note: User-based uploads are tracked via the uploads table relationship
         // No additional tracking needed for authenticated users currently
     }
@@ -148,9 +162,20 @@ class UploadLimitValidator
     public function getLimitInfo(?User $user, ?string $ipAddress = null): array
     {
         if ($user) {
+            // Admin users have unlimited uploads
+            if ($user->isAdmin()) {
+                return [
+                    'limit' => PHP_INT_MAX,
+                    'is_admin' => true,
+                    'is_custom' => false,
+                    'expires_at' => null,
+                    'type' => 'admin',
+                ];
+            }
+
             $userLimit = $this->getUserLimit($user);
             $limit = $userLimit ? $userLimit->csv_line_limit : self::FREE_TIER_LINE_LIMIT;
-            
+
             return [
                 'limit' => $limit,
                 'is_custom' => (bool) $userLimit,
@@ -158,7 +183,7 @@ class UploadLimitValidator
                 'type' => 'user',
             ];
         }
-        
+
         return [
             'limit' => self::FREE_TIER_LINE_LIMIT,
             'is_custom' => false,
@@ -189,13 +214,13 @@ class UploadLimitValidator
             $ips = explode(',', $forwardedFor);
             return trim($ips[0]);
         }
-        
+
         // Check for real IP header
         $realIp = $request->header('X-Real-IP');
         if ($realIp) {
             return $realIp;
         }
-        
+
         // Fall back to standard remote address
         return $request->ip() ?? '127.0.0.1';
     }
