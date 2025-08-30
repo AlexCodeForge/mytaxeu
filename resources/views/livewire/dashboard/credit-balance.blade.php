@@ -46,7 +46,7 @@
             @else
                 <div class="mt-4 border-t border-gray-200 pt-4">
                     <p class="text-sm text-gray-500">No tienes una suscripción activa.</p>
-                    <a href="{{ route('billing.subscriptions') }}" class="text-sm text-indigo-600 hover:text-indigo-500">
+                    <a href="{{ route('billing.subscriptions') }}" wire:navigate class="text-sm text-indigo-600 hover:text-indigo-500">
                         Ver planes disponibles →
                     </a>
                 </div>
@@ -248,7 +248,7 @@
                         <p>
                             Te quedan pocos créditos.
                             @if(!$this->subscriptionStatus)
-                                <a href="{{ route('billing.subscriptions') }}" class="font-medium underline text-yellow-700 hover:text-yellow-600">
+                                <a href="{{ route('billing.subscriptions') }}" wire:navigate class="font-medium underline text-yellow-700 hover:text-yellow-600">
                                     Considera suscribirte a un plan
                                 </a>
                                 para obtener más créditos.

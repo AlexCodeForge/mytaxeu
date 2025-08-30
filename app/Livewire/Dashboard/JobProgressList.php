@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire;
+namespace App\Livewire\Dashboard;
 
 use App\Services\JobStatusService;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -204,7 +204,7 @@ class JobProgressList extends Component
      */
     public function render()
     {
-        return view('livewire.job-progress-list', [
+        return view('livewire.dashboard.job-progress-list', [
             'jobs' => $this->jobs,
             'stats' => $this->stats,
             'statusCounts' => $this->statusCounts,

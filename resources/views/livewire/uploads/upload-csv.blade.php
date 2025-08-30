@@ -30,7 +30,7 @@
                     @endif
                 </div>
                 @if(!$userLimit)
-                    <a href="{{ route('billing.subscriptions') }}" class="text-xs text-blue-600 hover:text-blue-800 underline">
+                    <a href="{{ route('billing.subscriptions') }}" wire:navigate class="text-xs text-blue-600 hover:text-blue-800 underline">
                         Actualizar Plan
                     </a>
                 @endif
@@ -107,7 +107,7 @@
                             @if(!$userLimit && str_contains($message, 'límite'))
                                 <div class="mt-2 text-sm">
                                     <p class="text-gray-600">{{ __('csv_upload.upgrade_suggestion') }}</p>
-                                    <a href="{{ route('billing.subscriptions') }}" class="text-blue-600 hover:text-blue-800 underline">
+                                    <a href="{{ route('billing.subscriptions') }}" wire:navigate class="text-blue-600 hover:text-blue-800 underline">
                                         Ver planes premium →
                                     </a>
                                 </div>

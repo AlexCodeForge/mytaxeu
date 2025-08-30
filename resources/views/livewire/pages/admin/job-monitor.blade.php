@@ -7,5 +7,5 @@
     </div>
 
     {{-- Job Monitoring Component --}}
-    <livewire:admin-job-monitor />
+    <livewire:admin.admin-job-monitor />
 </div>

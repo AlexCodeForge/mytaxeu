@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire;
+namespace App\Livewire\Admin;
 
 use App\Services\JobStatusService;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -388,7 +388,7 @@ class AdminJobMonitor extends Component
      */
     public function render()
     {
-        return view('livewire.admin-job-monitor', [
+        return view('livewire.admin.admin-job-monitor', [
             'jobs' => $this->jobs,
             'failedJobs' => $this->failedJobs,
             'stats' => $this->stats,

@@ -9,7 +9,7 @@
 
     <!-- Quick Actions -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <a href="{{ route('uploads.create') }}" class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
+        <a href="{{ route('uploads.create') }}" wire:navigate class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
             <div class="flex items-center">
                 <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                     <i class="fas fa-upload text-primary text-xl"></i>
@@ -21,7 +21,7 @@
             </div>
         </a>
 
-        <a href="{{ route('uploads.index') }}" class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
+        <a href="{{ route('uploads.index') }}" wire:navigate class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
             <div class="flex items-center">
                 <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
                     <i class="fas fa-file-csv text-green-600 text-xl"></i>
@@ -33,7 +33,7 @@
             </div>
         </a>
 
-        <a href="{{ route('billing.subscriptions') }}" class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
+        <a href="{{ route('billing.subscriptions') }}" wire:navigate class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
             <div class="flex items-center">
                 <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
                     <i class="fas fa-credit-card text-purple-600 text-xl"></i>
@@ -99,7 +99,7 @@
                     <p class="text-sm font-medium text-gray-600">Créditos</p>
                     <p class="text-3xl font-bold text-primary">{{ number_format($stats['credits']) }}</p>
                     <p class="text-xs text-gray-500 mt-1">
-                        <a href="{{ route('billing.subscriptions') }}" class="text-indigo-600 hover:text-indigo-500">
+                        <a href="{{ route('billing.subscriptions') }}" wire:navigate class="text-indigo-600 hover:text-indigo-500">
                             Ver detalles →
                         </a>
                     </p>
@@ -120,7 +120,7 @@
     <div class="glass-white p-6 rounded-xl shadow-lg">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-900">Archivos Recientes</h3>
-            <a href="{{ route('uploads.index') }}" class="text-primary hover:text-blue-700 text-sm font-medium">
+            <a href="{{ route('uploads.index') }}" wire:navigate class="text-primary hover:text-blue-700 text-sm font-medium">
                 Ver todos <i class="fas fa-arrow-right ml-1"></i>
             </a>
         </div>
@@ -156,7 +156,7 @@
                 </div>
                 <h4 class="text-lg font-medium text-gray-900 mb-2">No hay archivos aún</h4>
                 <p class="text-gray-600 mb-4">Comienza subiendo tu primer archivo CSV</p>
-                <a href="{{ route('uploads.create') }}" class="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <a href="{{ route('uploads.create') }}" wire:navigate class="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors">
                     <i class="fas fa-upload mr-2"></i>
                     Subir CSV
                 </a>

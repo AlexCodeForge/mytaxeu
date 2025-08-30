@@ -173,13 +173,13 @@
         <div class="p-6">
             @if($selectedView === 'jobs')
                 {{-- Active Jobs View --}}
-                @include('livewire.admin-job-monitor.jobs-view')
+                @include('livewire.admin.admin-job-monitor.jobs-view')
             @elseif($selectedView === 'failed_jobs')
                 {{-- Failed Jobs View --}}
-                @include('livewire.admin-job-monitor.failed-jobs-view')
+                @include('livewire.admin.admin-job-monitor.failed-jobs-view')
             @elseif($selectedView === 'stats')
                 {{-- Statistics View --}}
-                @include('livewire.admin-job-monitor.stats-view')
+                @include('livewire.admin.admin-job-monitor.stats-view')
             @endif
         </div>
     </div>

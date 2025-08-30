@@ -11,11 +11,9 @@
             @foreach ($links as $link)
                 <li>
                     <a href="{{ route($link['route']) }}"
-                       @class([
-                         'flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all',
-                         'sidebar-active' => request()->routeIs($link['route']),
-                         'hover:bg-blue-50' => ! request()->routeIs($link['route'])
-                       ])>
+                       wire:navigate.hover
+                       wire:current="sidebar-active"
+                       class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50">
                         <i class="fas {{ $link['icon'] }} mr-3"></i>
                         <span>{{ $link['label'] }}</span>
                     </a>
@@ -25,7 +23,7 @@
     </nav>
 
     <div class="absolute bottom-4 left-4 right-4">
-        <a href="{{ route('landing') }}" class="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-all">
+        <a href="{{ route('landing') }}" wire:navigate class="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-all">
             <i class="fas fa-arrow-left mr-2"></i>
             Volver al Sitio
         </a>

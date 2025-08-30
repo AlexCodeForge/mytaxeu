@@ -58,3 +58,10 @@ html {
 
 /* Typography to match template */
 body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif; }
+
+/* Sidebar navigation styles for wire:current */
+.sidebar-active {
+  background-color: #dbeafe;
+  color: #1e40af;
+  font-weight: 600;
+}
