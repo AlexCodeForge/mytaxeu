@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Upload;
 use App\Services\CreditService;
+use App\Services\CsvTransformer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -41,7 +42,7 @@ class ProcessUploadJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(): void
+    public function handle(CsvTransformer $csvTransformer): void
     {
         $upload = Upload::find($this->uploadId);
 
@@ -71,8 +72,8 @@ class ProcessUploadJob implements ShouldQueue
                 throw new \Exception('Upload file is empty');
             }
 
-            // Process CSV (placeholder implementation)
-            $this->processCsvContent($upload, $content);
+            // Process CSV with transformation
+            $this->processCsvTransformation($upload, $csvTransformer);
 
             // Update row count if not set
             if (! $upload->rows_count) {
@@ -164,42 +165,68 @@ class ProcessUploadJob implements ShouldQueue
     }
 
     /**
-     * Process CSV content (placeholder implementation).
+     * Process CSV transformation using the CsvTransformer service.
      */
-    private function processCsvContent(Upload $upload, string $content): void
+    private function processCsvTransformation(Upload $upload, CsvTransformer $csvTransformer): void
     {
-        // Placeholder for actual CSV processing logic
-        // In a real implementation, this would:
-        // 1. Parse CSV content
-        // 2. Validate data structure
-        // 3. Transform data according to business rules
-        // 4. Generate output CSV or perform other operations
-        // 5. Store results
+        try {
+            // Get absolute paths for the transformer
+            $inputPath = Storage::disk($upload->disk)->path($upload->path);
+            $outputPath = $this->generateOutputPath($upload);
+            $absoluteOutputPath = Storage::disk($upload->disk)->path($outputPath);
 
-        $lines = explode("\n", $content);
-        $processedLines = 0;
+            Log::info('ProcessUploadJob: Starting CSV transformation', [
+                'upload_id' => $upload->id,
+                'input_path' => $inputPath,
+                'output_path' => $absoluteOutputPath,
+            ]);
 
-        foreach ($lines as $line) {
-            if (empty(trim($line))) {
-                continue;
+            // Perform the CSV transformation
+            $csvTransformer->transform($inputPath, $absoluteOutputPath);
+
+            // Verify output file was created
+            if (!Storage::disk($upload->disk)->exists($outputPath)) {
+                throw new \Exception('Transformation completed but output file not found');
             }
 
-            // Simulate processing each line
-            // In production: parse CSV, validate, transform data
-            $processedLines++;
+            Log::info('ProcessUploadJob: CSV transformation completed', [
+                'upload_id' => $upload->id,
+                'output_path' => $outputPath,
+                'output_size' => Storage::disk($upload->disk)->size($outputPath),
+            ]);
 
-            // For demonstration: log every 100th line processed
-            if ($processedLines % 100 === 0) {
-                Log::info('ProcessUploadJob: Progress update', [
-                    'upload_id' => $upload->id,
-                    'lines_processed' => $processedLines,
-                ]);
-            }
+        } catch (\DomainException $e) {
+            // Business logic validation errors
+            Log::warning('ProcessUploadJob: Validation failed during transformation', [
+                'upload_id' => $upload->id,
+                'error' => $e->getMessage(),
+                'type' => 'validation_error',
+            ]);
+            
+            throw new \Exception('CSV validation failed: ' . $e->getMessage());
+
+        } catch (\Exception $e) {
+            Log::error('ProcessUploadJob: Transformation failed', [
+                'upload_id' => $upload->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            throw $e;
         }
+    }
 
-        Log::info('ProcessUploadJob: CSV processing completed', [
-            'upload_id' => $upload->id,
-            'total_lines_processed' => $processedLines,
-        ]);
+    /**
+     * Generate output file path for the transformed CSV.
+     */
+    private function generateOutputPath(Upload $upload): string
+    {
+        $pathInfo = pathinfo($upload->path);
+        $directory = $pathInfo['dirname'] ?? '';
+        $filename = $pathInfo['filename'] ?? 'transformed';
+        
+        $outputFilename = $filename . '_transformed.csv';
+        
+        return $directory ? $directory . '/' . $outputFilename : $outputFilename;
     }
 }
