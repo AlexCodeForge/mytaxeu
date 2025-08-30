@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'ensure.admin' => \App\Http\Middleware\EnsureAdmin::class,
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
+            'check.upload.limits' => \App\Http\Middleware\CheckUploadLimits::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

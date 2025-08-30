@@ -6,6 +6,8 @@ namespace App\Livewire\Uploads;
 
 use App\Models\Upload;
 use App\Services\CreditService;
+use App\Services\CsvLineCountService;
+use App\Services\UploadLimitValidator;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -67,14 +69,38 @@ class UploadCsv extends Component
             $this->uploading = true;
             $this->uploadProgress = 'Validando archivo...';
 
-            // Validate file content (basic CSV structure check)
-            $content = file_get_contents($this->csvFile->getRealPath());
-            if (empty($content)) {
-                $this->addError('csvFile', 'El archivo está vacío.');
+            // Initialize services
+            $csvService = app(CsvLineCountService::class);
+            $limitValidator = app(UploadLimitValidator::class);
+
+            // Validate file content and count lines accurately
+            try {
+                $analysisResult = $csvService->analyzeFile($this->csvFile);
+                $csvLineCount = $analysisResult['line_count'];
+                
+                // Check if file is empty
+                if ($csvLineCount === 0) {
+                    $this->addError('csvFile', __('csv_upload.file_invalid_csv', ['error' => 'archivo vacío']));
+                    return;
+                }
+
+                // Validate upload limits
+                $ipAddress = request()->ip();
+                $validationResult = $limitValidator->validateUpload(auth()->user(), $csvLineCount, $ipAddress);
+                
+                if (!$validationResult['allowed']) {
+                    $errorMessage = $this->getLocalizedLimitError($validationResult, $csvLineCount);
+                    $this->addError('csvFile', $errorMessage);
+                    return;
+                }
+                
+            } catch (\InvalidArgumentException $e) {
+                $this->addError('csvFile', __('csv_upload.file_invalid_csv', ['error' => $e->getMessage()]));
                 return;
             }
 
-            // Count rows for metadata
+            // Legacy row count for backward compatibility (will be deprecated)
+            $content = file_get_contents($this->csvFile->getRealPath());
             $rowsCount = substr_count($content, "\n") + 1;
 
             $this->uploadProgress = 'Guardando archivo...';
@@ -103,11 +129,15 @@ class UploadCsv extends Component
                 'disk' => 'local',
                 'path' => $path,
                 'size_bytes' => $this->csvFile->getSize(),
+                'csv_line_count' => $csvLineCount,
                 'rows_count' => $rowsCount,
                 'status' => Upload::STATUS_RECEIVED,
             ]);
 
             $this->uploadProgress = 'Completado!';
+
+            // Record the upload for tracking
+            $limitValidator->recordUpload(auth()->user(), $csvLineCount, request()->ip());
 
             // Dispatch the processing job
             \App\Jobs\ProcessUploadJob::dispatch($upload->id);
@@ -119,7 +149,7 @@ class UploadCsv extends Component
             $this->dispatch('upload-created', uploadId: $upload->id);
             $this->dispatch('flash-message', [
                 'type' => 'success',
-                'message' => "Archivo '{$upload->original_name}' subido correctamente. El procesamiento comenzará en breve."
+                'message' => __('csv_upload.upload_success')
             ]);
 
             // Update user credits display
@@ -156,5 +186,33 @@ class UploadCsv extends Component
     public function render()
     {
         return view('livewire.uploads.upload-csv')->layout('layouts.panel');
+    }
+
+    /**
+     * Get localized error message for limit violations
+     */
+    private function getLocalizedLimitError(array $validationResult, int $lineCount): string
+    {
+        $limit = $validationResult['limit'];
+        $isCustomLimit = $validationResult['is_custom_limit'] ?? false;
+
+        if (auth()->user()) {
+            // Authenticated user message
+            return $isCustomLimit
+                ? __('csv_upload.custom_limit_exceeded', [
+                    'lines' => $lineCount,
+                    'limit' => $limit
+                ])
+                : __('csv_upload.free_tier_limit_exceeded', [
+                    'lines' => $lineCount,
+                    'limit' => $limit
+                ]);
+        } else {
+            // Anonymous user message
+            return __('csv_upload.anonymous_limit_exceeded', [
+                'lines' => $lineCount,
+                'limit' => $limit
+            ]);
+        }
     }
 }

@@ -68,4 +68,19 @@ class User extends Authenticatable
     {
         return $this->hasMany(CreditTransaction::class);
     }
+
+    public function uploadLimits(): HasMany
+    {
+        return $this->hasMany(UserUploadLimit::class);
+    }
+
+    public function adminActions(): HasMany
+    {
+        return $this->hasMany(AdminActionLog::class, 'admin_user_id');
+    }
+
+    public function targetedAdminActions(): HasMany
+    {
+        return $this->hasMany(AdminActionLog::class, 'target_user_id');
+    }
 }

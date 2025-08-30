@@ -19,6 +19,7 @@ class Upload extends Model
         'disk',
         'path',
         'size_bytes',
+        'csv_line_count',
         'rows_count',
         'status',
         'failure_reason',
@@ -27,6 +28,7 @@ class Upload extends Model
 
     protected $casts = [
         'size_bytes' => 'integer',
+        'csv_line_count' => 'integer',
         'rows_count' => 'integer',
         'processed_at' => 'datetime',
     ];
