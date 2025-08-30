@@ -8,7 +8,7 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <a href="{{ route('uploads.create') }}" class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
             <div class="flex items-center">
                 <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
@@ -29,6 +29,18 @@
                 <div class="ml-4">
                     <h3 class="text-lg font-semibold text-gray-900">Mis Archivos</h3>
                     <p class="text-sm text-gray-600">Ver estado de tus archivos</p>
+                </div>
+            </div>
+        </a>
+
+        <a href="{{ route('billing.subscriptions') }}" class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                    <i class="fas fa-credit-card text-purple-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Suscripciones</h3>
+                    <p class="text-sm text-gray-600">Gestiona tu plan y facturación</p>
                 </div>
             </div>
         </a>
@@ -86,13 +98,22 @@
                 <div>
                     <p class="text-sm font-medium text-gray-600">Créditos</p>
                     <p class="text-3xl font-bold text-primary">{{ number_format($stats['credits']) }}</p>
-                    <p class="text-xs text-gray-500 mt-1">Disponibles</p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <a href="{{ route('billing.subscriptions') }}" class="text-indigo-600 hover:text-indigo-500">
+                            Ver detalles →
+                        </a>
+                    </p>
                 </div>
                 <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                     <i class="fas fa-coins text-yellow-600 text-xl"></i>
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Credit Balance Widget -->
+    <div class="mb-8">
+        <livewire:dashboard.credit-balance />
     </div>
 
     <!-- Recent Uploads Section -->

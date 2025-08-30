@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Upload;
+use App\Services\CreditService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,7 +19,7 @@ class ProcessUploadJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $uploadId;
-    
+
     /**
      * The number of times the job may be attempted.
      */
@@ -82,12 +83,30 @@ class ProcessUploadJob implements ShouldQueue
             // Simulate processing time (remove in production)
             sleep(2);
 
+            // Consume credit for successful processing
+            $creditService = app(CreditService::class);
+            $creditConsumed = $creditService->consumeCredits(
+                $upload->user,
+                1,
+                "Procesamiento de archivo CSV: {$upload->original_name}",
+                $upload
+            );
+
+            if (!$creditConsumed) {
+                Log::warning('ProcessUploadJob: Failed to consume credit after processing', [
+                    'upload_id' => $upload->id,
+                    'user_id' => $upload->user_id,
+                    'user_credits' => $upload->user->credits,
+                ]);
+            }
+
             // Mark as completed
             $this->updateStatus($upload, Upload::STATUS_COMPLETED);
 
             Log::info('ProcessUploadJob: Processing completed successfully', [
                 'upload_id' => $upload->id,
                 'rows_processed' => $upload->rows_count,
+                'credit_consumed' => $creditConsumed,
             ]);
 
         } catch (\Exception $e) {

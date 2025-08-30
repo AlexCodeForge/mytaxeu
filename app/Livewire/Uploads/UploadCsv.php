@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Uploads;
 
 use App\Models\Upload;
+use App\Services\CreditService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -19,6 +20,12 @@ class UploadCsv extends Component
     public ?TemporaryUploadedFile $csvFile = null;
     public bool $uploading = false;
     public string $uploadProgress = '';
+    public int $userCredits = 0;
+
+    public function __construct()
+    {
+        $this->userCredits = auth()->user()?->credits ?? 0;
+    }
 
     protected array $rules = [
         'csvFile' => 'required|file|mimes:csv,txt|max:10240', // 10MB max
@@ -44,6 +51,15 @@ class UploadCsv extends Component
 
         if (! $this->csvFile) {
             $this->addError('csvFile', 'No se ha seleccionado ningún archivo.');
+            return;
+        }
+
+        // Check if user has enough credits
+        $creditService = app(CreditService::class);
+        $user = auth()->user();
+
+        if (!$creditService->hasEnoughCredits($user, 1)) {
+            $this->addError('csvFile', 'No tienes suficientes créditos para procesar este archivo. Necesitas al menos 1 crédito.');
             return;
         }
 
@@ -106,6 +122,9 @@ class UploadCsv extends Component
                 'message' => "Archivo '{$upload->original_name}' subido correctamente. El procesamiento comenzará en breve."
             ]);
 
+            // Update user credits display
+            $this->userCredits = auth()->user()->fresh()->credits;
+
             // Reset form
             $this->reset(['csvFile', 'uploading', 'uploadProgress']);
 
@@ -127,6 +146,11 @@ class UploadCsv extends Component
     {
         $this->reset(['csvFile', 'uploading', 'uploadProgress']);
         $this->resetErrorBag();
+    }
+
+    public function mount(): void
+    {
+        $this->userCredits = auth()->user()?->credits ?? 0;
     }
 
     public function render()
