@@ -34,5 +34,6 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
         Route::get('/stripe-config', \App\Livewire\Admin\StripeConfiguration::class)->name('stripe.config');
         Route::get('/credit-analytics', \App\Livewire\Admin\CreditAnalytics::class)->name('credit.analytics');
         Route::get('/upload-limits', \App\Livewire\Admin\UserUploadManager::class)->name('upload.limits');
+        Route::get('/job-monitor', \App\Livewire\Pages\Admin\JobMonitor::class)->name('job.monitor');
     });
 require __DIR__.'/auth.php';

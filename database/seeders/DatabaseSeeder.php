@@ -27,5 +27,10 @@ class DatabaseSeeder extends Seeder
             'password' => 'password',
             'is_admin' => true,
         ]);
+
+        $this->call([
+            JobStatusTestDataSeeder::class,
+        ]);
     }
+
 }

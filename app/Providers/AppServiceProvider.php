@@ -26,5 +26,24 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-users', function (User $user): bool {
             return $user->isAdmin();
         });
+
+        // Register event listeners for job status tracking
+        $this->registerEventListeners();
+    }
+
+    /**
+     * Register event listeners for job status tracking.
+     */
+    private function registerEventListeners(): void
+    {
+        $this->app['events']->listen(
+            \App\Events\JobStatusUpdated::class,
+            \App\Listeners\JobStatusUpdateNotificationListener::class
+        );
+
+        $this->app['events']->listen(
+            \App\Events\JobLogCreated::class,
+            \App\Listeners\JobLogNotificationListener::class
+        );
     }
 }

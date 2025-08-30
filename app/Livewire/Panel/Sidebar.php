@@ -26,6 +26,7 @@ class Sidebar extends Component
         $adminLinks = [
             ['label' => 'Admin Panel', 'icon' => 'fa-cog', 'route' => 'admin.index'],
             ['label' => 'Usuarios', 'icon' => 'fa-users', 'route' => 'admin.users.index'],
+            ['label' => 'Monitoreo de Trabajos', 'icon' => 'fa-tasks', 'route' => 'admin.job.monitor'],
             ['label' => 'Análisis de Créditos', 'icon' => 'fa-coins', 'route' => 'admin.credit.analytics'],
             ['label' => 'Configuración Stripe', 'icon' => 'fa-stripe-s', 'route' => 'admin.stripe.config'],
         ];
