@@ -59,7 +59,7 @@ class CsvTransformer
 
     /**
      * Transform CSV file from input path to output path.
-     * 
+     *
      * Main entry point that orchestrates the transformation pipeline:
      * validation, parsing, classification, aggregation, and output generation.
      */
@@ -80,23 +80,23 @@ class CsvTransformer
 
         // Parse and normalize the CSV data
         $rows = $this->parseRows($inputPath);
-        
+
         // Classify transactions into tax categories
         $classifiedRows = $this->classifyTransactions($rows);
-        
+
         // Convert currencies and compute totals
         $processedRows = $this->convertCurrenciesAndComputeTotals($classifiedRows);
-        
+
         // Aggregate data by category
         $aggregatedData = $this->aggregatePerCategory($processedRows);
-        
+
         // Write final output with proper sections and formatting
         $this->writeOutputCsv($aggregatedData, $outputPath);
     }
 
     /**
      * Parse CSV rows with automatic delimiter detection and encoding normalization.
-     * 
+     *
      * Detects comma vs semicolon delimiter by analyzing first non-empty line.
      * Handles UTF-8/ISO-8859-1 encoding fallback.
      */
@@ -104,34 +104,34 @@ class CsvTransformer
     {
         // Normalize encoding first
         $content = $this->normalizeEncoding($filePath);
-        
+
         // Detect delimiter from first non-empty line
         $delimiter = $this->detectDelimiter($content);
-        
+
         // Parse CSV content
         $lines = explode("\n", $content);
         $rows = [];
         $headers = null;
-        
+
         foreach ($lines as $lineNumber => $line) {
             $line = trim($line);
             if (empty($line)) {
                 continue;
             }
-            
+
             $columns = str_getcsv($line, $delimiter);
-            
+
             if ($headers === null) {
                 // First line contains headers
                 $headers = array_map('trim', $columns);
                 continue;
             }
-            
+
             // Create associative array for data row
             $row = [];
             foreach ($headers as $index => $header) {
                 $value = isset($columns[$index]) ? trim($columns[$index]) : '';
-                
+
                 // Normalize numeric columns
                 if (in_array($header, self::NUMERIC_COLUMNS)) {
                     $row[$header] = $this->normalizeNumericValue($value);
@@ -139,44 +139,44 @@ class CsvTransformer
                     $row[$header] = $value;
                 }
             }
-            
+
             $rows[] = $row;
         }
-        
+
         return $rows;
     }
 
     /**
      * Normalize file encoding with UTF-8/ISO-8859-1 fallback handling.
-     * 
+     *
      * Attempts UTF-8 read first; on failure, loads as ISO-8859-1 and converts to UTF-8.
      */
     private function normalizeEncoding(string $filePath): string
     {
         $content = file_get_contents($filePath);
-        
+
         if ($content === false) {
             throw new RuntimeException('Unable to read file: ' . $filePath);
         }
-        
+
         // Check if content is valid UTF-8
         if (mb_check_encoding($content, 'UTF-8')) {
             return $content;
         }
-        
+
         // Fallback: assume ISO-8859-1 and convert to UTF-8
         $converted = mb_convert_encoding($content, 'UTF-8', 'ISO-8859-1');
-        
+
         if ($converted === false) {
             throw new RuntimeException('Unable to normalize encoding for file: ' . $filePath);
         }
-        
+
         return $converted;
     }
 
     /**
      * Validate file extension, required columns, and business constraints.
-     * 
+     *
      * - Accept only .csv and .txt extensions
      * - Require ACTIVITY_PERIOD column
      * - Enforce max 3 distinct ACTIVITY_PERIOD values
@@ -192,38 +192,38 @@ class CsvTransformer
         // Read and parse file to validate content
         $content = $this->normalizeEncoding($filePath);
         $delimiter = $this->detectDelimiter($content);
-        
+
         $lines = explode("\n", $content);
         $headers = null;
         $activityPeriods = [];
-        
+
         foreach ($lines as $line) {
             $line = trim($line);
             if (empty($line)) {
                 continue;
             }
-            
+
             $columns = str_getcsv($line, $delimiter);
-            
+
             if ($headers === null) {
                 // First line contains headers
                 $headers = array_map('trim', $columns);
-                
+
                 // Check for required ACTIVITY_PERIOD column
                 if (!in_array('ACTIVITY_PERIOD', $headers)) {
                     throw new DomainException('Missing required ACTIVITY_PERIOD column');
                 }
-                
+
                 continue;
             }
-            
+
             // Track distinct ACTIVITY_PERIOD values
             $activityPeriodIndex = array_search('ACTIVITY_PERIOD', $headers);
             if ($activityPeriodIndex !== false && isset($columns[$activityPeriodIndex])) {
                 $period = trim($columns[$activityPeriodIndex]);
                 if (!empty($period) && !in_array($period, $activityPeriods)) {
                     $activityPeriods[] = $period;
-                    
+
                     // Enforce max 3 distinct periods
                     if (count($activityPeriods) > 3) {
                         throw new DomainException('Maximum 3 distinct ACTIVITY_PERIOD values allowed, found more than 3');
@@ -235,26 +235,26 @@ class CsvTransformer
 
     /**
      * Detect CSV delimiter by analyzing first non-empty line.
-     * 
+     *
      * Uses comma if more commas than semicolons, otherwise uses semicolon.
      */
     private function detectDelimiter(string $content): string
     {
         $lines = explode("\n", $content);
-        
+
         foreach ($lines as $line) {
             $line = trim($line);
             if (empty($line)) {
                 continue;
             }
-            
+
             $commaCount = substr_count($line, ',');
             $semicolonCount = substr_count($line, ';');
-            
+
             // Use comma if more commas than semicolons, otherwise use semicolon
             return $commaCount >= $semicolonCount ? ',' : ';';
         }
-        
+
         // Default to comma if no delimiters found
         return ',';
     }
@@ -267,16 +267,16 @@ class CsvTransformer
         if (empty($value)) {
             return 0.0;
         }
-        
+
         // Replace European decimal separator if needed
         $normalized = str_replace(',', '.', $value);
-        
+
         return (float) $normalized;
     }
 
     /**
      * Write the aggregated data to output CSV file with proper sections.
-     * 
+     *
      * Organizes output into REGULAR and INTERNATIONAL sections with category headers.
      */
     private function writeOutputCsv(array $aggregatedData, string $outputPath): void
@@ -285,39 +285,39 @@ class CsvTransformer
             file_put_contents($outputPath, '');
             return;
         }
-        
+
         $csvContent = [];
-        
+
         // Define section organization
         $regularCategories = ['B2C/B2B Local', 'Local Sin IVA'];
         $internationalCategories = ['Intracomunitarias B2B', 'OSS', 'IOSS', 'Marketplace VAT', 'Amazon Compras', 'Exportaciones'];
-        
+
         // REGULAR Section
         if ($this->hasAnyCategory($aggregatedData, $regularCategories)) {
             $csvContent[] = ''; // Blank line
             $csvContent[] = 'REGULAR SECTION';
             $csvContent[] = ''; // Blank line
-            
+
             foreach ($regularCategories as $category) {
                 if (isset($aggregatedData[$category])) {
                     $csvContent = array_merge($csvContent, $this->writeCategorySection($category, $aggregatedData[$category]));
                 }
             }
         }
-        
+
         // INTERNATIONAL Section
         if ($this->hasAnyCategory($aggregatedData, $internationalCategories)) {
             $csvContent[] = ''; // Blank line
             $csvContent[] = 'INTERNATIONAL SECTION';
             $csvContent[] = ''; // Blank line
-            
+
             foreach ($internationalCategories as $category) {
                 if (isset($aggregatedData[$category])) {
                     $csvContent = array_merge($csvContent, $this->writeCategorySection($category, $aggregatedData[$category]));
                 }
             }
         }
-        
+
         // Handle any remaining categories (like Unclassified)
         $handledCategories = array_merge($regularCategories, $internationalCategories);
         foreach ($aggregatedData as $category => $categoryData) {
@@ -326,12 +326,12 @@ class CsvTransformer
                 $csvContent = array_merge($csvContent, $this->writeCategorySection($category, $categoryData));
             }
         }
-        
+
         // Remove leading empty lines
         while (!empty($csvContent) && $csvContent[0] === '') {
             array_shift($csvContent);
         }
-        
+
         file_put_contents($outputPath, implode("\n", $csvContent));
     }
 
@@ -356,104 +356,104 @@ class CsvTransformer
         if (empty($categoryData)) {
             return [];
         }
-        
+
         $section = [];
-        
+
         // Category header
         $section[] = $category;
-        
+
         // Column headers from first row
         $headers = array_keys($categoryData[0]);
         $section[] = implode(',', $headers);
-        
+
         // Data rows
         foreach ($categoryData as $row) {
             $values = [];
             foreach ($headers as $header) {
                 $value = $row[$header] ?? '';
-                
+
                 // Format numeric values
                 if (is_float($value)) {
                     $value = number_format($value, 2);
                 }
-                
+
                 // Quote values that contain commas, quotes, or newlines
                 if (is_string($value) && (strpos($value, ',') !== false || strpos($value, '"') !== false || strpos($value, "\n") !== false)) {
                     $value = '"' . str_replace('"', '""', $value) . '"';
                 }
-                
+
                 $values[] = $value;
             }
-            
+
             $section[] = implode(',', $values);
         }
-        
+
         // Add blank line after section
         $section[] = '';
-        
+
         return $section;
     }
 
     /**
      * Convert currencies and compute totals for all rows.
-     * 
+     *
      * Applies currency conversion to specific categories and computes row totals.
      */
     private function convertCurrenciesAndComputeTotals(array $rows): array
     {
         $processedRows = [];
-        
+
         foreach ($rows as $row) {
             // Convert currencies if needed
             $row = $this->convertCurrencies($row);
-            
+
             // Compute row totals
             $row = $this->computeRowTotals($row);
-            
+
             $processedRows[] = $row;
         }
-        
+
         return $processedRows;
     }
 
     /**
      * Convert currencies using fixed exchange rates for specific categories.
-     * 
+     *
      * Only applies to OSS, IOSS, Marketplace, Compras, and Intracom B2B categories.
      */
     private function convertCurrencies(array $row): array
     {
         $category = $row['TAX_CATEGORY'] ?? '';
         $currency = $row['TRANSACTION_CURRENCY_CODE'] ?? 'EUR';
-        
+
         // Only convert for specific categories
         if (!in_array($category, self::CURRENCY_CONVERSION_CATEGORIES)) {
             return $row;
         }
-        
+
         // Only convert if we have an exchange rate and it's not already EUR
         if ($currency === 'EUR' || !isset(self::EXCHANGE_RATES[$currency])) {
             return $row;
         }
-        
+
         $exchangeRate = self::EXCHANGE_RATES[$currency];
-        
+
         // Convert all numeric amount columns
         foreach (self::NUMERIC_COLUMNS as $column) {
             if (isset($row[$column]) && is_numeric($row[$column])) {
                 $row[$column] = (float) $row[$column] * $exchangeRate;
             }
         }
-        
+
         // Update currency code to EUR
         $row['TRANSACTION_CURRENCY_CODE'] = 'EUR';
-        
+
         return $row;
     }
 
     /**
      * Compute row totals: Base (€), IVA (€), Total (€), and Calculated Base (€).
-     * 
+     *
      * Calculates totals from VAT-excluded, VAT, and VAT-included amounts.
      */
     private function computeRowTotals(array $row): array
@@ -462,23 +462,23 @@ class CsvTransformer
         $totalBase = (float) ($row['TOTAL_ACTIVITY_VALUE_VAT_EXCL_AMT'] ?? 0);
         $priceBase = (float) ($row['PRICE_OF_ITEMS_VAT_EXCL_AMT'] ?? 0);
         $row['Base (€)'] = $totalBase + $priceBase;
-        
+
         // IVA (€): Sum of VAT amounts
         $totalVat = (float) ($row['TOTAL_ACTIVITY_VALUE_VAT_AMT'] ?? 0);
         $priceVat = (float) ($row['PRICE_OF_ITEMS_VAT_AMT'] ?? 0);
         $row['IVA (€)'] = $totalVat + $priceVat;
-        
+
         // Total (€): Sum of VAT-included amounts
         $totalInclusive = (float) ($row['TOTAL_ACTIVITY_VALUE_VAT_INCL_AMT'] ?? 0);
         $priceInclusive = (float) ($row['PRICE_OF_ITEMS_VAT_INCL_AMT'] ?? 0);
         $row['Total (€)'] = $totalInclusive + $priceInclusive;
-        
+
         // Calculated Base (€): Special calculation for B2C/B2B Local category
         $category = $row['TAX_CATEGORY'] ?? '';
         if ($category === 'B2C/B2B Local') {
             $vatAmount = $row['IVA (€)'];
             $vatRate = (float) ($row['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0);
-            
+
             if ($vatAmount > 0 && $vatRate > 0) {
                 // If VAT > 0: Calculated Base = VAT / (rate / 100)
                 $row['Calculated Base (€)'] = $vatAmount / ($vatRate / 100);
@@ -487,13 +487,13 @@ class CsvTransformer
                 $row['Calculated Base (€)'] = $row['Base (€)'];
             }
         }
-        
+
         return $row;
     }
 
     /**
      * Aggregate processed rows by category with category-specific grouping rules.
-     * 
+     *
      * Each category has different aggregation logic and output columns.
      */
     private function aggregatePerCategory(array $rows): array
@@ -504,9 +504,9 @@ class CsvTransformer
             $category = $row['TAX_CATEGORY'] ?? 'Unclassified';
             $categorizedRows[$category][] = $row;
         }
-        
+
         $aggregatedSections = [];
-        
+
         // Process each category with its specific aggregation logic
         foreach ($categorizedRows as $category => $categoryRows) {
             $aggregatedRows = $this->aggregateCategory($category, $categoryRows);
@@ -514,7 +514,7 @@ class CsvTransformer
                 $aggregatedSections[$category] = $aggregatedRows;
             }
         }
-        
+
         return $aggregatedSections;
     }
 
@@ -551,11 +551,11 @@ class CsvTransformer
     private function aggregateB2cB2bLocal(array $rows): array
     {
         $grouped = [];
-        
+
         foreach ($rows as $row) {
             $jurisdiction = $row['TAXABLE_JURISDICTION'] ?? 'Unknown';
             $key = $jurisdiction;
-            
+
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
                     'TAXABLE_JURISDICTION' => $jurisdiction,
@@ -566,17 +566,17 @@ class CsvTransformer
                     'Count' => 0,
                 ];
             }
-            
+
             $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
             $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
             $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
             $grouped[$key]['Calculated Base (€)'] += (float) ($row['Calculated Base (€)'] ?? 0);
             $grouped[$key]['Count']++;
         }
-        
+
         $result = array_values($grouped);
         $result[] = $this->generateTotalsRow($result, 'B2C/B2B Local Total');
-        
+
         return $result;
     }
 
@@ -586,7 +586,7 @@ class CsvTransformer
     private function aggregateLocalSinIva(array $rows): array
     {
         $result = [];
-        
+
         foreach ($rows as $row) {
             $result[] = [
                 'BUYER_NAME' => $row['BUYER_NAME'] ?? '',
@@ -597,9 +597,9 @@ class CsvTransformer
                 'Total (€)' => (float) ($row['Total (€)'] ?? 0),
             ];
         }
-        
+
         $result[] = $this->generateTotalsRow($result, 'Local Sin IVA Total');
-        
+
         return $result;
     }
 
@@ -609,13 +609,13 @@ class CsvTransformer
     private function aggregateIntracomunitariasB2b(array $rows): array
     {
         $grouped = [];
-        
+
         foreach ($rows as $row) {
             $buyerName = $row['BUYER_NAME'] ?? '';
             $buyerVat = $row['BUYER_VAT_NUMBER'] ?? '';
             $country = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
             $key = $buyerName . '|' . $buyerVat . '|' . $country;
-            
+
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
                     'BUYER_NAME' => $buyerName,
@@ -627,16 +627,16 @@ class CsvTransformer
                     'Count' => 0,
                 ];
             }
-            
+
             $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
             $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
             $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
             $grouped[$key]['Count']++;
         }
-        
+
         $result = array_values($grouped);
         $result[] = $this->generateTotalsRow($result, 'Intracomunitarias B2B Total');
-        
+
         return $result;
     }
 
@@ -646,11 +646,11 @@ class CsvTransformer
     private function aggregateOss(array $rows): array
     {
         $grouped = [];
-        
+
         foreach ($rows as $row) {
             $country = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
             $key = $country;
-            
+
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
                     'SALE_ARRIVAL_COUNTRY' => $country,
@@ -660,16 +660,16 @@ class CsvTransformer
                     'Count' => 0,
                 ];
             }
-            
+
             $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
             $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
             $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
             $grouped[$key]['Count']++;
         }
-        
+
         $result = array_values($grouped);
         $result[] = $this->generateTotalsRow($result, 'OSS Total');
-        
+
         return $result;
     }
 
@@ -679,11 +679,11 @@ class CsvTransformer
     private function aggregateIoss(array $rows): array
     {
         $grouped = [];
-        
+
         foreach ($rows as $row) {
             $country = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
             $key = $country;
-            
+
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
                     'SALE_ARRIVAL_COUNTRY' => $country,
@@ -693,16 +693,16 @@ class CsvTransformer
                     'Count' => 0,
                 ];
             }
-            
+
             $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
             $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
             $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
             $grouped[$key]['Count']++;
         }
-        
+
         $result = array_values($grouped);
         $result[] = $this->generateTotalsRow($result, 'IOSS Total');
-        
+
         return $result;
     }
 
@@ -712,11 +712,11 @@ class CsvTransformer
     private function aggregateMarketplaceVat(array $rows): array
     {
         $grouped = [];
-        
+
         foreach ($rows as $row) {
             $country = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
             $key = $country;
-            
+
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
                     'SALE_ARRIVAL_COUNTRY' => $country,
@@ -726,16 +726,16 @@ class CsvTransformer
                     'Count' => 0,
                 ];
             }
-            
+
             $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
             $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
             $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
             $grouped[$key]['Count']++;
         }
-        
+
         $result = array_values($grouped);
         $result[] = $this->generateTotalsRow($result, 'Marketplace VAT Total');
-        
+
         return $result;
     }
 
@@ -745,7 +745,7 @@ class CsvTransformer
     private function aggregateAmazonCompras(array $rows): array
     {
         $result = [];
-        
+
         foreach ($rows as $row) {
             $result[] = [
                 'SUPPLIER_NAME' => $row['SUPPLIER_NAME'] ?? '',
@@ -754,9 +754,9 @@ class CsvTransformer
                 'Total (€)' => (float) ($row['Total (€)'] ?? 0),
             ];
         }
-        
+
         $result[] = $this->generateTotalsRow($result, 'Amazon Compras Total');
-        
+
         return $result;
     }
 
@@ -766,12 +766,12 @@ class CsvTransformer
     private function aggregateExportaciones(array $rows): array
     {
         $grouped = [];
-        
+
         foreach ($rows as $row) {
             $departCountry = $row['SALE_DEPART_COUNTRY'] ?? '';
             $arrivalCountry = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
             $key = $departCountry . '|' . $arrivalCountry;
-            
+
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
                     'SALE_DEPART_COUNTRY' => $departCountry,
@@ -782,16 +782,16 @@ class CsvTransformer
                     'Count' => 0,
                 ];
             }
-            
+
             $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
             $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
             $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
             $grouped[$key]['Count']++;
         }
-        
+
         $result = array_values($grouped);
         $result[] = $this->generateTotalsRow($result, 'Exportaciones Total');
-        
+
         return $result;
     }
 
@@ -801,7 +801,7 @@ class CsvTransformer
     private function aggregateDefault(array $rows): array
     {
         $result = [];
-        
+
         foreach ($rows as $row) {
             $result[] = [
                 'Original Data' => json_encode($row),
@@ -810,11 +810,11 @@ class CsvTransformer
                 'Total (€)' => (float) ($row['Total (€)'] ?? 0),
             ];
         }
-        
+
         if (!empty($result)) {
             $result[] = $this->generateTotalsRow($result, 'Unclassified Total');
         }
-        
+
         return $result;
     }
 
@@ -829,39 +829,39 @@ class CsvTransformer
             'IVA (€)' => 0,
             'Total (€)' => 0,
         ];
-        
+
         foreach ($rows as $row) {
             if (isset($row['Label'])) continue; // Skip existing totals rows
-            
+
             $totals['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
             $totals['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
             $totals['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
         }
-        
+
         return $totals;
     }
 
     /**
      * Classify transactions into tax categories using business rules.
-     * 
+     *
      * Applies classification rules in order - first match wins.
      */
     private function classifyTransactions(array $rows): array
     {
         $classifiedRows = [];
-        
+
         foreach ($rows as $row) {
             $category = $this->classify($row);
             $row['TAX_CATEGORY'] = $category;
             $classifiedRows[] = $row;
         }
-        
+
         return $classifiedRows;
     }
 
     /**
      * Classify a single transaction row using 8 tax category rules.
-     * 
+     *
      * Rules are applied in order; first match wins.
      */
     private function classify(array $row): string
@@ -924,7 +924,7 @@ class CsvTransformer
 
     /**
      * Rule 2: Local Sin IVA
-     * SALE_DEPART_COUNTRY == SALE_ARRIVAL_COUNTRY && TOTAL_ACTIVITY_VALUE_VAT_AMT == 0 && 
+     * SALE_DEPART_COUNTRY == SALE_ARRIVAL_COUNTRY && TOTAL_ACTIVITY_VALUE_VAT_AMT == 0 &&
      * empty(BUYER_VAT_NUMBER) && TAX_COLLECTION_RESPONSIBILITY == SELLER
      */
     private function isLocalSinIva(array $row): bool
@@ -943,7 +943,7 @@ class CsvTransformer
 
     /**
      * Rule 3: Intracomunitarias B2B
-     * depart != arrival && both EU (not GB) && BUYER_VAT_NUMBER_COUNTRY present && 
+     * depart != arrival && both EU (not GB) && BUYER_VAT_NUMBER_COUNTRY present &&
      * RESP == SELLER && SCHEME == REGULAR
      */
     private function isIntracomunitariasB2b(array $row): bool
