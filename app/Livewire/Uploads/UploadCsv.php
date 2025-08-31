@@ -95,8 +95,13 @@ class UploadCsv extends Component
         ]);
     }
 
-    public function upload(): void
+    public function processUpload(): void
     {
+        // Force emergency logs to ensure we see this
+        \Log::emergency('🚨 UPLOAD METHOD CALLED - THIS IS CRITICAL!');
+        error_log('UPLOAD METHOD CALLED - ERROR LOG');
+
+        logger()->emergency('🚀 Upload method called - EMERGENCY LOG');
         logger()->info('🚀 Upload method called', [
             'user_id' => auth()->id(),
             'file_present' => !is_null($this->csvFile),
@@ -324,6 +329,15 @@ class UploadCsv extends Component
         $this->resetErrorBag();
 
         logger()->info('✅ Upload state reset after cancellation');
+    }
+
+    public function debugTest(): void
+    {
+        logger()->emergency('🔥 DEBUG METHOD CALLED - LIVEWIRE IS WORKING!');
+        $this->dispatch('flash-message', [
+            'type' => 'success',
+            'message' => 'DEBUG: Livewire connection working!'
+        ]);
     }
 
     public function render()

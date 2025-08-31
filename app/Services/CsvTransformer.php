@@ -4,1020 +4,1103 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use DomainException;
-use RuntimeException;
+use Exception;
+use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
+use PhpOffice\PhpSpreadsheet\Style\Color;
 
+/**
+ * CSV Transformer Service
+ *
+ * Transforms Amazon transaction CSV files according to Spanish tax requirements.
+ * Recreates the exact logic from transformadorImpl.py in PHP.
+ */
 class CsvTransformer
 {
-    private const NUMERIC_COLUMNS = [
-        'TOTAL_ACTIVITY_VALUE_VAT_INCL_AMT',
-        'TOTAL_ACTIVITY_VALUE_VAT_EXCL_AMT',
-        'TOTAL_ACTIVITY_VALUE_VAT_AMT',
-        'PRICE_OF_ITEMS_VAT_INCL_AMT',
-        'PRICE_OF_ITEMS_VAT_EXCL_AMT',
+    // Column names for VAT-excluded amounts (Base calculations)
+    private const VAT_EXCL_COLUMNS = [
+        'PRICE_OF_ITEMS_AMT_VAT_EXCL',
+        'PROMO_PRICE_OF_ITEMS_AMT_VAT_EXCL',
+        'SHIP_CHARGE_AMT_VAT_EXCL',
+        'PROMO_SHIP_CHARGE_AMT_VAT_EXCL',
+        'GIFT_WRAP_AMT_VAT_EXCL',
+        'PROMO_GIFT_WRAP_AMT_VAT_EXCL',
+    ];
+
+    // Column names for VAT amounts (IVA calculations)
+    private const VAT_COLUMNS = [
         'PRICE_OF_ITEMS_VAT_AMT',
-        'PRICE_OF_ITEMS_VAT_RATE_PERCENT',
+        'PROMO_PRICE_OF_ITEMS_VAT_AMT',
+        'SHIP_CHARGE_VAT_AMT',
+        'PROMO_SHIP_CHARGE_VAT_AMT',
+        'GIFT_WRAP_VAT_AMT',
+        'PROMO_GIFT_WRAP_VAT_AMT',
     ];
 
-    // Tax categories in order of rule application (first match wins)
+    // Column names for VAT-included amounts (Total calculations)
+    private const VAT_INCL_COLUMNS = [
+        'PRICE_OF_ITEMS_AMT_VAT_INCL',
+        'PROMO_PRICE_OF_ITEMS_AMT_VAT_INCL',
+        'SHIP_CHARGE_AMT_VAT_INCL',
+        'PROMO_SHIP_CHARGE_AMT_VAT_INCL',
+        'GIFT_WRAP_AMT_VAT_INCL',
+        'PROMO_GIFT_WRAP_AMT_VAT_INCL',
+    ];
+
+    // All numeric columns for currency conversion
+    private const NUMERIC_COLUMNS = [
+        'COST_PRICE_OF_ITEMS', 'PRICE_OF_ITEMS_AMT_VAT_EXCL', 'PROMO_PRICE_OF_ITEMS_AMT_VAT_EXCL',
+        'TOTAL_PRICE_OF_ITEMS_AMT_VAT_EXCL', 'SHIP_CHARGE_AMT_VAT_EXCL', 'PROMO_SHIP_CHARGE_AMT_VAT_EXCL',
+        'TOTAL_SHIP_CHARGE_AMT_VAT_EXCL', 'GIFT_WRAP_AMT_VAT_EXCL', 'PROMO_GIFT_WRAP_AMT_VAT_EXCL',
+        'TOTAL_GIFT_WRAP_AMT_VAT_EXCL', 'TOTAL_ACTIVITY_VALUE_AMT_VAT_EXCL',
+        'PRICE_OF_ITEMS_VAT_RATE_PERCENT', 'PRICE_OF_ITEMS_VAT_AMT', 'PROMO_PRICE_OF_ITEMS_VAT_AMT',
+        'TOTAL_PRICE_OF_ITEMS_VAT_AMT', 'SHIP_CHARGE_VAT_RATE_PERCENT', 'SHIP_CHARGE_VAT_AMT',
+        'PROMO_SHIP_CHARGE_VAT_AMT', 'TOTAL_SHIP_CHARGE_VAT_AMT', 'GIFT_WRAP_VAT_RATE_PERCENT',
+        'GIFT_WRAP_VAT_AMT', 'PROMO_GIFT_WRAP_VAT_AMT', 'TOTAL_GIFT_WRAP_VAT_AMT', 'TOTAL_ACTIVITY_VALUE_VAT_AMT',
+        'PRICE_OF_ITEMS_AMT_VAT_INCL', 'PROMO_PRICE_OF_ITEMS_AMT_VAT_INCL', 'TOTAL_PRICE_OF_ITEMS_AMT_VAT_INCL',
+        'SHIP_CHARGE_AMT_VAT_INCL', 'PROMO_SHIP_CHARGE_AMT_VAT_INCL', 'TOTAL_SHIP_CHARGE_AMT_VAT_INCL',
+        'GIFT_WRAP_AMT_VAT_INCL', 'PROMO_GIFT_WRAP_AMT_VAT_INCL', 'TOTAL_GIFT_WRAP_AMT_VAT_INCL',
+        'TOTAL_ACTIVITY_VALUE_AMT_VAT_INCL',
+    ];
+
+    // Tax categories exactly as in Python script
     private const TAX_CATEGORIES = [
-        'B2C/B2B Local',
-        'Local Sin IVA',
-        'Intracomunitarias B2B',
-        'OSS',
-        'IOSS',
-        'Marketplace VAT',
-        'Amazon Compras',
-        'Exportaciones',
+        'Ventas locales al consumidor final - B2C y B2B (EUR)',
+        'Ventas locales SIN IVA (EUR)',
+        'Ventas Intracomunitarias de bienes - B2B (EUR)',
+        'Ventanilla Única - OSS esquema europeo (EUR)',
+        'Ventanilla Única - IOSS esquema de importación (EUR)',
+        'IVA recaudado y remitido por Amazon Marketplace (EUR)',
+        'Compras a Amazon (EUR)',
+        'Exportaciones (EUR)',
     ];
 
-    // EU countries (excluding GB which is treated separately)
+    // EU countries list from Python script
     private const EU_COUNTRIES = [
-        'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
-        'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
-        'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'
+        'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR',
+        'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL',
+        'PT', 'RO', 'SE', 'SI', 'SK'
     ];
 
-    // Export departure countries
-    private const EXPORT_DEPARTURE_COUNTRIES = ['ES', 'DE', 'FR', 'IT', 'PL'];
-
-    // Fixed exchange rates to EUR
+    // Exchange rates to EUR from Python script
     private const EXCHANGE_RATES = [
-        'EUR' => 1.0,
         'PLN' => 0.23,
+        'EUR' => 1.0,
         'SEK' => 0.087,
     ];
 
-    // Categories that require currency conversion
-    private const CURRENCY_CONVERSION_CATEGORIES = [
-        'OSS',
-        'IOSS',
-        'Marketplace VAT',
-        'Amazon Compras',
-        'Intracomunitarias B2B',
+    // OSS VAT rates for each EU country from Python script
+    private const OSS_VAT_RATES = [
+        'AT' => 0.20, 'BE' => 0.21, 'BG' => 0.20, 'CY' => 0.19, 'CZ' => 0.21,
+        'DE' => 0.19, 'DK' => 0.25, 'EE' => 0.20, 'ES' => 0.21, 'FI' => 0.24,
+        'FR' => 0.20, 'GR' => 0.24, 'HR' => 0.25, 'HU' => 0.27, 'IE' => 0.23,
+        'IT' => 0.22, 'LT' => 0.21, 'LU' => 0.17, 'LV' => 0.21, 'NL' => 0.21,
+        'PL' => 0.23, 'PT' => 0.23, 'RO' => 0.19, 'SE' => 0.25, 'SI' => 0.22,
     ];
 
     /**
-     * Transform CSV file from input path to output path.
-     *
-     * Main entry point that orchestrates the transformation pipeline:
-     * validation, parsing, classification, aggregation, and output generation.
+     * Transform CSV file according to Python transformadorImpl.py logic
      */
     public function transform(string $inputPath, string $outputPath): void
     {
-        // Validate input file exists and output is writable
+        $this->log("Starting CSV transformation", ['input' => $inputPath, 'output' => $outputPath]);
+
+        // Read and parse CSV
+        $data = $this->readCsvFile($inputPath);
+
+        // Validate ACTIVITY_PERIOD
+        $this->validateActivityPeriods($data);
+
+        // Initialize classifications
+        $classifications = [];
+        foreach (self::TAX_CATEGORIES as $category) {
+            $classifications[$category] = [];
+        }
+
+        // Classify each transaction (exclude RETURN transactions)
+        foreach ($data as $row) {
+            // Skip RETURN transactions as they don't follow normal classification rules
+            if (($row['TRANSACTION_TYPE'] ?? '') === 'RETURN') {
+                continue;
+            }
+
+            // Python allows transactions to be in multiple categories!
+            $categories = $this->classifyTransactionMultiple($row);
+            foreach ($categories as $category) {
+                $classifications[$category][] = $row;
+            }
+        }
+
+        // Process each classification
+        foreach ($classifications as $category => $transactions) {
+            if (!empty($transactions)) {
+                $classifications[$category] = $this->processCategory($category, $transactions);
+            }
+        }
+
+        // Generate Excel output (saved as .csv like Python script)
+        $this->generateExcelOutput($classifications, $outputPath);
+
+        $this->log("CSV transformation completed", ['output' => $outputPath]);
+    }
+
+    /**
+     * Log helper that works both in Laravel and standalone contexts
+     */
+    private function log(string $message, array $context = []): void
+    {
+        try {
+            if (class_exists('Illuminate\Support\Facades\Log')) {
+                Log::info($message, $context);
+            }
+        } catch (Exception $e) {
+            // Fallback: just echo in standalone mode
+            echo "$message\n";
+        }
+    }
+
+    /**
+     * Read CSV file and return array of rows
+     */
+    public function readCsvFile(string $inputPath): array
+    {
         if (!file_exists($inputPath)) {
-            throw new RuntimeException('Input file not found: ' . $inputPath);
+            throw new Exception("Input file does not exist: $inputPath");
         }
 
-        $outputDir = dirname($outputPath);
-        if (!is_dir($outputDir) || !is_writable($outputDir)) {
-            throw new RuntimeException('Cannot write to output path: ' . $outputPath);
-        }
-
-        // Validate file format and requirements
-        $this->validate($inputPath);
-
-        // Parse and normalize the CSV data
-        $rows = $this->parseRows($inputPath);
-
-        // Classify transactions into tax categories
-        $classifiedRows = $this->classifyTransactions($rows);
-
-        // Convert currencies and compute totals
-        $processedRows = $this->convertCurrenciesAndComputeTotals($classifiedRows);
-
-        // Aggregate data by category
-        $aggregatedData = $this->aggregatePerCategory($processedRows);
-
-        // Write final output with proper sections and formatting
-        $this->writeOutputCsv($aggregatedData, $outputPath);
-    }
-
-    /**
-     * Parse CSV rows with automatic delimiter detection and encoding normalization.
-     *
-     * Detects comma vs semicolon delimiter by analyzing first non-empty line.
-     * Handles UTF-8/ISO-8859-1 encoding fallback.
-     */
-    private function parseRows(string $filePath): array
-    {
-        // Normalize encoding first
-        $content = $this->normalizeEncoding($filePath);
-
-        // Detect delimiter from first non-empty line
-        $delimiter = $this->detectDelimiter($content);
-
-        // Parse CSV content
-        $lines = explode("\n", $content);
-        $rows = [];
+        $data = [];
         $headers = null;
 
-        foreach ($lines as $lineNumber => $line) {
-            $line = trim($line);
-            if (empty($line)) {
+        if (($handle = fopen($inputPath, 'r')) !== false) {
+            while (($row = fgetcsv($handle)) !== false) {
+                if ($headers === null) {
+                    $headers = $row;
                 continue;
             }
 
-            $columns = str_getcsv($line, $delimiter);
-
-            if ($headers === null) {
-                // First line contains headers
-                $headers = array_map('trim', $columns);
-                continue;
+                $data[] = array_combine($headers, $row);
             }
-
-            // Create associative array for data row
-            $row = [];
-            foreach ($headers as $index => $header) {
-                $value = isset($columns[$index]) ? trim($columns[$index]) : '';
-
-                // Normalize numeric columns
-                if (in_array($header, self::NUMERIC_COLUMNS)) {
-                    $row[$header] = $this->normalizeNumericValue($value);
-                } else {
-                    $row[$header] = $value;
-                }
-            }
-
-            $rows[] = $row;
+            fclose($handle);
         }
 
-        return $rows;
+        if (empty($data)) {
+            throw new Exception("No data found in CSV file");
+        }
+
+        return $data;
     }
 
     /**
-     * Normalize file encoding with UTF-8/ISO-8859-1 fallback handling.
-     *
-     * Attempts UTF-8 read first; on failure, loads as ISO-8859-1 and converts to UTF-8.
+     * Validate activity periods (max 3 different periods)
      */
-    private function normalizeEncoding(string $filePath): string
+    private function validateActivityPeriods(array $data): void
     {
-        $content = file_get_contents($filePath);
+        $periods = array_unique(array_column($data, 'ACTIVITY_PERIOD'));
 
-        if ($content === false) {
-            throw new RuntimeException('Unable to read file: ' . $filePath);
-        }
-
-        // Check if content is valid UTF-8
-        if (mb_check_encoding($content, 'UTF-8')) {
-            return $content;
-        }
-
-        // Fallback: assume ISO-8859-1 and convert to UTF-8
-        $converted = mb_convert_encoding($content, 'UTF-8', 'ISO-8859-1');
-
-        if ($converted === false) {
-            throw new RuntimeException('Unable to normalize encoding for file: ' . $filePath);
-        }
-
-        return $converted;
-    }
-
-    /**
-     * Validate file extension, required columns, and business constraints.
-     *
-     * - Accept only .csv and .txt extensions
-     * - Require ACTIVITY_PERIOD column
-     * - Enforce max 3 distinct ACTIVITY_PERIOD values
-     */
-    private function validate(string $filePath): void
-    {
-        // Validate file extension
-        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-        if (!in_array($extension, ['csv', 'txt'])) {
-            throw new DomainException('Invalid file extension. Only .csv and .txt files are supported.');
-        }
-
-        // Read and parse file to validate content
-        $content = $this->normalizeEncoding($filePath);
-        $delimiter = $this->detectDelimiter($content);
-
-        $lines = explode("\n", $content);
-        $headers = null;
-        $activityPeriods = [];
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line)) {
-                continue;
-            }
-
-            $columns = str_getcsv($line, $delimiter);
-
-            if ($headers === null) {
-                // First line contains headers
-                $headers = array_map('trim', $columns);
-
-                // Check for required ACTIVITY_PERIOD column
-                if (!in_array('ACTIVITY_PERIOD', $headers)) {
-                    throw new DomainException('Missing required ACTIVITY_PERIOD column');
-                }
-
-                continue;
-            }
-
-            // Track distinct ACTIVITY_PERIOD values
-            $activityPeriodIndex = array_search('ACTIVITY_PERIOD', $headers);
-            if ($activityPeriodIndex !== false && isset($columns[$activityPeriodIndex])) {
-                $period = trim($columns[$activityPeriodIndex]);
-                if (!empty($period) && !in_array($period, $activityPeriods)) {
-                    $activityPeriods[] = $period;
-
-                    // Enforce max 3 distinct periods
-                    if (count($activityPeriods) > 3) {
-                        throw new DomainException('Maximum 3 distinct ACTIVITY_PERIOD values allowed, found more than 3');
-                    }
-                }
-            }
+        if (count($periods) > 3) {
+            throw new Exception("Las transacciones contienen más de tres periodos distintos: " . implode(', ', $periods));
         }
     }
 
     /**
-     * Detect CSV delimiter by analyzing first non-empty line.
-     *
-     * Uses comma if more commas than semicolons, otherwise uses semicolon.
+     * Classify transaction based on Python script rules - ALLOWS MULTIPLE CATEGORIES
      */
-    private function detectDelimiter(string $content): string
+    public function classifyTransactionMultiple(array $row): array
     {
-        $lines = explode("\n", $content);
+        $departCountry = $row['SALE_DEPART_COUNTRY'] ?? '';
+        $arrivalCountry = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
+        $buyerVat = $row['BUYER_VAT_NUMBER_COUNTRY'] ?? null;  // Python uses BUYER_VAT_NUMBER_COUNTRY
+        $vatAmount = (float)($row['TOTAL_ACTIVITY_VALUE_VAT_AMT'] ?? 0);
+        $reportingScheme = $row['TAX_REPORTING_SCHEME'] ?? null;
+        $supplierName = $row['SUPPLIER_NAME'] ?? '';
+        $taxResponsibility = $row['TAX_COLLECTION_RESPONSIBILITY'] ?? null;
 
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line)) {
-                continue;
-            }
+        // Handle empty strings as null (like Python's pd.isna() / pd.notna())
+        if ($buyerVat === '') $buyerVat = null;
+        if ($reportingScheme === '') $reportingScheme = null;
+        if ($taxResponsibility === '') $taxResponsibility = null;
 
-            $commaCount = substr_count($line, ',');
-            $semicolonCount = substr_count($line, ';');
+                $categories = [];
 
-            // Use comma if more commas than semicolons, otherwise use semicolon
-            return $commaCount >= $semicolonCount ? ',' : ';';
+        // 1. Classification B2C y B2B (Python lines 255-259) - uses "if" (ALWAYS CHECK INDEPENDENTLY)
+        if (in_array($reportingScheme, ['REGULAR', 'UK_VOEC-DOMESTIC']) && $taxResponsibility === 'SELLER') {
+            $categories[] = 'Ventas locales al consumidor final - B2C y B2B (EUR)';
         }
 
-        // Default to comma if no delimiters found
-        return ',';
+        // 2. Classification for "Ventas locales SIN IVA" + ELIF CHAIN (Python lines 262+)
+        // Key insight: the elif chain is connected to SIN IVA, NOT to B2C!
+        if ($departCountry === $arrivalCountry &&
+            $vatAmount == 0 &&
+            $buyerVat === null &&
+            $taxResponsibility === 'SELLER') {
+            $categories[] = 'Ventas locales SIN IVA (EUR)';
+        }
+        // 3. The ELIF chain - only runs if SIN IVA condition was FALSE
+        elseif ($departCountry !== $arrivalCountry &&
+            in_array($departCountry, self::EU_COUNTRIES) &&
+            in_array($arrivalCountry, self::EU_COUNTRIES) &&
+            $departCountry !== 'GB' &&
+            $arrivalCountry !== 'GB' &&
+            !empty($buyerVat) &&
+            $taxResponsibility === 'SELLER' &&
+            $reportingScheme === 'REGULAR') {
+            $categories[] = 'Ventas Intracomunitarias de bienes - B2B (EUR)';
+        }
+        elseif ($reportingScheme === 'UNION-OSS') {
+            $categories[] = 'Ventanilla Única - OSS esquema europeo (EUR)';
+        }
+        elseif ($reportingScheme === 'DEEMED_RESELLER-IOSS' &&
+            in_array($departCountry, self::EU_COUNTRIES) &&
+            in_array($arrivalCountry, self::EU_COUNTRIES) &&
+            $departCountry !== $arrivalCountry) {
+            $categories[] = 'Ventanilla Única - IOSS esquema de importación (EUR)';
+        }
+        elseif ($taxResponsibility === 'MARKETPLACE') {
+            $categories[] = 'IVA recaudado y remitido por Amazon Marketplace (EUR)';
+        }
+        elseif ($supplierName === 'Amazon Services Europe Sarl') {
+            $categories[] = 'Compras a Amazon (EUR)';
+        }
+        elseif (in_array($departCountry, ['ES', 'DE', 'FR', 'IT', 'PL']) &&
+            !in_array($arrivalCountry, ['ES', 'DE', 'FR', 'IT', 'PL'])) {
+            $categories[] = 'Exportaciones (EUR)';
+        }
+
+        return $categories;
     }
 
     /**
-     * Normalize numeric value by coercing to float (empty values become 0).
+     * Classify transaction based on Python script rules - SINGLE CATEGORY (legacy method)
      */
-    private function normalizeNumericValue(string $value): float
+    public function classifyTransaction(array $row): ?string
     {
-        if (empty($value)) {
-            return 0.0;
+        $departCountry = $row['SALE_DEPART_COUNTRY'] ?? '';
+        $arrivalCountry = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
+        $buyerVat = $row['BUYER_VAT_NUMBER_COUNTRY'] ?? null;  // Python uses BUYER_VAT_NUMBER_COUNTRY
+        $vatAmount = (float)($row['TOTAL_ACTIVITY_VALUE_VAT_AMT'] ?? 0);
+        $reportingScheme = $row['TAX_REPORTING_SCHEME'] ?? null;
+        $supplierName = $row['SUPPLIER_NAME'] ?? '';
+        $taxResponsibility = $row['TAX_COLLECTION_RESPONSIBILITY'] ?? null;
+        $exportOutsideEu = $row['EXPORT_OUTSIDE_EU'] ?? '';
+
+        // Handle empty strings as null (like Python's pd.isna() / pd.notna())
+        if ($buyerVat === '') $buyerVat = null;
+        if ($reportingScheme === '') $reportingScheme = null;
+        if ($taxResponsibility === '') $taxResponsibility = null;
+
+        // EXACT PYTHON LOGIC: Mixed if/elif structure
+        // Python lines 254-325 - must match exactly!
+
+        // 1. Classification B2C y B2B (Python lines 255-259) - uses "if" (not elif)
+        if (in_array($reportingScheme, ['REGULAR', 'UK_VOEC-DOMESTIC']) && $taxResponsibility === 'SELLER') {
+            $b2cMatch = true;
+        } else {
+            $b2cMatch = false;
         }
 
-        // Replace European decimal separator if needed
-        $normalized = str_replace(',', '.', $value);
+        // 2. Classification for "Ventas locales SIN IVA" (Python lines 262-268) - uses "if" (not elif)
+        if ($departCountry === $arrivalCountry &&
+            $vatAmount == 0 &&
+            $buyerVat === null &&
+            $taxResponsibility === 'SELLER') {
+            // SIN IVA has precedence over B2C in Python (later "if" overrides earlier)
+            return 'Ventas locales SIN IVA (EUR)';
+        }
 
-        return (float) $normalized;
+        // 3. Classification Intracomunitario B2B (Python lines 272-280) - uses "elif"
+        if ($departCountry !== $arrivalCountry &&
+            in_array($departCountry, self::EU_COUNTRIES) &&
+            in_array($arrivalCountry, self::EU_COUNTRIES) &&
+            $departCountry !== 'GB' &&
+            $arrivalCountry !== 'GB' &&
+            !empty($buyerVat) &&
+            $taxResponsibility === 'SELLER' &&
+            $reportingScheme === 'REGULAR') {
+            return 'Ventas Intracomunitarias de bienes - B2B (EUR)';
+        }
+
+        // 4. Classification OSS (Python line 302) - uses "elif"
+        if ($reportingScheme === 'UNION-OSS') {
+            return 'Ventanilla Única - OSS esquema europeo (EUR)';
+        }
+
+        // 5. Classification IOSS (Python line 306) - uses "elif"
+        if ($reportingScheme === 'DEEMED_RESELLER-IOSS' &&
+            in_array($departCountry, self::EU_COUNTRIES) &&
+            in_array($arrivalCountry, self::EU_COUNTRIES) &&
+            $departCountry !== $arrivalCountry) {
+            return 'Ventanilla Única - IOSS esquema de importación (EUR)';
+        }
+
+        // 6. Classification IVA Amazon Marketplace (Python line 310) - uses "elif"
+        if ($taxResponsibility === 'MARKETPLACE') {
+            return 'IVA recaudado y remitido por Amazon Marketplace (EUR)';
+        }
+
+        // 7. Classification Compras a Amazon (Python line 314) - uses "elif"
+        if ($supplierName === 'Amazon Services Europe Sarl') {
+            return 'Compras a Amazon (EUR)';
+        }
+
+        // 8. Classification Exportaciones (Python line 318) - uses "elif" - LOWEST PRIORITY!
+        if (in_array($departCountry, ['ES', 'DE', 'FR', 'IT', 'PL']) &&
+            !in_array($arrivalCountry, ['ES', 'DE', 'FR', 'IT', 'PL'])) {
+            return 'Exportaciones (EUR)';
+        }
+
+        // If we only matched B2C and nothing else applied, return B2C
+        if ($b2cMatch) {
+            return 'Ventas locales al consumidor final - B2C y B2B (EUR)';
+        }
+
+        return null; // Unclassified
     }
 
     /**
-     * Write the aggregated data to output CSV file with proper sections.
-     *
-     * Organizes output into REGULAR and INTERNATIONAL sections with category headers.
+     * Process category according to Python script logic
      */
-    private function writeOutputCsv(array $aggregatedData, string $outputPath): void
+    private function processCategory(string $category, array $transactions): array
     {
-        if (empty($aggregatedData)) {
-            file_put_contents($outputPath, '');
-            return;
-        }
+        // Convert to numeric and apply currency conversion
+        $transactions = $this->convertToNumericAndCurrency($transactions, $category);
 
-        $csvContent = [];
+        // Calculate Base, IVA, Total for each transaction
+        $transactions = $this->calculateTotals($transactions);
 
-        // Define section organization
-        $regularCategories = ['B2C/B2B Local', 'Local Sin IVA'];
-        $internationalCategories = ['Intracomunitarias B2B', 'OSS', 'IOSS', 'Marketplace VAT', 'Amazon Compras', 'Exportaciones'];
-
-        // REGULAR Section
-        if ($this->hasAnyCategory($aggregatedData, $regularCategories)) {
-            $csvContent[] = ''; // Blank line
-            $csvContent[] = 'REGULAR SECTION';
-            $csvContent[] = ''; // Blank line
-
-            foreach ($regularCategories as $category) {
-                if (isset($aggregatedData[$category])) {
-                    $csvContent = array_merge($csvContent, $this->writeCategorySection($category, $aggregatedData[$category]));
-                }
-            }
-        }
-
-        // INTERNATIONAL Section
-        if ($this->hasAnyCategory($aggregatedData, $internationalCategories)) {
-            $csvContent[] = ''; // Blank line
-            $csvContent[] = 'INTERNATIONAL SECTION';
-            $csvContent[] = ''; // Blank line
-
-            foreach ($internationalCategories as $category) {
-                if (isset($aggregatedData[$category])) {
-                    $csvContent = array_merge($csvContent, $this->writeCategorySection($category, $aggregatedData[$category]));
-                }
-            }
-        }
-
-        // Handle any remaining categories (like Unclassified)
-        $handledCategories = array_merge($regularCategories, $internationalCategories);
-        foreach ($aggregatedData as $category => $categoryData) {
-            if (!in_array($category, $handledCategories)) {
-                $csvContent[] = ''; // Blank line
-                $csvContent = array_merge($csvContent, $this->writeCategorySection($category, $categoryData));
-            }
-        }
-
-        // Remove leading empty lines
-        while (!empty($csvContent) && $csvContent[0] === '') {
-            array_shift($csvContent);
-        }
-
-        file_put_contents($outputPath, implode("\n", $csvContent));
-    }
-
-    /**
-     * Check if aggregated data has any of the specified categories.
-     */
-    private function hasAnyCategory(array $aggregatedData, array $categories): bool
-    {
-        foreach ($categories as $category) {
-            if (isset($aggregatedData[$category]) && !empty($aggregatedData[$category])) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Write a single category section with header and data.
-     */
-    private function writeCategorySection(string $category, array $categoryData): array
-    {
-        if (empty($categoryData)) {
-            return [];
-        }
-
-        $section = [];
-
-        // Category header
-        $section[] = $category;
-
-        // Column headers from first row
-        $headers = array_keys($categoryData[0]);
-        $section[] = implode(',', $headers);
-
-        // Data rows
-        foreach ($categoryData as $row) {
-            $values = [];
-            foreach ($headers as $header) {
-                $value = $row[$header] ?? '';
-
-                // Format numeric values
-                if (is_float($value)) {
-                    $value = number_format($value, 2);
-                }
-
-                // Quote values that contain commas, quotes, or newlines
-                if (is_string($value) && (strpos($value, ',') !== false || strpos($value, '"') !== false || strpos($value, "\n") !== false)) {
-                    $value = '"' . str_replace('"', '""', $value) . '"';
-                }
-
-                $values[] = $value;
-            }
-
-            $section[] = implode(',', $values);
-        }
-
-        // Add blank line after section
-        $section[] = '';
-
-        return $section;
-    }
-
-    /**
-     * Convert currencies and compute totals for all rows.
-     *
-     * Applies currency conversion to specific categories and computes row totals.
-     */
-    private function convertCurrenciesAndComputeTotals(array $rows): array
-    {
-        $processedRows = [];
-
-        foreach ($rows as $row) {
-            // Convert currencies if needed
-            $row = $this->convertCurrencies($row);
-
-            // Compute row totals
-            $row = $this->computeRowTotals($row);
-
-            $processedRows[] = $row;
-        }
-
-        return $processedRows;
-    }
-
-    /**
-     * Convert currencies using fixed exchange rates for specific categories.
-     *
-     * Only applies to OSS, IOSS, Marketplace, Compras, and Intracom B2B categories.
-     */
-    private function convertCurrencies(array $row): array
-    {
-        $category = $row['TAX_CATEGORY'] ?? '';
-        $currency = $row['TRANSACTION_CURRENCY_CODE'] ?? 'EUR';
-
-        // Only convert for specific categories
-        if (!in_array($category, self::CURRENCY_CONVERSION_CATEGORIES)) {
-            return $row;
-        }
-
-        // Only convert if we have an exchange rate and it's not already EUR
-        if ($currency === 'EUR' || !isset(self::EXCHANGE_RATES[$currency])) {
-            return $row;
-        }
-
-        $exchangeRate = self::EXCHANGE_RATES[$currency];
-
-        // Convert all numeric amount columns
-        foreach (self::NUMERIC_COLUMNS as $column) {
-            if (isset($row[$column]) && is_numeric($row[$column])) {
-                $row[$column] = (float) $row[$column] * $exchangeRate;
-            }
-        }
-
-        // Update currency code to EUR
-        $row['TRANSACTION_CURRENCY_CODE'] = 'EUR';
-
-        return $row;
-    }
-
-    /**
-     * Compute row totals: Base (€), IVA (€), Total (€), and Calculated Base (€).
-     *
-     * Calculates totals from VAT-excluded, VAT, and VAT-included amounts.
-     */
-    private function computeRowTotals(array $row): array
-    {
-        // Base (€): Sum of VAT-excluded amounts
-        $totalBase = (float) ($row['TOTAL_ACTIVITY_VALUE_VAT_EXCL_AMT'] ?? 0);
-        $priceBase = (float) ($row['PRICE_OF_ITEMS_VAT_EXCL_AMT'] ?? 0);
-        $row['Base (€)'] = $totalBase + $priceBase;
-
-        // IVA (€): Sum of VAT amounts
-        $totalVat = (float) ($row['TOTAL_ACTIVITY_VALUE_VAT_AMT'] ?? 0);
-        $priceVat = (float) ($row['PRICE_OF_ITEMS_VAT_AMT'] ?? 0);
-        $row['IVA (€)'] = $totalVat + $priceVat;
-
-        // Total (€): Sum of VAT-included amounts
-        $totalInclusive = (float) ($row['TOTAL_ACTIVITY_VALUE_VAT_INCL_AMT'] ?? 0);
-        $priceInclusive = (float) ($row['PRICE_OF_ITEMS_VAT_INCL_AMT'] ?? 0);
-        $row['Total (€)'] = $totalInclusive + $priceInclusive;
-
-        // Calculated Base (€): Special calculation for B2C/B2B Local category
-        $category = $row['TAX_CATEGORY'] ?? '';
-        if ($category === 'B2C/B2B Local') {
-            $vatAmount = $row['IVA (€)'];
-            $vatRate = (float) ($row['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0);
-
-            if ($vatAmount > 0 && $vatRate > 0) {
-                // If VAT > 0: Calculated Base = VAT / (rate / 100)
-                $row['Calculated Base (€)'] = $vatAmount / ($vatRate / 100);
-            } else {
-                // If VAT = 0: Calculated Base = Base
-                $row['Calculated Base (€)'] = $row['Base (€)'];
-            }
-        }
-
-        return $row;
-    }
-
-    /**
-     * Aggregate processed rows by category with category-specific grouping rules.
-     *
-     * Each category has different aggregation logic and output columns.
-     */
-    private function aggregatePerCategory(array $rows): array
-    {
-        // Group rows by category
-        $categorizedRows = [];
-        foreach ($rows as $row) {
-            $category = $row['TAX_CATEGORY'] ?? 'Unclassified';
-            $categorizedRows[$category][] = $row;
-        }
-
-        $aggregatedSections = [];
-
-        // Process each category with its specific aggregation logic
-        foreach ($categorizedRows as $category => $categoryRows) {
-            $aggregatedRows = $this->aggregateCategory($category, $categoryRows);
-            if (!empty($aggregatedRows)) {
-                $aggregatedSections[$category] = $aggregatedRows;
-            }
-        }
-
-        return $aggregatedSections;
-    }
-
-    /**
-     * Aggregate a specific category using category-specific rules.
-     */
-    private function aggregateCategory(string $category, array $rows): array
-    {
+        // Apply category-specific aggregation logic
         switch ($category) {
-            case 'B2C/B2B Local':
-                return $this->aggregateB2cB2bLocal($rows);
-            case 'Local Sin IVA':
-                return $this->aggregateLocalSinIva($rows);
-            case 'Intracomunitarias B2B':
-                return $this->aggregateIntracomunitariasB2b($rows);
-            case 'OSS':
-                return $this->aggregateOss($rows);
-            case 'IOSS':
-                return $this->aggregateIoss($rows);
-            case 'Marketplace VAT':
-                return $this->aggregateMarketplaceVat($rows);
-            case 'Amazon Compras':
-                return $this->aggregateAmazonCompras($rows);
-            case 'Exportaciones':
-                return $this->aggregateExportaciones($rows);
+            case 'Ventas locales al consumidor final - B2C y B2B (EUR)':
+                return $this->processB2cB2bLocal($transactions);
+
+            case 'Ventas locales SIN IVA (EUR)':
+                return $this->processLocalSinIva($transactions);
+
+            case 'Ventas Intracomunitarias de bienes - B2B (EUR)':
+                return $this->processIntracomunitariasB2b($transactions);
+
+            case 'Ventanilla Única - OSS esquema europeo (EUR)':
+                return $this->processOss($transactions);
+
+            case 'Ventanilla Única - IOSS esquema de importación (EUR)':
+                return $this->processIoss($transactions);
+
+            case 'IVA recaudado y remitido por Amazon Marketplace (EUR)':
+                return $this->processMarketplaceVat($transactions);
+
+            case 'Compras a Amazon (EUR)':
+                return $this->processAmazonCompras($transactions);
+
+            case 'Exportaciones (EUR)':
+                return $this->processExportaciones($transactions);
+
             default:
-                return $this->aggregateDefault($rows);
+                return $transactions;
         }
     }
 
     /**
-     * Aggregate B2C/B2B Local transactions by TAXABLE_JURISDICTION.
+     * Convert numeric columns and apply currency conversion
      */
-    private function aggregateB2cB2bLocal(array $rows): array
+    private function convertToNumericAndCurrency(array $transactions, string $category): array
     {
+        foreach ($transactions as &$transaction) {
+            // Convert all numeric columns
+            foreach (self::NUMERIC_COLUMNS as $column) {
+                if (isset($transaction[$column])) {
+                    $transaction[$column] = (float)$transaction[$column];
+                }
+            }
+
+            // Apply currency conversion for specific categories
+            if ($this->requiresCurrencyConversion($category)) {
+                $currency = $transaction['TRANSACTION_CURRENCY_CODE'] ?? 'EUR';
+                if ($currency !== 'EUR' && isset(self::EXCHANGE_RATES[$currency])) {
+                    $rate = self::EXCHANGE_RATES[$currency];
+        foreach (self::NUMERIC_COLUMNS as $column) {
+                        if (isset($transaction[$column])) {
+                            $transaction[$column] = round($transaction[$column] * $rate, 2);
+                        }
+                    }
+                    $transaction['TRANSACTION_CURRENCY_CODE'] = 'EUR';
+                }
+            }
+        }
+
+        return $transactions;
+    }
+
+    /**
+     * Check if category requires currency conversion
+     */
+    private function requiresCurrencyConversion(string $category): bool
+    {
+        return in_array($category, [
+            'Ventanilla Única - OSS esquema europeo (EUR)',
+            'Ventanilla Única - IOSS esquema de importación (EUR)',
+            'IVA recaudado y remitido por Amazon Marketplace (EUR)',
+            'Compras a Amazon (EUR)',
+            'Ventas Intracomunitarias de bienes - B2B (EUR)',
+        ]);
+    }
+
+    /**
+     * Calculate Base, IVA, Total for each transaction
+     */
+    private function calculateTotals(array $transactions): array
+    {
+        foreach ($transactions as &$transaction) {
+            // Calculate Base (€): Sum of VAT-excluded amounts
+            $transaction['Base (€)'] = 0;
+            foreach (self::VAT_EXCL_COLUMNS as $column) {
+                $transaction['Base (€)'] += $transaction[$column] ?? 0;
+            }
+
+            // Calculate IVA (€): Sum of VAT amounts
+            $transaction['IVA (€)'] = 0;
+            foreach (self::VAT_COLUMNS as $column) {
+                $transaction['IVA (€)'] += $transaction[$column] ?? 0;
+            }
+
+            // Calculate Total (€): Sum of VAT-included amounts
+            $transaction['Total (€)'] = 0;
+            foreach (self::VAT_INCL_COLUMNS as $column) {
+                $transaction['Total (€)'] += $transaction[$column] ?? 0;
+            }
+        }
+
+        return $transactions;
+    }
+
+    /**
+     * Process B2C/B2B Local category (Python lines 395-420)
+     */
+    private function processB2cB2bLocal(array $transactions): array
+    {
+        // Calculate Calculated Base (€) for each transaction
+        foreach ($transactions as &$transaction) {
+            $vatRate = $transaction['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0;
+            if ($transaction['IVA (€)'] > 0 && $vatRate > 0) {
+                $transaction['Calculated Base (€)'] = $transaction['IVA (€)'] / $vatRate;
+            } else {
+                $transaction['Calculated Base (€)'] = $transaction['Base (€)'];
+            }
+        }
+
+        // Group by TAXABLE_JURISDICTION
         $grouped = [];
+        foreach ($transactions as $transaction) {
+            $jurisdiction = $transaction['TAXABLE_JURISDICTION'] ?? '';
 
-        foreach ($rows as $row) {
-            $jurisdiction = $row['TAXABLE_JURISDICTION'] ?? 'Unknown';
-            $key = $jurisdiction;
+            // Skip transactions with empty jurisdiction or zero amounts
+            if (empty($jurisdiction) || (!is_string($jurisdiction) && !is_numeric($jurisdiction))) {
+                continue;
+            }
 
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = [
+            if (!isset($grouped[$jurisdiction])) {
+                $grouped[$jurisdiction] = [
                     'TAXABLE_JURISDICTION' => $jurisdiction,
-                    'Base (€)' => 0,
-                    'IVA (€)' => 0,
-                    'Total (€)' => 0,
                     'Calculated Base (€)' => 0,
-                    'Count' => 0,
-                ];
-            }
-
-            $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
-            $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
-            $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
-            $grouped[$key]['Calculated Base (€)'] += (float) ($row['Calculated Base (€)'] ?? 0);
-            $grouped[$key]['Count']++;
-        }
-
-        $result = array_values($grouped);
-        $result[] = $this->generateTotalsRow($result, 'B2C/B2B Local Total');
-
-        return $result;
-    }
-
-    /**
-     * Aggregate Local Sin IVA transactions with buyer data and detail fields.
-     */
-    private function aggregateLocalSinIva(array $rows): array
-    {
-        $result = [];
-
-        foreach ($rows as $row) {
-            $result[] = [
-                'BUYER_NAME' => $row['BUYER_NAME'] ?? '',
-                'TRANSACTION_EVENT_CODE' => $row['TRANSACTION_EVENT_CODE'] ?? '',
-                'SALE_DEPART_COUNTRY' => $row['SALE_DEPART_COUNTRY'] ?? '',
-                'Base (€)' => (float) ($row['Base (€)'] ?? 0),
-                'IVA (€)' => (float) ($row['IVA (€)'] ?? 0),
-                'Total (€)' => (float) ($row['Total (€)'] ?? 0),
-            ];
-        }
-
-        $result[] = $this->generateTotalsRow($result, 'Local Sin IVA Total');
-
-        return $result;
-    }
-
-    /**
-     * Aggregate Intracomunitarias B2B transactions with buyer name and VAT number.
-     */
-    private function aggregateIntracomunitariasB2b(array $rows): array
-    {
-        $grouped = [];
-
-        foreach ($rows as $row) {
-            $buyerName = $row['BUYER_NAME'] ?? '';
-            $buyerVat = $row['BUYER_VAT_NUMBER'] ?? '';
-            $country = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
-            $key = $buyerName . '|' . $buyerVat . '|' . $country;
-
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = [
-                    'BUYER_NAME' => $buyerName,
-                    'BUYER_VAT_NUMBER' => $buyerVat,
-                    'SALE_ARRIVAL_COUNTRY' => $country,
-                    'Base (€)' => 0,
                     'IVA (€)' => 0,
                     'Total (€)' => 0,
-                    'Count' => 0,
                 ];
             }
 
-            $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
-            $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
-            $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
-            $grouped[$key]['Count']++;
+            $grouped[$jurisdiction]['Calculated Base (€)'] += $transaction['Calculated Base (€)'];
+            $grouped[$jurisdiction]['IVA (€)'] += $transaction['IVA (€)'];
+            $grouped[$jurisdiction]['Total (€)'] += $transaction['Total (€)'];
         }
 
         $result = array_values($grouped);
-        $result[] = $this->generateTotalsRow($result, 'Intracomunitarias B2B Total');
 
-        return $result;
-    }
+        // Sort by TAXABLE_JURISDICTION alphabetically
+        usort($result, function($a, $b) {
+            return strcmp($a['TAXABLE_JURISDICTION'], $b['TAXABLE_JURISDICTION']);
+        });
 
-    /**
-     * Aggregate OSS transactions with destination country breakdown.
-     */
-    private function aggregateOss(array $rows): array
-    {
-        $grouped = [];
-
-        foreach ($rows as $row) {
-            $country = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
-            $key = $country;
-
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = [
-                    'SALE_ARRIVAL_COUNTRY' => $country,
-                    'Base (€)' => 0,
-                    'IVA (€)' => 0,
-                    'Total (€)' => 0,
-                    'Count' => 0,
-                ];
-            }
-
-            $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
-            $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
-            $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
-            $grouped[$key]['Count']++;
-        }
-
-        $result = array_values($grouped);
-        $result[] = $this->generateTotalsRow($result, 'OSS Total');
-
-        return $result;
-    }
-
-    /**
-     * Aggregate IOSS transactions.
-     */
-    private function aggregateIoss(array $rows): array
-    {
-        $grouped = [];
-
-        foreach ($rows as $row) {
-            $country = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
-            $key = $country;
-
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = [
-                    'SALE_ARRIVAL_COUNTRY' => $country,
-                    'Base (€)' => 0,
-                    'IVA (€)' => 0,
-                    'Total (€)' => 0,
-                    'Count' => 0,
-                ];
-            }
-
-            $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
-            $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
-            $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
-            $grouped[$key]['Count']++;
-        }
-
-        $result = array_values($grouped);
-        $result[] = $this->generateTotalsRow($result, 'IOSS Total');
-
-        return $result;
-    }
-
-    /**
-     * Aggregate Marketplace VAT transactions.
-     */
-    private function aggregateMarketplaceVat(array $rows): array
-    {
-        $grouped = [];
-
-        foreach ($rows as $row) {
-            $country = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
-            $key = $country;
-
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = [
-                    'SALE_ARRIVAL_COUNTRY' => $country,
-                    'Base (€)' => 0,
-                    'IVA (€)' => 0,
-                    'Total (€)' => 0,
-                    'Count' => 0,
-                ];
-            }
-
-            $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
-            $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
-            $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
-            $grouped[$key]['Count']++;
-        }
-
-        $result = array_values($grouped);
-        $result[] = $this->generateTotalsRow($result, 'Marketplace VAT Total');
-
-        return $result;
-    }
-
-    /**
-     * Aggregate Amazon Compras transactions.
-     */
-    private function aggregateAmazonCompras(array $rows): array
-    {
-        $result = [];
-
-        foreach ($rows as $row) {
-            $result[] = [
-                'SUPPLIER_NAME' => $row['SUPPLIER_NAME'] ?? '',
-                'Base (€)' => (float) ($row['Base (€)'] ?? 0),
-                'IVA (€)' => (float) ($row['IVA (€)'] ?? 0),
-                'Total (€)' => (float) ($row['Total (€)'] ?? 0),
-            ];
-        }
-
-        $result[] = $this->generateTotalsRow($result, 'Amazon Compras Total');
-
-        return $result;
-    }
-
-    /**
-     * Aggregate Exportaciones transactions.
-     */
-    private function aggregateExportaciones(array $rows): array
-    {
-        $grouped = [];
-
-        foreach ($rows as $row) {
-            $departCountry = $row['SALE_DEPART_COUNTRY'] ?? '';
-            $arrivalCountry = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
-            $key = $departCountry . '|' . $arrivalCountry;
-
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = [
-                    'SALE_DEPART_COUNTRY' => $departCountry,
-                    'SALE_ARRIVAL_COUNTRY' => $arrivalCountry,
-                    'Base (€)' => 0,
-                    'IVA (€)' => 0,
-                    'Total (€)' => 0,
-                    'Count' => 0,
-                ];
-            }
-
-            $grouped[$key]['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
-            $grouped[$key]['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
-            $grouped[$key]['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
-            $grouped[$key]['Count']++;
-        }
-
-        $result = array_values($grouped);
-        $result[] = $this->generateTotalsRow($result, 'Exportaciones Total');
-
-        return $result;
-    }
-
-    /**
-     * Default aggregation for unclassified transactions.
-     */
-    private function aggregateDefault(array $rows): array
-    {
-        $result = [];
-
-        foreach ($rows as $row) {
-            $result[] = [
-                'Original Data' => json_encode($row),
-                'Base (€)' => (float) ($row['Base (€)'] ?? 0),
-                'IVA (€)' => (float) ($row['IVA (€)'] ?? 0),
-                'Total (€)' => (float) ($row['Total (€)'] ?? 0),
-            ];
-        }
-
-        if (!empty($result)) {
-            $result[] = $this->generateTotalsRow($result, 'Unclassified Total');
-        }
-
-        return $result;
-    }
-
-    /**
-     * Generate totals row for a category.
-     */
-    private function generateTotalsRow(array $rows, string $label): array
-    {
-        $totals = [
-            'Label' => $label,
-            'Base (€)' => 0,
-            'IVA (€)' => 0,
-            'Total (€)' => 0,
+        // Add total row
+        $totalRow = [
+            'TAXABLE_JURISDICTION' => 'Total',
+            'Calculated Base (€)' => array_sum(array_column($result, 'Calculated Base (€)')),
+            'IVA (€)' => array_sum(array_column($result, 'IVA (€)')),
+            'Total (€)' => array_sum(array_column($result, 'Total (€)')),
         ];
 
-        foreach ($rows as $row) {
-            if (isset($row['Label'])) continue; // Skip existing totals rows
-
-            $totals['Base (€)'] += (float) ($row['Base (€)'] ?? 0);
-            $totals['IVA (€)'] += (float) ($row['IVA (€)'] ?? 0);
-            $totals['Total (€)'] += (float) ($row['Total (€)'] ?? 0);
-        }
-
-        return $totals;
+        $result[] = $totalRow;
+        return $result;
     }
 
     /**
-     * Classify transactions into tax categories using business rules.
-     *
-     * Applies classification rules in order - first match wins.
+     * Process Local Sin IVA category (Python lines 427-500)
      */
-    private function classifyTransactions(array $rows): array
+    private function processLocalSinIva(array $transactions): array
     {
-        $classifiedRows = [];
+        $result = [];
 
-        foreach ($rows as $row) {
-            $category = $this->classify($row);
-            $row['TAX_CATEGORY'] = $category;
-            $classifiedRows[] = $row;
+        foreach ($transactions as $transaction) {
+            $buyerData = !empty($transaction['BUYER_VAT_NUMBER']) ?
+                $transaction['BUYER_VAT_NUMBER'] : 'Sin identificación fiscal';
+
+            $detail = $transaction['TRANSACTION_TYPE'] === 'SALE' ?
+                'Envíos SIN IVA' : 'Productos SIN IVA';
+
+            $result[] = [
+                'País de origen / Datos del comprador' => $transaction['DEPARTURE_COUNTRY'] ?? '',
+                'Datos del comprador' => $buyerData,
+                'Detalle' => $detail,
+                'Base (€)' => $transaction['Base (€)'],
+                'IVA (€)' => $transaction['IVA (€)'],
+                'Total (€)' => $transaction['Total (€)'],
+            ];
         }
 
-        return $classifiedRows;
+        // Add total row
+        $totalRow = [
+            'País de origen / Datos del comprador' => 'Total',
+            'Datos del comprador' => '',
+            'Detalle' => '',
+            'Base (€)' => array_sum(array_column($result, 'Base (€)')),
+            'IVA (€)' => array_sum(array_column($result, 'IVA (€)')),
+            'Total (€)' => array_sum(array_column($result, 'Total (€)')),
+        ];
+
+        $result[] = $totalRow;
+        return $result;
     }
 
     /**
-     * Classify a single transaction row using 8 tax category rules.
-     *
-     * Rules are applied in order; first match wins.
+     * Process Intracomunitarias B2B category (Python lines 502-578)
+     * Aggregate transactions by buyer (country + name + VAT number)
      */
-    private function classify(array $row): string
+    public function processIntracomunitariasB2b(array $transactions): array
     {
-        // Rule 1: B2C/B2B Local
-        if ($this->isB2cB2bLocal($row)) {
-            return 'B2C/B2B Local';
+        $grouped = [];
+
+        foreach ($transactions as $transaction) {
+            // Set VAT amounts to zero for intracomunitarias (Python lines 283-298)
+            foreach (self::VAT_COLUMNS as $column) {
+                $transaction[$column] = 0;
+            }
+
+            $country = $transaction['SALE_DEPART_COUNTRY'] ?? '';
+            $buyerName = trim($transaction['BUYER_NAME'] ?? '');
+            $buyerVat = trim($transaction['BUYER_VAT_NUMBER'] ?? ''); // Use full VAT number, not country
+
+            // Use real buyer name or "Sin nombre" if empty
+            if (empty($buyerName)) {
+                $buyerName = 'Sin nombre';
+            }
+
+            // Create grouping key: for "Sin nombre" aggregate by country only,
+            // for named buyers aggregate by country + name + VAT
+            if ($buyerName === 'Sin nombre') {
+                $key = $country . '|Sin nombre|';
+                $buyerVat = ''; // Clear VAT for Sin nombre entries
+            } else {
+                $key = $country . '|' . $buyerName . '|' . $buyerVat;
+            }
+
+            // Calculate base amount from VAT-excluded columns
+            $baseAmount = 0;
+            foreach (self::VAT_EXCL_COLUMNS as $col) {
+                $baseAmount += (float)($transaction[$col] ?? 0);
+            }
+
+            // Initialize group if not exists
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'País de origen' => $country,
+                    'Nombre del comprador' => $buyerName,
+                    'NIF del comprador' => !empty($buyerVat) ? $buyerVat : '',
+                    'Base (€)' => 0,
+                    'IVA (€)' => 0, // Always 0 for intracomunitarias B2B
+                    'Total (€)' => 0,
+                ];
+            }
+
+            // Add amounts to the group (with proper rounding)
+            $grouped[$key]['Base (€)'] += $baseAmount;
+            $grouped[$key]['Total (€)'] += $baseAmount; // Same as base since IVA is 0
         }
 
-        // Rule 2: Local Sin IVA
-        if ($this->isLocalSinIva($row)) {
-            return 'Local Sin IVA';
+        $result = array_values($grouped);
+
+        // Round values to fix floating point precision issues
+        foreach ($result as &$row) {
+            $row['Base (€)'] = round($row['Base (€)'], 2);
+            $row['Total (€)'] = round($row['Total (€)'], 2);
+
+            // Convert very small values to zero
+            if (abs($row['Base (€)']) < 0.01) {
+                $row['Base (€)'] = 0;
+            }
+            if (abs($row['Total (€)']) < 0.01) {
+                $row['Total (€)'] = 0;
+            }
         }
 
-        // Rule 3: Intracomunitarias B2B
-        if ($this->isIntracomunitariasB2b($row)) {
-            return 'Intracomunitarias B2B';
-        }
+        // Sort by country, then by buyer name
+        usort($result, function($a, $b) {
+            if ($a['País de origen'] === $b['País de origen']) {
+                return strcmp($a['Nombre del comprador'], $b['Nombre del comprador']);
+            }
+            return strcmp($a['País de origen'], $b['País de origen']);
+        });
 
-        // Rule 4: OSS
-        if ($this->isOss($row)) {
-            return 'OSS';
-        }
+        // Add total row
+        $totalRow = [
+            'País de origen' => 'Total',
+            'Nombre del comprador' => '',
+            'NIF del comprador' => '',
+            'Base (€)' => array_sum(array_column($result, 'Base (€)')),
+            'IVA (€)' => 0,
+            'Total (€)' => array_sum(array_column($result, 'Total (€)')),
+        ];
 
-        // Rule 5: IOSS
-        if ($this->isIoss($row)) {
-            return 'IOSS';
-        }
-
-        // Rule 6: Marketplace VAT
-        if ($this->isMarketplaceVat($row)) {
-            return 'Marketplace VAT';
-        }
-
-        // Rule 7: Amazon Compras
-        if ($this->isAmazonCompras($row)) {
-            return 'Amazon Compras';
-        }
-
-        // Rule 8: Exportaciones
-        if ($this->isExportaciones($row)) {
-            return 'Exportaciones';
-        }
-
-        // Default category if no rules match
-        return 'Unclassified';
+        $result[] = $totalRow;
+        return $result;
     }
 
     /**
-     * Rule 1: B2C/B2B Local
-     * (TAX_REPORTING_SCHEME in {REGULAR, UK_VOEC-DOMESTIC}) && TAX_COLLECTION_RESPONSIBILITY == SELLER
+     * Process OSS category (Python lines 646-743)
      */
-    private function isB2cB2bLocal(array $row): bool
+    private function processOss(array $transactions): array
     {
-        $scheme = $row['TAX_REPORTING_SCHEME'] ?? '';
-        $responsibility = $row['TAX_COLLECTION_RESPONSIBILITY'] ?? '';
+        // Create destination country with VAT rate
+        foreach ($transactions as &$transaction) {
+            $arrivalCountry = $transaction['SALE_ARRIVAL_COUNTRY'] ?? '';
+            $vatRate = self::OSS_VAT_RATES[$arrivalCountry] ?? 0;
+            $transaction['País de destino / Tipo de IVA repercutido'] =
+                $arrivalCountry . ' - ' . number_format($vatRate * 100, 2) . '%';
+        }
 
-        return in_array($scheme, ['REGULAR', 'UK_VOEC-DOMESTIC']) && $responsibility === 'SELLER';
+        // Group by origin and destination with VAT rate
+        $grouped = [];
+        foreach ($transactions as $transaction) {
+            $origin = $transaction['SALE_DEPART_COUNTRY'] ?? '';
+            $destination = $transaction['País de destino / Tipo de IVA repercutido'];
+            $key = $origin . '|' . $destination;
+
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'País de origen' => $origin,
+                    'País de destino / Tipo de IVA repercutido' => $destination,
+                    'Base (€)' => 0,
+                    'IVA (€)' => 0,
+                    'Total (€)' => 0,
+                ];
+            }
+
+            $grouped[$key]['Base (€)'] += $transaction['Base (€)'];
+            $grouped[$key]['IVA (€)'] += $transaction['IVA (€)'];
+            $grouped[$key]['Total (€)'] += $transaction['Total (€)'];
+        }
+
+        $result = array_values($grouped);
+
+        // Add total row
+        $totalRow = [
+            'País de origen' => 'Total',
+            'País de destino / Tipo de IVA repercutido' => '',
+            'Base (€)' => array_sum(array_column($result, 'Base (€)')),
+            'IVA (€)' => array_sum(array_column($result, 'IVA (€)')),
+            'Total (€)' => array_sum(array_column($result, 'Total (€)')),
+        ];
+
+        $result[] = $totalRow;
+        return $result;
     }
 
     /**
-     * Rule 2: Local Sin IVA
-     * SALE_DEPART_COUNTRY == SALE_ARRIVAL_COUNTRY && TOTAL_ACTIVITY_VALUE_VAT_AMT == 0 &&
-     * empty(BUYER_VAT_NUMBER) && TAX_COLLECTION_RESPONSIBILITY == SELLER
+     * Process IOSS category (Python lines 579-644)
      */
-    private function isLocalSinIva(array $row): bool
+    private function processIoss(array $transactions): array
     {
-        $departCountry = $row['SALE_DEPART_COUNTRY'] ?? '';
-        $arrivalCountry = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
-        $vatAmount = (float) ($row['TOTAL_ACTIVITY_VALUE_VAT_AMT'] ?? 0);
-        $buyerVatNumber = $row['BUYER_VAT_NUMBER'] ?? '';
-        $responsibility = $row['TAX_COLLECTION_RESPONSIBILITY'] ?? '';
+        // Create destination country with VAT rate
+        foreach ($transactions as &$transaction) {
+            $arrivalCountry = $transaction['ARRIVAL_COUNTRY'] ?? '';
+            $vatRate = $transaction['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0;
+            $transaction['País de destino / Tipo de IVA repercutido'] =
+                $arrivalCountry . ' - ' . $vatRate . '%';
+        }
 
-        return $departCountry === $arrivalCountry &&
-               $vatAmount == 0 &&
-               empty($buyerVatNumber) &&
-               $responsibility === 'SELLER';
+        // Group by origin and destination with VAT rate
+        $grouped = [];
+        foreach ($transactions as $transaction) {
+            $origin = $transaction['SALE_DEPART_COUNTRY'] ?? '';
+            $destination = $transaction['País de destino / Tipo de IVA repercutido'];
+            $key = $origin . '|' . $destination;
+
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'País de origen' => $origin,
+                    'País de destino / Tipo de IVA repercutido' => $destination,
+                    'Base (€)' => 0,
+                    'IVA (€)' => 0,
+                    'Total (€)' => 0,
+                ];
+            }
+
+            $grouped[$key]['Base (€)'] += $transaction['Base (€)'];
+            $grouped[$key]['IVA (€)'] += $transaction['IVA (€)'];
+            $grouped[$key]['Total (€)'] += $transaction['Total (€)'];
+        }
+
+        $result = array_values($grouped);
+
+        // Add total row
+        $totalRow = [
+            'País de origen' => 'Total',
+            'País de destino / Tipo de IVA repercutido' => '',
+            'Base (€)' => array_sum(array_column($result, 'Base (€)')),
+            'IVA (€)' => array_sum(array_column($result, 'IVA (€)')),
+            'Total (€)' => array_sum(array_column($result, 'Total (€)')),
+        ];
+
+        $result[] = $totalRow;
+        return $result;
     }
 
     /**
-     * Rule 3: Intracomunitarias B2B
-     * depart != arrival && both EU (not GB) && BUYER_VAT_NUMBER_COUNTRY present &&
-     * RESP == SELLER && SCHEME == REGULAR
+     * Process Marketplace VAT category (Python lines 807-867)
      */
-    private function isIntracomunitariasB2b(array $row): bool
+    private function processMarketplaceVat(array $transactions): array
     {
-        $departCountry = $row['SALE_DEPART_COUNTRY'] ?? '';
-        $arrivalCountry = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
-        $buyerVatCountry = $row['BUYER_VAT_NUMBER_COUNTRY'] ?? '';
-        $responsibility = $row['TAX_COLLECTION_RESPONSIBILITY'] ?? '';
-        $scheme = $row['TAX_REPORTING_SCHEME'] ?? '';
+        // Group by origin and destination countries
+        $grouped = [];
+        foreach ($transactions as $transaction) {
+            $origin = $transaction['SALE_DEPART_COUNTRY'] ?? '';
+            $destination = $transaction['SALE_ARRIVAL_COUNTRY'] ?? '';
+            $key = $origin . '|' . $destination;
 
-        return $departCountry !== $arrivalCountry &&
-               in_array($departCountry, self::EU_COUNTRIES) &&
-               in_array($arrivalCountry, self::EU_COUNTRIES) &&
-               !empty($buyerVatCountry) &&
-               $responsibility === 'SELLER' &&
-               $scheme === 'REGULAR';
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'País de Origen' => $origin,
+                    'País de Destino' => $destination,
+                    'Base (€)' => 0,
+                    'IVA (€)' => 0,
+                    'Total (€)' => 0,
+                ];
+            }
+
+            $grouped[$key]['Base (€)'] += $transaction['Base (€)'];
+            $grouped[$key]['IVA (€)'] += $transaction['IVA (€)'];
+            $grouped[$key]['Total (€)'] += $transaction['Total (€)'];
+        }
+
+        $result = array_values($grouped);
+
+        // Add total row
+        $totalRow = [
+            'País de Origen' => 'Total',
+            'País de Destino' => '',
+            'Base (€)' => array_sum(array_column($result, 'Base (€)')),
+            'IVA (€)' => array_sum(array_column($result, 'IVA (€)')),
+            'Total (€)' => array_sum(array_column($result, 'Total (€)')),
+        ];
+
+        $result[] = $totalRow;
+        return $result;
     }
 
     /**
-     * Rule 4: OSS
-     * SCHEME == UNION-OSS
+     * Process Amazon Compras category (Python lines 745-805)
      */
-    private function isOss(array $row): bool
+    private function processAmazonCompras(array $transactions): array
     {
-        $scheme = $row['TAX_REPORTING_SCHEME'] ?? '';
-        return $scheme === 'UNION-OSS';
+        // Group by origin and destination countries
+        $grouped = [];
+        foreach ($transactions as $transaction) {
+            $origin = $transaction['SALE_DEPART_COUNTRY'] ?? '';
+            $destination = $transaction['SALE_ARRIVAL_COUNTRY'] ?? '';
+            $key = $origin . '|' . $destination;
+
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'País de Origen' => $origin,
+                    'País de Destino' => $destination,
+                    'Base (€)' => 0,
+                    'IVA (€)' => 0,
+                    'Total (€)' => 0,
+                ];
+            }
+
+            $grouped[$key]['Base (€)'] += $transaction['Base (€)'];
+            $grouped[$key]['IVA (€)'] += $transaction['IVA (€)'];
+            $grouped[$key]['Total (€)'] += $transaction['Total (€)'];
+        }
+
+        $result = array_values($grouped);
+
+        // Add total row
+        $totalRow = [
+            'País de Origen' => 'Total',
+            'País de Destino' => '',
+            'Base (€)' => array_sum(array_column($result, 'Base (€)')),
+            'IVA (€)' => array_sum(array_column($result, 'IVA (€)')),
+            'Total (€)' => array_sum(array_column($result, 'Total (€)')),
+        ];
+
+        $result[] = $totalRow;
+        return $result;
     }
 
     /**
-     * Rule 5: IOSS
-     * SCHEME == DEEMED_RESELLER-IOSS && depart, arrival in EU and distinct
+     * Process Exportaciones category (Python lines 869-900)
      */
-    private function isIoss(array $row): bool
+    private function processExportaciones(array $transactions): array
     {
-        $scheme = $row['TAX_REPORTING_SCHEME'] ?? '';
-        $departCountry = $row['SALE_DEPART_COUNTRY'] ?? '';
-        $arrivalCountry = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
+        // Group by origin, destination country and destination city
+        $grouped = [];
+        foreach ($transactions as $transaction) {
+            $origin = $transaction['SALE_DEPART_COUNTRY'] ?? '';
+            $destination = $transaction['SALE_ARRIVAL_COUNTRY'] ?? '';
+            $city = $transaction['ARRIVAL_CITY'] ?? '';
+            $key = $origin . '|' . $destination . '|' . $city;
 
-        return $scheme === 'DEEMED_RESELLER-IOSS' &&
-               in_array($departCountry, self::EU_COUNTRIES) &&
-               in_array($arrivalCountry, self::EU_COUNTRIES) &&
-               $departCountry !== $arrivalCountry;
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'País de Origen' => $origin,
+                    'País de Destino' => $destination,
+                    'Ciudad de Destino' => $city,
+                    'Base (€)' => 0,
+                    'IVA (€)' => 0,
+                    'Total (€)' => 0,
+                ];
+            }
+
+            // Use TOTAL_ACTIVITY_VALUE columns directly as in Python script
+            $grouped[$key]['Base (€)'] += $transaction['TOTAL_ACTIVITY_VALUE_AMT_VAT_EXCL'] ?? 0;
+            $grouped[$key]['IVA (€)'] += $transaction['TOTAL_ACTIVITY_VALUE_VAT_AMT'] ?? 0;
+            $grouped[$key]['Total (€)'] += $transaction['TOTAL_ACTIVITY_VALUE_AMT_VAT_INCL'] ?? 0;
+        }
+
+        // Filter out rows where all amounts are 0
+        $filtered = array_filter($grouped, function($row) {
+            return $row['Base (€)'] != 0 || $row['IVA (€)'] != 0 || $row['Total (€)'] != 0;
+        });
+
+        $result = array_values($filtered);
+
+        // Add total row
+        $totalRow = [
+            'País de Origen' => 'Total',
+            'País de Destino' => '',
+            'Ciudad de Destino' => '',
+            'Base (€)' => array_sum(array_column($result, 'Base (€)')),
+            'IVA (€)' => array_sum(array_column($result, 'IVA (€)')),
+            'Total (€)' => array_sum(array_column($result, 'Total (€)')),
+        ];
+
+        $result[] = $totalRow;
+        return $result;
     }
 
     /**
-     * Rule 6: Marketplace VAT
-     * RESP == MARKETPLACE
+     * Generate Excel output like Python script (saved as .csv file)
      */
-    private function isMarketplaceVat(array $row): bool
+    private function generateExcelOutput(array $classifications, string $outputPath): void
     {
-        $responsibility = $row['TAX_COLLECTION_RESPONSIBILITY'] ?? '';
-        return $responsibility === 'MARKETPLACE';
+        $spreadsheet = new Spreadsheet();
+
+        // Remove default sheet
+        $spreadsheet->removeSheetByIndex(0);
+
+        // Define sections as in Python script
+        $regularCategories = [
+            'Ventas locales al consumidor final - B2C y B2B (EUR)'
+        ];
+
+        // EXACT order as shown in expected output images
+        $internationalCategories = [
+            'Ventas Intracomunitarias de bienes - B2B (EUR)',
+            'Ventanilla Única - OSS esquema europeo (EUR)',
+            'Totales por país de destino en OSS',
+            'IVA recaudado y remitido por Amazon Marketplace (EUR)',
+            'Exportaciones (EUR)'
+        ];
+
+        // Generate OSS breakdown section
+        if (!empty($classifications['Ventanilla Única - OSS esquema europeo (EUR)'])) {
+            $classifications['Totales por país de destino en OSS'] = $this->generateOssBreakdown($classifications['Ventanilla Única - OSS esquema europeo (EUR)']);
+        }
+
+        // Create REGULAR sheet
+        $hasRegularData = false;
+        foreach ($regularCategories as $category) {
+            if (!empty($classifications[$category])) {
+                $hasRegularData = true;
+                break;
+            }
+        }
+
+        if ($hasRegularData) {
+            $regularSheet = $spreadsheet->createSheet();
+            $regularSheet->setTitle('REGULAR');
+            $this->populateSheet($regularSheet, $regularCategories, $classifications);
+        }
+
+        // Create INTERNATIONAL sheet - ALWAYS include ALL categories like Python (lines 943-972)
+        $internationalSheet = $spreadsheet->createSheet();
+        $internationalSheet->setTitle('INTERNATIONAL');
+        $this->populateSheet($internationalSheet, $internationalCategories, $classifications);
+
+        // Set active sheet to first available
+        if ($spreadsheet->getSheetCount() > 0) {
+            $spreadsheet->setActiveSheetIndex(0);
+        }
+
+        // Write to Excel file but save with .csv extension (like Python script)
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($outputPath);
     }
 
     /**
-     * Rule 7: Amazon Compras
-     * SUPPLIER_NAME == 'Amazon Services Europe Sarl'
+     * Populate Excel sheet with category data (matching Python formatting)
      */
-    private function isAmazonCompras(array $row): bool
+    private function populateSheet($sheet, array $categories, array $classifications): void
     {
-        $supplierName = $row['SUPPLIER_NAME'] ?? '';
-        return $supplierName === 'Amazon Services Europe Sarl';
+        $currentRow = 1;
+
+        foreach ($categories as $category) {
+            $data = $classifications[$category] ?? [];
+
+            // Always include category header like Python, even if no data
+            if (empty($data)) {
+                // Create proper empty data structure matching category format
+                if ($category === 'Ventas Intracomunitarias de bienes - B2B (EUR)') {
+                    $data = [['País de origen' => 'Total', 'Nombre del comprador' => '', 'NIF del comprador' => '', 'Base (€)' => 0, 'IVA (€)' => 0, 'Total (€)' => 0]];
+                } elseif ($category === 'Exportaciones (EUR)') {
+                    $data = [['País de Origen' => 'Total', 'País de Destino' => '', 'Ciudad de Destino' => '', 'Base (€)' => 0, 'IVA (€)' => 0, 'Total (€)' => 0]];
+                } else {
+                    // Generic empty structure
+                    $data = [['Total' => 0]];
+                }
+            }
+
+            // Add category header with blue background and white text (like Python)
+            $sheet->setCellValue("A{$currentRow}", $category);
+
+            // Style the header like Python script
+            $headerRange = "A{$currentRow}:" . $this->getColumnLetter(count(array_keys($data[0]))) . "{$currentRow}";
+            $sheet->mergeCells($headerRange);
+            $sheet->getStyle($headerRange)->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->setStartColor(new Color('4F81BD'));
+            $sheet->getStyle($headerRange)->getFont()
+                ->setBold(true)
+                ->setColor(new Color(Color::COLOR_WHITE));
+
+            $currentRow++; // Go to next row for column headers
+
+            // Add column headers
+            $headers = array_keys($data[0]);
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue("{$col}{$currentRow}", $header);
+                $col++;
+            }
+            $currentRow++;
+
+            // Add data rows
+            foreach ($data as $rowIndex => $row) {
+                $col = 'A';
+                foreach ($headers as $header) {
+                    $value = $row[$header] ?? '';
+                    $sheet->setCellValue("{$col}{$currentRow}", $value);
+                    $col++;
+                }
+
+                // Style total row with yellow background (like Python)
+                if ($rowIndex === count($data) - 1 && ($row[$headers[0]] ?? '') === 'Total') {
+                    $totalRange = "A{$currentRow}:" . $this->getColumnLetter(count($headers)) . "{$currentRow}";
+                    $sheet->getStyle($totalRange)->getFill()
+                        ->setFillType(Fill::FILL_SOLID)
+                        ->setStartColor(new Color('FFFF00'));
+                    $sheet->getStyle($totalRange)->getFont()->setBold(true);
+                }
+
+                $currentRow++;
+            }
+
+            $currentRow += 2; // Extra space between categories
+        }
     }
 
     /**
-     * Rule 8: Exportaciones
-     * depart in {ES,DE,FR,IT,PL} && arrival not in that set
+     * Get Excel column letter for given column number
      */
-    private function isExportaciones(array $row): bool
+    private function getColumnLetter(int $columnNumber): string
     {
-        $departCountry = $row['SALE_DEPART_COUNTRY'] ?? '';
-        $arrivalCountry = $row['SALE_ARRIVAL_COUNTRY'] ?? '';
+        $letter = '';
+        while ($columnNumber > 0) {
+            $columnNumber--;
+            $letter = chr(65 + ($columnNumber % 26)) . $letter;
+            $columnNumber = intval($columnNumber / 26);
+        }
+        return $letter;
+    }
 
-        return in_array($departCountry, self::EXPORT_DEPARTURE_COUNTRIES) &&
-               !in_array($arrivalCountry, self::EXPORT_DEPARTURE_COUNTRIES);
+    /**
+     * Generate OSS breakdown by destination country (like in expected output)
+     */
+    private function generateOssBreakdown(array $ossData): array
+    {
+        $breakdown = [];
+        $totals = ['Base (€)' => 0, 'IVA (€)' => 0, 'Total (€)' => 0];
+
+        // Group by destination country (exclude total row to avoid double counting)
+        $countryTotals = [];
+        foreach ($ossData as $row) {
+            // Skip the total row to avoid double counting
+            if (($row['País de origen'] ?? '') === 'Total') {
+                continue;
+            }
+
+            // Extract destination country from "País de destino / Tipo de IVA repercutido" field
+            $destination = $row['País de destino / Tipo de IVA repercutido'] ?? '';
+            $country = explode(' - ', $destination)[0] ?? '';
+
+            if (!isset($countryTotals[$country])) {
+                $countryTotals[$country] = ['Base (€)' => 0, 'IVA (€)' => 0, 'Total (€)' => 0];
+            }
+
+            $countryTotals[$country]['Base (€)'] += (float)($row['Base (€)'] ?? 0);
+            $countryTotals[$country]['IVA (€)'] += (float)($row['IVA (€)'] ?? 0);
+            $countryTotals[$country]['Total (€)'] += (float)($row['Total (€)'] ?? 0);
+        }
+
+        // Sort by country and create breakdown rows
+        ksort($countryTotals);
+
+        // Add total row first (like in expected output)
+        $allTotals = ['Base (€)' => 0, 'IVA (€)' => 0, 'Total (€)' => 0];
+        foreach ($countryTotals as $amounts) {
+            $allTotals['Base (€)'] += $amounts['Base (€)'];
+            $allTotals['IVA (€)'] += $amounts['IVA (€)'];
+            $allTotals['Total (€)'] += $amounts['Total (€)'];
+        }
+
+        // Add total row first (no comma formatting like Python)
+        $breakdown[] = [
+            'País de destino' => '',
+            'Base (€)' => round($allTotals['Base (€)'], 2),
+            'IVA (€)' => round($allTotals['IVA (€)'], 2),
+            'Total (€)' => round($allTotals['Total (€)'], 2)
+        ];
+
+        // Add country breakdown
+        foreach ($countryTotals as $country => $amounts) {
+            $breakdown[] = [
+                'País de destino' => $country,
+                'Base (€)' => round($amounts['Base (€)'], 2),
+                'IVA (€)' => round($amounts['IVA (€)'], 2),
+                'Total (€)' => round($amounts['Total (€)'], 2)
+            ];
+        }
+
+        return $breakdown;
     }
 }

@@ -7,6 +7,7 @@
     <meta name="description" content="@yield('meta_description', 'Panel de administración y usuario de MyTaxEU')">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+    @livewireScriptConfig
     @stack('head')
 </head>
 <body class="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-100 text-gray-900 antialiased">
@@ -38,7 +39,6 @@
         </div>
     </div>
 
-    @livewireScriptConfig
     @stack('scripts')
 </body>
 </html>
