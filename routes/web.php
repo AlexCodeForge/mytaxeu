@@ -17,6 +17,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('uploads', \App\Livewire\Uploads\Index::class)->name('uploads.index');
     Route::get('uploads/new', \App\Livewire\Uploads\UploadCsv::class)->name('uploads.create');
 
+    // Usage Dashboard routes
+    Route::prefix('usage')->name('usage.')->group(function () {
+        Route::get('dashboard', \App\Livewire\Dashboard\UsageDashboard::class)->name('dashboard');
+        Route::get('history', \App\Livewire\Dashboard\UsageHistory::class)->name('history');
+        Route::get('stats', \App\Livewire\Dashboard\UsageStats::class)->name('stats');
+    });
+
+    // Download routes
+    Route::get('download/upload/{upload}', [\App\Http\Controllers\DownloadController::class, 'downloadUpload'])
+        ->name('download.upload');
+
     // Billing routes
     Route::get('billing/subscriptions', \App\Livewire\Billing\SubscriptionManager::class)->name('billing.subscriptions');
 });
@@ -31,6 +42,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
     ->group(function () {
         Route::get('/', AdminIndexPage::class)->name('index');
         Route::get('/users', AdminUsersIndexPage::class)->name('users.index');
+        Route::get('/usage-analytics', \App\Livewire\Admin\UsageAnalytics::class)->name('usage.analytics');
         Route::get('/stripe-config', \App\Livewire\Admin\StripeConfiguration::class)->name('stripe.config');
         Route::get('/credit-analytics', \App\Livewire\Admin\CreditAnalytics::class)->name('credit.analytics');
         Route::get('/upload-limits', \App\Livewire\Admin\UserUploadManager::class)->name('upload.limits');

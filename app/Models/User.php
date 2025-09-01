@@ -27,6 +27,9 @@ class User extends Authenticatable
         'password',
         'credits',
         'is_admin',
+        'total_lines_processed',
+        'current_month_usage',
+        'usage_reset_date',
     ];
 
     /**
@@ -51,6 +54,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'credits' => 'integer',
+            'total_lines_processed' => 'integer',
+            'current_month_usage' => 'integer',
+            'usage_reset_date' => 'date',
         ];
     }
 
@@ -82,5 +88,10 @@ class User extends Authenticatable
     public function targetedAdminActions(): HasMany
     {
         return $this->hasMany(AdminActionLog::class, 'target_user_id');
+    }
+
+    public function uploadMetrics(): HasMany
+    {
+        return $this->hasMany(UploadMetric::class);
     }
 }

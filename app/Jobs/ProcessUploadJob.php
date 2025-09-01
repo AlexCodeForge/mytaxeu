@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Upload;
+use App\Models\UploadMetric;
 use App\Services\CreditService;
 use App\Services\CsvTransformer;
 use App\Services\JobStatusService;
+use App\Services\NotificationService;
+use App\Services\UsageMeteringService;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,6 +25,7 @@ class ProcessUploadJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $uploadId;
+    public ?int $uploadMetricId = null;
 
     /**
      * The number of times the job may be attempted.
@@ -75,7 +80,7 @@ class ProcessUploadJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(CsvTransformer $csvTransformer, JobStatusService $jobStatusService): void
+    public function handle(CsvTransformer $csvTransformer, JobStatusService $jobStatusService, NotificationService $notificationService, UsageMeteringService $usageMeteringService): void
     {
         // Set memory limit for this job
         ini_set('memory_limit', '1024M');
@@ -89,6 +94,20 @@ class ProcessUploadJob implements ShouldQueue
             Log::error('ProcessUploadJob: Upload not found', ['upload_id' => $this->uploadId]);
             return;
         }
+
+        // Create UploadMetric record to track processing details
+        $uploadMetric = UploadMetric::create([
+            'user_id' => $upload->user_id,
+            'upload_id' => $upload->id,
+            'file_name' => $upload->original_name,
+            'file_size_bytes' => $upload->size_bytes,
+            'line_count' => $upload->csv_line_count ?? 0,
+            'processing_started_at' => now(),
+            'status' => UploadMetric::STATUS_PROCESSING,
+        ]);
+
+        // Store uploadMetric ID for use in failed() method if needed
+        $this->uploadMetricId = $uploadMetric->id;
 
         // Log memory usage
         Log::info('ProcessUploadJob: Starting with memory usage', [
@@ -207,6 +226,49 @@ class ProcessUploadJob implements ShouldQueue
             // Mark as completed in both upload and jobs table
             $this->updateStatus($upload, Upload::STATUS_COMPLETED);
 
+            // Update UploadMetric with completion details
+            $uploadMetric->update([
+                'processing_completed_at' => now(),
+                'credits_consumed' => $creditConsumed ? 1 : 0,
+                'status' => UploadMetric::STATUS_COMPLETED,
+                'line_count' => $upload->csv_line_count ?? $upload->rows_count ?? 0,
+            ]);
+
+            // Update user usage tracking in real-time
+            try {
+                $usageMeteringService->updateUserUsageCounters(
+                    $upload->user,
+                    $uploadMetric
+                );
+
+                Log::info('ProcessUploadJob: Usage counters updated', [
+                    'upload_id' => $upload->id,
+                    'user_id' => $upload->user_id,
+                    'lines_processed' => $uploadMetric->line_count,
+                    'credits_consumed' => $creditConsumed ? 1 : 0,
+                ]);
+
+                // Broadcast event to update UI in real-time
+                Event::dispatch('livewire:emit', 'usageUpdated', $upload->user_id);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to update usage counters', [
+                    'upload_id' => $upload->id,
+                    'user_id' => $upload->user_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // Send success notification
+            try {
+                $notificationService->sendSuccessNotification($upload, $uploadMetric);
+            } catch (\Exception $e) {
+                Log::error('Failed to send success notification', [
+                    'upload_id' => $upload->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             // Skip job status tracking for Redis queues
             if (!$this->shouldSkipJobStatusTracking()) {
                 $jobStatusService->updateJobStatus(
@@ -254,6 +316,24 @@ class ProcessUploadJob implements ShouldQueue
                 'processed_at' => now(),
             ]);
 
+            // Update UploadMetric with failure details
+            $uploadMetric->update([
+                'processing_completed_at' => now(),
+                'status' => UploadMetric::STATUS_FAILED,
+                'error_message' => $e->getMessage(),
+                'credits_consumed' => 0,
+            ]);
+
+            // Send failure notification
+            try {
+                $notificationService->sendFailureNotification($upload, $uploadMetric);
+            } catch (\Exception $notificationError) {
+                Log::error('Failed to send failure notification', [
+                    'upload_id' => $upload->id,
+                    'error' => $notificationError->getMessage(),
+                ]);
+            }
+
             // Skip job status tracking for Redis queues
             if (!$this->shouldSkipJobStatusTracking()) {
                 $jobStatusService->updateJobStatus(
@@ -299,6 +379,30 @@ class ProcessUploadJob implements ShouldQueue
                 'failure_reason' => $exception->getMessage(),
                 'processed_at' => now(),
             ]);
+
+            // Update UploadMetric if it exists
+            if ($this->uploadMetricId) {
+                $uploadMetric = UploadMetric::find($this->uploadMetricId);
+                if ($uploadMetric) {
+                    $uploadMetric->update([
+                        'processing_completed_at' => now(),
+                        'status' => UploadMetric::STATUS_FAILED,
+                        'error_message' => $exception->getMessage(),
+                        'credits_consumed' => 0,
+                    ]);
+
+                    // Send failure notification
+                    try {
+                        $notificationService = app(NotificationService::class);
+                        $notificationService->sendFailureNotification($upload, $uploadMetric);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send failure notification in failed() method', [
+                            'upload_id' => $upload->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
 
             // Update job status in jobs table and log the permanent failure
             try {

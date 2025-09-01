@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\Storage;
 
@@ -25,6 +26,8 @@ class Upload extends Model
         'status',
         'failure_reason',
         'processed_at',
+        'notification_sent_at',
+        'notification_type',
     ];
 
     protected $casts = [
@@ -32,6 +35,7 @@ class Upload extends Model
         'csv_line_count' => 'integer',
         'rows_count' => 'integer',
         'processed_at' => 'datetime',
+        'notification_sent_at' => 'datetime',
     ];
 
     public const STATUS_RECEIVED = 'received';
@@ -53,15 +57,20 @@ class Upload extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function uploadMetric(): HasOne
+    {
+        return $this->hasOne(UploadMetric::class);
+    }
+
     public function getFormattedSizeAttribute(): string
     {
         $bytes = $this->size_bytes;
         $units = ['B', 'KB', 'MB', 'GB'];
-        
+
         for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
             $bytes /= 1024;
         }
-        
+
         return round($bytes, 2) . ' ' . $units[$i];
     }
 

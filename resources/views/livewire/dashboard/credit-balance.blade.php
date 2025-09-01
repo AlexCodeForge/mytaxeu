@@ -54,7 +54,90 @@
         </div>
     </div>
 
-    <!-- Usage Statistics -->
+    <!-- Line Usage Statistics -->
+    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Uso de Líneas - Este Mes</h3>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <!-- Lines Processed This Month -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-blue-800">Líneas Procesadas</p>
+                            <p class="text-2xl font-bold text-blue-900">{{ number_format($linesProcessedThisMonth) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Lines Processed -->
+                <div class="bg-indigo-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-indigo-800">Total Histórico</p>
+                            <p class="text-2xl font-bold text-indigo-900">{{ number_format($totalLinesProcessed) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Average Processing Time -->
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-purple-800">Tiempo Promedio</p>
+                            <p class="text-2xl font-bold text-purple-900">{{ $this->formattedProcessingTime }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Usage Progress Bar -->
+            @if($monthlyLineLimit > 0)
+                <div class="mt-6">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-500">Límite mensual de líneas</span>
+                        <span class="text-gray-900">{{ number_format($linesProcessedThisMonth) }} / {{ number_format($monthlyLineLimit) }}</span>
+                    </div>
+                    <div class="mt-2">
+                        <div class="bg-gray-200 rounded-full h-2">
+                            <div class="h-2 rounded-full transition-all duration-300 {{ $this->lineUsagePercentage >= 90 ? 'bg-red-600' : ($this->lineUsagePercentage >= 75 ? 'bg-yellow-500' : 'bg-blue-600') }}"
+                                 style="width: {{ $this->lineUsagePercentage }}%"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                        <span>0</span>
+                        <span>{{ number_format($this->lineUsagePercentage, 1) }}% usado</span>
+                        <span>{{ number_format($monthlyLineLimit) }}</span>
+                    </div>
+                </div>
+            @endif
+
+            @if($processingJobsCompleted > 0)
+                <div class="mt-4 text-center">
+                    <p class="text-sm text-gray-500">
+                        Has completado {{ number_format($processingJobsCompleted) }} trabajos de procesamiento
+                    </p>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- Credit Usage Statistics -->
     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
         <div class="p-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Uso de Créditos - Este Mes</h3>

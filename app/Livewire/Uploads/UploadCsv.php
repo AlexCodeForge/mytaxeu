@@ -183,6 +183,7 @@ class UploadCsv extends Component
             logger()->info('🛠️ Initializing services');
             $csvService = app(CsvLineCountService::class);
             $limitValidator = app(UploadLimitValidator::class);
+            $usageMeteringService = app(\App\Services\UsageMeteringService::class);
 
             // Validate file content and count lines accurately
             try {
@@ -206,7 +207,23 @@ class UploadCsv extends Component
                     return;
                 }
 
-                // Validate upload limits
+                // Check usage limits using the metering service
+                logger()->info('🔍 Checking usage limits');
+                if (!$usageMeteringService->canProcessLines(auth()->user(), $csvLineCount)) {
+                    logger()->warning('❌ Monthly usage limit exceeded', [
+                        'user_id' => auth()->id(),
+                        'current_usage' => $usageMeteringService->getCurrentMonthUsage(auth()->user()),
+                        'requested_lines' => $csvLineCount,
+                    ]);
+                    $errorMessage = "Has alcanzado tu límite mensual de líneas. Este archivo tiene {$csvLineCount} líneas, pero solo puedes procesar 1000 líneas por mes en el plan gratuito.";
+                    $this->dispatch('upload-error', [
+                        'message' => $errorMessage
+                    ]);
+                    $this->addError('csvFile', $errorMessage);
+                    return;
+                }
+
+                // Validate upload limits (legacy system)
                 logger()->info('🔍 Validating upload limits');
                 $ipAddress = request()->ip();
                 $validationResult = $limitValidator->validateUpload(auth()->user(), $csvLineCount, $ipAddress);

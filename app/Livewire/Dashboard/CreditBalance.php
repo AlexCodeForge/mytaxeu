@@ -6,6 +6,7 @@ namespace App\Livewire\Dashboard;
 
 use App\Models\CreditTransaction;
 use App\Services\CreditService;
+use App\Services\UsageMeteringService;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -20,8 +21,20 @@ class CreditBalance extends Component
     public bool $showTransactionHistory = false;
     public string $selectedPeriod = '30'; // days
 
+    // Usage metering properties
+    public int $linesProcessedThisMonth = 0;
+    public int $totalLinesProcessed = 0;
+    public int $monthlyLineLimit = 0;
+    public float $avgProcessingTimeSeconds = 0;
+    public int $processingJobsCompleted = 0;
+
     protected array $queryString = [
         'selectedPeriod' => ['except' => '30'],
+    ];
+
+    protected $listeners = [
+        'usageUpdated' => 'refreshUsageData',
+        'uploadCompleted' => 'refreshUsageData',
     ];
 
     public function mount(): void
@@ -33,6 +46,7 @@ class CreditBalance extends Component
     {
         $user = auth()->user();
         $creditService = app(CreditService::class);
+        $usageMeteringService = app(UsageMeteringService::class);
 
         // Get current balance
         $this->creditBalance = $creditService->getCreditBalance($user);
@@ -50,6 +64,16 @@ class CreditBalance extends Component
             ->where('type', 'purchased')
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->sum('amount');
+
+        // Get usage metering data
+        $this->linesProcessedThisMonth = $usageMeteringService->getCurrentMonthUsage($user);
+        $this->totalLinesProcessed = $user->total_lines_processed ?? 0;
+        $this->monthlyLineLimit = $usageMeteringService->getMonthlyLimit($user);
+
+        // Get usage statistics
+        $usageStats = $usageMeteringService->getUserUsageStatistics($user);
+        $this->avgProcessingTimeSeconds = $usageStats['avg_processing_time_seconds'] ?? 0.0;
+        $this->processingJobsCompleted = $usageStats['total_jobs_completed'] ?? 0;
     }
 
     public function toggleTransactionHistory(): void
@@ -63,6 +87,11 @@ class CreditBalance extends Component
     public function updatedSelectedPeriod(): void
     {
         $this->resetPage();
+    }
+
+    public function refreshUsageData(): void
+    {
+        $this->loadCreditData();
     }
 
     public function getRecentTransactionsProperty(): \Illuminate\Contracts\Pagination\LengthAwarePaginator
@@ -136,6 +165,31 @@ class CreditBalance extends Component
         }
 
         return min(100, abs($this->creditsUsedThisMonth) / $this->creditsAllocatedThisMonth * 100);
+    }
+
+    public function getLineUsagePercentageProperty(): float
+    {
+        if ($this->monthlyLineLimit <= 0) {
+            return 0;
+        }
+
+        return min(100, ($this->linesProcessedThisMonth / $this->monthlyLineLimit) * 100);
+    }
+
+    public function getFormattedProcessingTimeProperty(): string
+    {
+        if ($this->avgProcessingTimeSeconds <= 0) {
+            return '0s';
+        }
+
+        if ($this->avgProcessingTimeSeconds < 60) {
+            return round($this->avgProcessingTimeSeconds, 1) . 's';
+        }
+
+        $minutes = floor($this->avgProcessingTimeSeconds / 60);
+        $seconds = round($this->avgProcessingTimeSeconds % 60);
+
+        return $minutes . 'm ' . $seconds . 's';
     }
 
     public function getSubscriptionStatusProperty(): ?array
