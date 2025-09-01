@@ -46,13 +46,13 @@ class UploadCsv extends Component
     }
 
     protected array $rules = [
-        'csvFile' => 'required|file|mimes:csv,txt|max:10240', // 10MB max
+        'csvFile' => 'required|file|mimes:csv|max:10240', // 10MB max
     ];
 
     protected array $messages = [
         'csvFile.required' => 'Por favor seleccione un archivo CSV.',
         'csvFile.file' => 'El archivo debe ser un archivo válido.',
-        'csvFile.mimes' => 'El archivo debe ser un CSV (.csv o .txt).',
+        'csvFile.mimes' => 'El archivo debe ser un CSV (.csv).',
         'csvFile.max' => 'El archivo no puede ser mayor a 10MB.',
     ];
 
@@ -127,7 +127,11 @@ class UploadCsv extends Component
 
         if (! $this->csvFile) {
             logger()->warning('❌ No CSV file present after validation');
-            $this->addError('csvFile', 'No se ha seleccionado ningún archivo.');
+            $errorMessage = 'No se ha seleccionado ningún archivo.';
+            $this->dispatch('upload-error', [
+                'message' => $errorMessage
+            ]);
+            $this->addError('csvFile', $errorMessage);
             return;
         }
 
@@ -154,7 +158,12 @@ class UploadCsv extends Component
                 'current_credits' => $user->credits,
                 'required_credits' => 1,
             ]);
-            $this->addError('csvFile', 'No tienes suficientes créditos para procesar este archivo. Necesitas al menos 1 crédito.');
+
+            $errorMessage = 'No tienes suficientes créditos para procesar este archivo. Necesitas al menos 1 crédito.';
+            $this->dispatch('upload-error', [
+                'message' => $errorMessage
+            ]);
+            $this->addError('csvFile', $errorMessage);
             return;
         }
 
@@ -189,7 +198,11 @@ class UploadCsv extends Component
                 // Check if file is empty
                 if ($csvLineCount === 0) {
                     logger()->warning('❌ Empty CSV file detected');
-                    $this->addError('csvFile', 'El archivo CSV no es válido: archivo vacío');
+                    $errorMessage = 'El archivo CSV no es válido: archivo vacío';
+                    $this->dispatch('upload-error', [
+                        'message' => $errorMessage
+                    ]);
+                    $this->addError('csvFile', $errorMessage);
                     return;
                 }
 
@@ -207,6 +220,9 @@ class UploadCsv extends Component
                 if (!$validationResult['allowed']) {
                     logger()->warning('❌ Upload limit exceeded', $validationResult);
                     $errorMessage = $this->getLocalizedLimitError($validationResult, $csvLineCount);
+                    $this->dispatch('upload-error', [
+                        'message' => $errorMessage
+                    ]);
                     $this->addError('csvFile', $errorMessage);
                     return;
                 }
@@ -218,7 +234,11 @@ class UploadCsv extends Component
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                $this->addError('csvFile', 'El archivo CSV no es válido: ' . $e->getMessage());
+                $errorMessage = 'El archivo CSV no es válido: ' . $e->getMessage();
+                $this->dispatch('upload-error', [
+                    'message' => $errorMessage
+                ]);
+                $this->addError('csvFile', $errorMessage);
                 return;
             }
 
@@ -273,9 +293,10 @@ class UploadCsv extends Component
             // Dispatch events
             logger()->info('📡 Dispatching events');
             $this->dispatch('upload-created', uploadId: $upload->id);
-            $this->dispatch('flash-message', [
-                'type' => 'success',
-                'message' => 'Archivo subido exitosamente. Procesamiento iniciado.'
+            $this->dispatch('upload-success', [
+                'uploadId' => $upload->id,
+                'fileName' => $upload->original_name,
+                'message' => 'Archivo subido exitosamente. El procesamiento ha comenzado.'
             ]);
 
             // Update user credits display
@@ -311,6 +332,11 @@ class UploadCsv extends Component
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Dispatch error event for toast notification
+            $this->dispatch('upload-error', [
+                'message' => 'Error al subir el archivo: ' . $e->getMessage()
             ]);
 
             $this->addError('csvFile', 'Error al subir el archivo: ' . $e->getMessage());

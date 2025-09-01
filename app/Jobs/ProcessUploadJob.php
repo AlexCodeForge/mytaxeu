@@ -30,7 +30,22 @@ class ProcessUploadJob implements ShouldQueue
     /**
      * The maximum number of seconds the job can run.
      */
-    public int $timeout = 300; // 5 minutes
+    public int $timeout = 600; // 10 minutes for large files
+
+    /**
+     * The number of seconds to wait before retrying the job.
+     */
+    public int $backoff = 60;
+
+    /**
+     * Indicate if the job should be marked as failed on timeout.
+     */
+    public bool $failOnTimeout = true;
+
+    /**
+     * Delete the job if its models no longer exist.
+     */
+    public bool $deleteWhenMissingModels = true;
 
     /**
      * Create a new job instance.
@@ -38,6 +53,23 @@ class ProcessUploadJob implements ShouldQueue
     public function __construct(int $uploadId)
     {
         $this->uploadId = $uploadId;
+
+        // Set queue priority based on file size
+        $upload = Upload::find($uploadId);
+        if ($upload) {
+            $fileSizeMB = $upload->size_bytes / 1024 / 1024;
+
+            if ($fileSizeMB > 5) {
+                // Large files go to slow queue
+                $this->onQueue('slow');
+            } elseif ($fileSizeMB < 1) {
+                // Small files get priority
+                $this->onQueue('high-priority');
+            } else {
+                // Medium files use default queue
+                $this->onQueue('default');
+            }
+        }
     }
 
     /**
@@ -45,6 +77,12 @@ class ProcessUploadJob implements ShouldQueue
      */
     public function handle(CsvTransformer $csvTransformer, JobStatusService $jobStatusService): void
     {
+        // Set memory limit for this job
+        ini_set('memory_limit', '1024M');
+
+        // Track initial memory usage
+        $initialMemory = memory_get_usage(true);
+
         $upload = Upload::find($this->uploadId);
 
         if (! $upload) {
@@ -52,24 +90,36 @@ class ProcessUploadJob implements ShouldQueue
             return;
         }
 
+        // Log memory usage
+        Log::info('ProcessUploadJob: Starting with memory usage', [
+            'upload_id' => $upload->id,
+            'initial_memory_mb' => round($initialMemory / 1024 / 1024, 2),
+            'memory_limit' => ini_get('memory_limit'),
+        ]);
+
         // Initialize job metadata in the jobs table
         $this->initializeJobMetadata($upload, $jobStatusService);
 
         try {
             // Set status to processing in both upload and jobs table
             $this->updateStatus($upload, Upload::STATUS_PROCESSING);
-            $jobStatusService->updateJobStatus(
-                jobId: $this->job->getJobId(),
-                status: JobStatusService::STATUS_PROCESSING,
-                userId: $upload->user_id,
-                fileName: $upload->original_name
-            );
 
-            // Log job activity
-            $jobStatusService->logJobActivity(
-                jobId: $this->job->getJobId(),
-                level: JobStatusService::LOG_LEVEL_INFO,
-                message: 'Started processing CSV file',
+            // Skip job status tracking for Redis queues
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->updateJobStatus(
+                    jobId: (int) $this->job->getJobId(),
+                    status: JobStatusService::STATUS_PROCESSING,
+                    userId: $upload->user_id,
+                    fileName: $upload->original_name
+                );
+            }
+
+            // Log job activity (skip for Redis queues)
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
+                    level: JobStatusService::LOG_LEVEL_INFO,
+                    message: 'Started processing CSV file',
                 metadata: [
                     'upload_id' => $upload->id,
                     'user_id' => $upload->user_id,
@@ -77,6 +127,7 @@ class ProcessUploadJob implements ShouldQueue
                     'file_size' => $upload->size_bytes,
                 ]
             );
+            }
 
             Log::info('ProcessUploadJob: Started processing', [
                 'upload_id' => $upload->id,
@@ -96,16 +147,18 @@ class ProcessUploadJob implements ShouldQueue
                 throw new \Exception('Upload file is empty');
             }
 
-            // Log validation step
-            $jobStatusService->logJobActivity(
-                jobId: $this->job->getJobId(),
-                level: JobStatusService::LOG_LEVEL_INFO,
-                message: 'File validation completed successfully',
-                metadata: [
-                    'file_size' => $upload->size_bytes,
-                    'file_exists' => true,
-                ]
-            );
+            // Log validation step (skip for Redis queues)
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
+                    level: JobStatusService::LOG_LEVEL_INFO,
+                    message: 'File validation completed successfully',
+                    metadata: [
+                        'file_size' => $upload->size_bytes,
+                        'file_exists' => true,
+                    ]
+                );
+            }
 
             // Process CSV with transformation
             $this->processCsvTransformation($upload, $csvTransformer, $jobStatusService);
@@ -116,15 +169,23 @@ class ProcessUploadJob implements ShouldQueue
                 $upload->update(['rows_count' => $rowCount]);
 
                 $jobStatusService->logJobActivity(
-                    jobId: $this->job->getJobId(),
+                    jobId: (int) $this->job->getJobId(),
                     level: JobStatusService::LOG_LEVEL_INFO,
                     message: "CSV row count determined: {$rowCount} rows",
                     metadata: ['rows_count' => $rowCount]
                 );
             }
 
-            // Simulate processing time (remove in production)
-            sleep(2);
+            // Force garbage collection to free up memory
+            gc_collect_cycles();
+
+            // Log memory usage after processing
+            $currentMemory = memory_get_usage(true);
+            Log::info('ProcessUploadJob: Memory usage after processing', [
+                'upload_id' => $upload->id,
+                'current_memory_mb' => round($currentMemory / 1024 / 1024, 2),
+                'peak_memory_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+            ]);
 
             // Consume credit for successful processing
             $creditService = app(CreditService::class);
@@ -145,16 +206,21 @@ class ProcessUploadJob implements ShouldQueue
 
             // Mark as completed in both upload and jobs table
             $this->updateStatus($upload, Upload::STATUS_COMPLETED);
-            $jobStatusService->updateJobStatus(
-                jobId: $this->job->getJobId(),
-                status: JobStatusService::STATUS_COMPLETED,
-                userId: $upload->user_id,
-                fileName: $upload->original_name
-            );
 
-            // Log successful completion
-            $jobStatusService->logJobActivity(
-                jobId: $this->job->getJobId(),
+            // Skip job status tracking for Redis queues
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->updateJobStatus(
+                    jobId: (int) $this->job->getJobId(),
+                    status: JobStatusService::STATUS_COMPLETED,
+                    userId: $upload->user_id,
+                    fileName: $upload->original_name
+                );
+            }
+
+            // Log successful completion (skip for Redis queues)
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
                 level: JobStatusService::LOG_LEVEL_INFO,
                 message: 'CSV processing completed successfully',
                 metadata: [
@@ -164,6 +230,7 @@ class ProcessUploadJob implements ShouldQueue
                     'processing_time_seconds' => time() - $this->job->getJobRecord()->created_at,
                 ]
             );
+            }
 
             Log::info('ProcessUploadJob: Processing completed successfully', [
                 'upload_id' => $upload->id,
@@ -187,19 +254,23 @@ class ProcessUploadJob implements ShouldQueue
                 'processed_at' => now(),
             ]);
 
-            $jobStatusService->updateJobStatus(
-                jobId: $this->job->getJobId(),
-                status: JobStatusService::STATUS_FAILED,
-                userId: $upload->user_id,
-                fileName: $upload->original_name,
-                errorMessage: $e->getMessage()
-            );
+            // Skip job status tracking for Redis queues
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->updateJobStatus(
+                    jobId: (int) $this->job->getJobId(),
+                    status: JobStatusService::STATUS_FAILED,
+                    userId: $upload->user_id,
+                    fileName: $upload->original_name,
+                    errorMessage: $e->getMessage()
+                );
+            }
 
-            // Log the failure
-            $jobStatusService->logJobActivity(
-                jobId: $this->job->getJobId(),
-                level: JobStatusService::LOG_LEVEL_ERROR,
-                message: 'CSV processing failed: ' . $e->getMessage(),
+            // Log the failure (skip for Redis queues)
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
+                    level: JobStatusService::LOG_LEVEL_ERROR,
+                    message: 'CSV processing failed: ' . $e->getMessage(),
                 metadata: [
                     'upload_id' => $upload->id,
                     'error_type' => get_class($e),
@@ -208,6 +279,7 @@ class ProcessUploadJob implements ShouldQueue
                     'error_line' => $e->getLine(),
                 ]
             );
+            }
 
             // Re-throw to mark job as failed
             throw $e;
@@ -232,26 +304,29 @@ class ProcessUploadJob implements ShouldQueue
             try {
                 $jobStatusService = app(JobStatusService::class);
 
-                $jobStatusService->updateJobStatus(
-                    jobId: $this->job->getJobId(),
-                    status: JobStatusService::STATUS_FAILED,
-                    userId: $upload->user_id,
-                    fileName: $upload->original_name,
-                    errorMessage: $exception->getMessage()
-                );
+                // Skip job status tracking for Redis queues
+                if (!$this->shouldSkipJobStatusTracking()) {
+                    $jobStatusService->updateJobStatus(
+                        jobId: (int) $this->job->getJobId(),
+                        status: JobStatusService::STATUS_FAILED,
+                        userId: $upload->user_id,
+                        fileName: $upload->original_name,
+                        errorMessage: $exception->getMessage()
+                    );
 
-                $jobStatusService->logJobActivity(
-                    jobId: $this->job->getJobId(),
-                    level: JobStatusService::LOG_LEVEL_ERROR,
-                    message: 'Job failed permanently after ' . $this->attempts() . ' attempts',
-                    metadata: [
-                        'upload_id' => $upload->id,
-                        'attempts' => $this->attempts(),
-                        'max_attempts' => $this->tries,
-                        'final_error' => $exception->getMessage(),
-                        'exception_type' => get_class($exception),
-                    ]
-                );
+                    $jobStatusService->logJobActivity(
+                        jobId: (int) $this->job->getJobId(),
+                        level: JobStatusService::LOG_LEVEL_ERROR,
+                        message: 'Job failed permanently after ' . $this->attempts() . ' attempts',
+                        metadata: [
+                            'upload_id' => $upload->id,
+                            'attempts' => $this->attempts(),
+                            'max_attempts' => $this->tries,
+                            'final_error' => $exception->getMessage(),
+                            'exception_type' => get_class($exception),
+                        ]
+                    );
+                }
             } catch (\Exception $e) {
                 Log::error('Failed to update job status on permanent failure', [
                     'upload_id' => $upload->id,
@@ -283,13 +358,30 @@ class ProcessUploadJob implements ShouldQueue
     }
 
     /**
+     * Check if we should skip job status tracking (for Redis queues).
+     */
+    private function shouldSkipJobStatusTracking(): bool
+    {
+        return config('queue.default') === 'redis';
+    }
+
+    /**
      * Initialize job metadata in the jobs table.
      */
     private function initializeJobMetadata(Upload $upload, JobStatusService $jobStatusService): void
     {
+        // Skip job metadata initialization for Redis queues since they don't use database job records
+        if ($this->shouldSkipJobStatusTracking()) {
+            logger()->info('Skipping job metadata initialization for Redis queue', [
+                'upload_id' => $upload->id,
+                'queue_driver' => config('queue.default')
+            ]);
+            return;
+        }
+
         try {
             $jobStatusService->initializeJobMetadata(
-                jobId: $this->job->getJobId(),
+                jobId: (int) $this->job->getJobId(),
                 userId: $upload->user_id,
                 fileName: $upload->original_name,
                 status: JobStatusService::STATUS_QUEUED
@@ -321,16 +413,18 @@ class ProcessUploadJob implements ShouldQueue
                 'job_id' => $this->job->getJobId(),
             ]);
 
-            // Log transformation start
-            $jobStatusService->logJobActivity(
-                jobId: $this->job->getJobId(),
-                level: JobStatusService::LOG_LEVEL_INFO,
-                message: 'Starting CSV transformation',
-                metadata: [
-                    'input_path' => basename($inputPath),
-                    'output_path' => basename($absoluteOutputPath),
-                ]
-            );
+            // Log transformation start (skip for Redis queues)
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
+                    level: JobStatusService::LOG_LEVEL_INFO,
+                    message: 'Starting CSV transformation',
+                    metadata: [
+                        'input_path' => basename($inputPath),
+                        'output_path' => basename($absoluteOutputPath),
+                    ]
+                );
+            }
 
             // Perform the CSV transformation
             $csvTransformer->transform($inputPath, $absoluteOutputPath);
@@ -347,16 +441,18 @@ class ProcessUploadJob implements ShouldQueue
                 'job_id' => $this->job->getJobId(),
             ]);
 
-            // Log transformation completion
-            $jobStatusService->logJobActivity(
-                jobId: $this->job->getJobId(),
-                level: JobStatusService::LOG_LEVEL_INFO,
-                message: 'CSV transformation completed successfully',
-                metadata: [
-                    'output_file_size' => Storage::disk($upload->disk)->size($outputPath),
-                    'output_path' => basename($outputPath),
-                ]
-            );
+            // Log transformation completion (skip for Redis queues)
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
+                    level: JobStatusService::LOG_LEVEL_INFO,
+                    message: 'CSV transformation completed successfully',
+                    metadata: [
+                        'output_file_size' => Storage::disk($upload->disk)->size($outputPath),
+                        'output_path' => basename($outputPath),
+                    ]
+                );
+            }
 
         } catch (\DomainException $e) {
             // Business logic validation errors
@@ -369,7 +465,7 @@ class ProcessUploadJob implements ShouldQueue
 
             // Log validation error
             $jobStatusService->logJobActivity(
-                jobId: $this->job->getJobId(),
+                jobId: (int) $this->job->getJobId(),
                 level: JobStatusService::LOG_LEVEL_WARNING,
                 message: 'CSV validation failed: ' . $e->getMessage(),
                 metadata: [
@@ -390,7 +486,7 @@ class ProcessUploadJob implements ShouldQueue
 
             // Log transformation error
             $jobStatusService->logJobActivity(
-                jobId: $this->job->getJobId(),
+                jobId: (int) $this->job->getJobId(),
                 level: JobStatusService::LOG_LEVEL_ERROR,
                 message: 'CSV transformation failed: ' . $e->getMessage(),
                 metadata: [

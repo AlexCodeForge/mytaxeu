@@ -6,6 +6,69 @@
 </style>
 @endpush
 
+@push('scripts')
+<script>
+    function showToast(type, message, duration = 5000) {
+        const toastId = 'toast-' + Date.now();
+        const iconSuccess = `<svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+        </svg>`;
+        const iconError = `<svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 11.793a1 1 0 1 1-1.414 1.414L10 11.414l-2.293 2.293a1 1 0 0 1-1.414-1.414L8.586 10 6.293 7.707a1 1 0 0 1 1.414-1.414L10 8.586l2.293-2.293a1 1 0 0 1 1.414 1.414L11.414 10l2.293 2.293Z"/>
+        </svg>`;
+
+        const bgColor = type === 'success' ? 'bg-green-100' : 'bg-red-100';
+        const textColor = type === 'success' ? 'text-green-500' : 'text-red-500';
+        const icon = type === 'success' ? iconSuccess : iconError;
+
+        const toastHtml = `
+            <div id="${toastId}" class="flex items-center w-full max-w-xs p-4 mb-4 text-gray-500 bg-white rounded-lg shadow" role="alert">
+                <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 ${textColor} ${bgColor} rounded-lg">
+                    ${icon}
+                </div>
+                <div class="ml-3 text-sm font-normal">${message}</div>
+                <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8" onclick="closeToast('${toastId}')" aria-label="Close">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', toastHtml);
+
+        // Auto-close after duration
+        setTimeout(() => closeToast(toastId), duration);
+    }
+
+    function closeToast(toastId) {
+        const toast = document.getElementById(toastId);
+        if (toast) {
+            toast.remove();
+        }
+    }
+
+    // Listen for Livewire events
+    document.addEventListener('livewire:init', () => {
+        Livewire.on('flash-message', (event) => {
+            showToast(event.type, event.message);
+        });
+
+        Livewire.on('upload-success', (event) => {
+            showToast('success', 'Archivo subido exitosamente. El procesamiento ha comenzado.');
+            // Redirect after showing toast
+            setTimeout(() => {
+                window.location.href = '/uploads';
+            }, 2000);
+        });
+
+        Livewire.on('upload-error', (event) => {
+            showToast('error', event.message || 'Error al subir el archivo. Inténtalo de nuevo.');
+        });
+    });
+</script>
+@endpush
+
 @php
     $user = auth()->user();
     $limitValidator = app(\App\Services\UploadLimitValidator::class);
@@ -16,7 +79,11 @@
     $jsLimit = $isAdmin ? 999999999 : $currentLimit; // Use large number for JS comparison
 @endphp
 
-<div class="max-w-2xl mx-auto" x-data="{
+<div>
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50"></div>
+
+    <div class="max-w-2xl mx-auto" x-data="{
     fileSelected: false,
     analyzing: false,
     lineCount: 0,
@@ -111,11 +178,11 @@
                     <div class="flex items-center justify-center w-full">
                         <label
                             for="csvFile"
-                            class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer transition-colors"
+                            class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200 ease-in-out"
                             :class="{
-                                'border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-500': fileSelected && !isAdmin && lineCount > {{ $jsLimit }},
-                                'border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-500': fileSelected && (isAdmin || lineCount <= {{ $jsLimit }}),
-                                'border-gray-300 bg-gray-50 hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500': !fileSelected || analyzing
+                                'border-red-400 bg-red-50 hover:bg-red-100 hover:border-red-500': fileSelected && !isAdmin && lineCount > {{ $jsLimit }},
+                                'border-green-400 bg-green-50 hover:bg-green-100 hover:border-green-500': fileSelected && (isAdmin || lineCount <= {{ $jsLimit }}),
+                                'border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400': !fileSelected || analyzing
                             }"
 
                             x-on:livewire-upload-start="analyzing = true"
@@ -128,7 +195,7 @@
                                 type="file"
                                 id="csvFile"
                                 wire:model="csvFile"
-                                accept=".csv,.txt"
+                                accept=".csv"
                                 x-ref="fileInput"
                                 x-on:change="fileSelected = $event.target.files.length > 0"
                                 class="hidden"
@@ -136,15 +203,15 @@
 
                             <div class="flex flex-col items-center justify-center pt-5 pb-6" x-show="!fileSelected">
                                 <!-- Upload Icon -->
-                                <svg class="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                <svg class="w-8 h-8 mb-4 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.566 5.566 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
                                 </svg>
 
                                 <!-- Upload Text -->
-                                <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                                    <span class="font-semibold">Haz clic para subir</span> o arrastra y suelta
+                                <p class="mb-2 text-sm text-gray-600">
+                                    <span class="font-semibold text-blue-600">Haz clic para subir</span> o arrastra y suelta
                                 </p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">CSV o TXT (Máx. 10MB)</p>
+                                <p class="text-xs text-gray-500">CSV (Máx. 10MB)</p>
                             </div>
 
                             <!-- Analyzing State -->
@@ -164,16 +231,16 @@
                             <!-- File Selected State -->
                             <div x-show="fileSelected && !analyzing" x-cloak class="flex flex-col items-center justify-center pt-5 pb-6">
                                 <!-- File Icon -->
-                                <svg class="w-12 h-12 mb-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-12 h-12 mb-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
 
                                 <!-- File Info -->
                                 @if($csvFile)
-                                    <p class="mb-2 text-sm font-medium text-gray-900 dark:text-white">{{ $csvFile->getClientOriginalName() }}</p>
-                                    <p class="text-sm mb-3 text-green-600">Archivo cargado correctamente</p>
+                                    <p class="mb-2 text-sm font-medium text-gray-900">{{ $csvFile->getClientOriginalName() }}</p>
+                                    <p class="text-sm mb-3 text-green-700 font-medium">Archivo cargado correctamente</p>
                                 @else
-                                    <p class="mb-2 text-sm font-medium text-gray-900 dark:text-white">Archivo seleccionado</p>
+                                    <p class="mb-2 text-sm font-medium text-gray-900">Archivo seleccionado</p>
                                 @endif
 
                                 <!-- Status Badge -->
@@ -205,13 +272,13 @@
 
                     <!-- Format Info -->
                     <div class="text-sm text-gray-500">
-                        <p>Formatos permitidos: CSV, TXT • Tamaño máximo: 10MB</p>
+                        <p>Formatos permitidos: CSV • Tamaño máximo: 10MB</p>
                     </div>
 
                     <!-- Error Messages -->
                     @error('csvFile')
                         <div class="rounded-md bg-red-50 p-4">
-                            <div class="flex">
+                            <div class="flex"></div>
                                 <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
@@ -238,10 +305,10 @@
                 @if($csvFile)
                     <div class="bg-green-50 border border-green-200 rounded-lg p-4">
                         <h4 class="text-sm font-medium text-green-900 mb-2">Archivo seleccionado:</h4>
-                        <div class="text-sm text-green-700">
-                            <p><strong>Nombre:</strong> {{ $csvFile->getClientOriginalName() }}</p>
-                            <p><strong>Tamaño:</strong> {{ number_format($csvFile->getSize() / 1024, 2) }} KB</p>
-                            <p><strong>Estado:</strong> <span class="text-green-600 font-medium">✓ Válido para procesar</span></p>
+                        <div class="text-sm text-green-800">
+                            <p><strong class="text-green-900">Nombre:</strong> {{ $csvFile->getClientOriginalName() }}</p>
+                            <p><strong class="text-green-900">Tamaño:</strong> {{ number_format($csvFile->getSize() / 1024, 2) }} KB</p>
+                            <p><strong class="text-green-900">Estado:</strong> <span class="text-green-700 font-medium">✓ Válido para procesar</span></p>
                         </div>
                     </div>
                 @endif
@@ -273,30 +340,24 @@
                         type="submit"
                         class="px-6 py-2 text-white rounded-lg transition-colors flex items-center"
                         :class="{
-                            'bg-gray-400 cursor-not-allowed': !$wire.csvFile,
-                            'bg-primary hover:bg-blue-700': $wire.csvFile
+                            'bg-gray-400 cursor-not-allowed': !$wire.csvFile || $wire.uploading,
+                            'bg-primary hover:bg-blue-700': $wire.csvFile && !$wire.uploading
                         }"
-                        :disabled="!$wire.csvFile"
+                        :disabled="!$wire.csvFile || $wire.uploading"
                         wire:loading.attr="disabled"
                         wire:target="processUpload"
                     >
-                        <div wire:loading wire:target="processUpload" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        <span wire:loading.remove wire:target="processUpload">Subir Archivo</span>
-                        <span wire:loading wire:target="processUpload">Subiendo...</span>
-                    </button>
+                        <!-- Loading Spinner -->
+                        <svg wire:loading wire:target="processUpload" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
 
-                    <!-- DEBUG BUTTON -->
-                    <button
-                        type="button"
-                        wire:click="debugTest"
-                        class="px-4 py-2 text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
-                    >
-                        DEBUG: Test Connection
+                        <span wire:loading.remove wire:target="processUpload">Subir Archivo</span>
+                        <span wire:loading wire:target="processUpload">Procesando...</span>
                     </button>
                 </div>
             </form>
         @endif
     </div>
 </div>
-
-
