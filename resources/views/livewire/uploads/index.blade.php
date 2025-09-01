@@ -124,6 +124,18 @@
                                         </div>
                                     @endif
 
+                                    @if($upload->isCompleted())
+                                        <button
+                                            wire:click="downloadUpload({{ $upload->id }})"
+                                            class="text-green-600 hover:text-green-900 text-xs"
+                                            wire:loading.attr="disabled"
+                                            wire:target="downloadUpload({{ $upload->id }})"
+                                        >
+                                            <i class="fas fa-download mr-1"></i>
+                                            Descargar
+                                        </button>
+                                    @endif
+
                                     <button
                                         wire:click="deleteUpload({{ $upload->id }})"
                                         wire:confirm="¿Estás seguro de que quieres eliminar este archivo?"

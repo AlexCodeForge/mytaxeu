@@ -404,6 +404,13 @@ class ProcessUploadJob implements ShouldQueue
             // Get absolute paths for the transformer
             $inputPath = Storage::disk($upload->disk)->path($upload->path);
             $outputPath = $this->generateOutputPath($upload);
+
+            // Ensure output directory exists
+            $outputDirectory = dirname($outputPath);
+            if (!Storage::disk($upload->disk)->exists($outputDirectory)) {
+                Storage::disk($upload->disk)->makeDirectory($outputDirectory);
+            }
+
             $absoluteOutputPath = Storage::disk($upload->disk)->path($outputPath);
 
             Log::info('ProcessUploadJob: Starting CSV transformation', [
@@ -433,6 +440,9 @@ class ProcessUploadJob implements ShouldQueue
             if (!Storage::disk($upload->disk)->exists($outputPath)) {
                 throw new \Exception('Transformation completed but output file not found');
             }
+
+            // Save the transformed file path to the upload record
+            $upload->update(['transformed_path' => $outputPath]);
 
             Log::info('ProcessUploadJob: CSV transformation completed', [
                 'upload_id' => $upload->id,
@@ -502,15 +512,23 @@ class ProcessUploadJob implements ShouldQueue
 
     /**
      * Generate output file path for the transformed CSV.
+     * Format: uploads/{user_id}/output/{original_filename}_{date}_transformado.csv
      */
     private function generateOutputPath(Upload $upload): string
     {
-        $pathInfo = pathinfo($upload->path);
-        $directory = $pathInfo['dirname'] ?? '';
-        $filename = $pathInfo['filename'] ?? 'transformed';
+        // Extract original filename without extension
+        $pathInfo = pathinfo($upload->original_name);
+        $originalFilename = $pathInfo['filename'] ?? 'archivo';
 
-        $outputFilename = $filename . '_transformed.csv';
+        // Get current date for filename
+        $dateStr = now()->format('Y-m-d_H-i-s');
 
-        return $directory ? $directory . '/' . $outputFilename : $outputFilename;
+        // Create output filename with date
+        $outputFilename = $originalFilename . '_' . $dateStr . '_transformado.csv';
+
+        // Generate output path: uploads/{user_id}/output/{filename}
+        $outputPath = 'uploads/' . $upload->user_id . '/output/' . $outputFilename;
+
+        return $outputPath;
     }
 }

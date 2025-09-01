@@ -18,6 +18,7 @@ class Upload extends Model
         'original_name',
         'disk',
         'path',
+        'transformed_path',
         'size_bytes',
         'csv_line_count',
         'rows_count',
@@ -122,6 +123,29 @@ class Upload extends Model
         }
 
         return null;
+    }
+
+    public function getTransformedFileUrl(): ?string
+    {
+        if ($this->transformed_path && Storage::disk($this->disk)->exists($this->transformed_path)) {
+            return Storage::disk($this->disk)->url($this->transformed_path);
+        }
+
+        return null;
+    }
+
+    public function getTransformedFileContents(): ?string
+    {
+        if ($this->transformed_path && Storage::disk($this->disk)->exists($this->transformed_path)) {
+            return Storage::disk($this->disk)->get($this->transformed_path);
+        }
+
+        return null;
+    }
+
+    public function hasTransformedFile(): bool
+    {
+        return !empty($this->transformed_path) && Storage::disk($this->disk)->exists($this->transformed_path);
     }
 
     protected static function booted(): void

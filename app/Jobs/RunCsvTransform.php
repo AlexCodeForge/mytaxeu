@@ -74,6 +74,12 @@ class RunCsvTransform implements ShouldQueue
             // Generate output file path
             $outputPath = $this->generateOutputPath($upload);
 
+            // Ensure output directory exists
+            $outputDirectory = dirname($outputPath);
+            if (!Storage::disk($upload->disk)->exists($outputDirectory)) {
+                Storage::disk($upload->disk)->makeDirectory($outputDirectory);
+            }
+
             // Get absolute paths for the transformer
             $absoluteInputPath = Storage::disk($upload->disk)->path($upload->path);
             $absoluteOutputPath = Storage::disk($upload->disk)->path($outputPath);
@@ -92,9 +98,10 @@ class RunCsvTransform implements ShouldQueue
                 throw new RuntimeException('Transformation completed but output file not found');
             }
 
-            // Update upload record with completion status
+            // Update upload record with completion status and save transformed file path
             $upload->update([
                 'status' => Upload::STATUS_COMPLETED,
+                'transformed_path' => $outputPath,
                 'processed_at' => now(),
             ]);
 
@@ -109,7 +116,7 @@ class RunCsvTransform implements ShouldQueue
         } catch (DomainException $e) {
             // Business logic validation errors - don't retry
             $this->handleValidationFailure($upload, $e);
-            
+
             Log::warning('RunCsvTransform: Validation failed', [
                 'upload_id' => $upload->id,
                 'error' => $e->getMessage(),
@@ -122,7 +129,7 @@ class RunCsvTransform implements ShouldQueue
         } catch (RuntimeException $e) {
             // Runtime errors (file I/O, etc.) - may be transient
             $this->handleRuntimeFailure($upload, $e);
-            
+
             Log::error('RunCsvTransform: Runtime error occurred', [
                 'upload_id' => $upload->id,
                 'error' => $e->getMessage(),
@@ -136,7 +143,7 @@ class RunCsvTransform implements ShouldQueue
         } catch (\Exception $e) {
             // Unexpected errors
             $this->handleUnexpectedFailure($upload, $e);
-            
+
             Log::error('RunCsvTransform: Unexpected error occurred', [
                 'upload_id' => $upload->id,
                 'error' => $e->getMessage(),
@@ -182,16 +189,24 @@ class RunCsvTransform implements ShouldQueue
 
     /**
      * Generate output file path for the transformed CSV.
+     * Format: uploads/{user_id}/output/{original_filename}_{date}_transformado.csv
      */
     private function generateOutputPath(Upload $upload): string
     {
-        $pathInfo = pathinfo($upload->path);
-        $directory = $pathInfo['dirname'] ?? '';
-        $filename = $pathInfo['filename'] ?? 'transformed';
-        
-        $outputFilename = $filename . '_transformed.csv';
-        
-        return $directory ? $directory . '/' . $outputFilename : $outputFilename;
+        // Extract original filename without extension
+        $pathInfo = pathinfo($upload->original_name);
+        $originalFilename = $pathInfo['filename'] ?? 'archivo';
+
+        // Get current date for filename
+        $dateStr = now()->format('Y-m-d_H-i-s');
+
+        // Create output filename with date
+        $outputFilename = $originalFilename . '_' . $dateStr . '_transformado.csv';
+
+        // Generate output path: uploads/{user_id}/output/{filename}
+        $outputPath = 'uploads/' . $upload->user_id . '/output/' . $outputFilename;
+
+        return $outputPath;
     }
 
     /**

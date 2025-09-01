@@ -253,8 +253,8 @@ class UploadCsv extends Component
             $extension = $this->csvFile->getClientOriginalExtension() ?: 'csv';
             $filename = $uuid . '.' . $extension;
 
-            // Storage path pattern: uploads/{user_id}/{uuid}.csv
-            $storagePath = 'uploads/' . auth()->id() . '/' . $filename;
+            // Storage path pattern: uploads/{user_id}/input/{uuid}.csv
+            $storagePath = 'uploads/' . auth()->id() . '/input/' . $filename;
 
             // Store file
             $path = $this->csvFile->storeAs(
