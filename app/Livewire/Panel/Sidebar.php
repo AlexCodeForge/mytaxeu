@@ -25,6 +25,7 @@ class Sidebar extends Component
 
         $adminLinks = [
             ['label' => 'Admin Dashboard', 'icon' => 'fa-tachometer-alt', 'route' => 'admin.index'],
+            ['label' => 'Panel Financiero', 'icon' => 'fa-euro-sign', 'route' => 'admin.financial.dashboard'],
             ['label' => 'Usuarios', 'icon' => 'fa-users', 'route' => 'admin.users.index'],
             ['label' => 'Gestión Avanzada de Usuarios', 'icon' => 'fa-users-cog', 'route' => 'admin.users.enhanced'],
             ['label' => 'Gestión de Uploads', 'icon' => 'fa-file-upload', 'route' => 'admin.uploads'],

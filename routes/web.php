@@ -46,6 +46,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
         Route::get('/usage-analytics', \App\Livewire\Admin\UsageAnalytics::class)->name('usage.analytics');
         Route::get('/stripe-config', \App\Livewire\Admin\StripeConfiguration::class)->name('stripe.config');
         Route::get('/credit-analytics', \App\Livewire\Admin\CreditAnalytics::class)->name('credit.analytics');
+        Route::get('/financial-dashboard', \App\Livewire\Admin\FinancialDashboard::class)->name('financial.dashboard');
         Route::get('/upload-limits', \App\Livewire\Admin\UserUploadManager::class)->name('upload.limits');
         Route::get('/uploads', \App\Livewire\Admin\UploadManager::class)->name('uploads');
         Route::get('/job-monitor', \App\Livewire\Pages\Admin\JobMonitor::class)->name('job.monitor');
