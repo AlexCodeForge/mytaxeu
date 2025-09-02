@@ -14,8 +14,17 @@ class UploadPolicy
      */
     public function viewAny(User $user): bool
     {
-        // Users can view their own uploads list
+        // Users can view their own uploads list, admins can view all uploads
         return true;
+    }
+
+    /**
+     * Determine whether the user can view all uploads (admin interface).
+     */
+    public function viewAll(User $user): bool
+    {
+        // Only admins can view all uploads in admin interface
+        return $user->isAdmin();
     }
 
     /**

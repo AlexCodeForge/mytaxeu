@@ -395,6 +395,6 @@ class AdminJobMonitor extends Component
             'users' => $this->users,
             'statusCounts' => $this->statusCounts,
             'recentActivity' => $this->recentActivity,
-        ]);
+        ])->layout('layouts.panel');
     }
 }

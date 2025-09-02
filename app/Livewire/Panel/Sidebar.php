@@ -24,8 +24,10 @@ class Sidebar extends Component
         ];
 
         $adminLinks = [
-            ['label' => 'Admin Panel', 'icon' => 'fa-cog', 'route' => 'admin.index'],
+            ['label' => 'Admin Dashboard', 'icon' => 'fa-tachometer-alt', 'route' => 'admin.index'],
             ['label' => 'Usuarios', 'icon' => 'fa-users', 'route' => 'admin.users.index'],
+            ['label' => 'Gestión Avanzada de Usuarios', 'icon' => 'fa-users-cog', 'route' => 'admin.users.enhanced'],
+            ['label' => 'Gestión de Uploads', 'icon' => 'fa-file-upload', 'route' => 'admin.uploads'],
             ['label' => 'Análisis de Uso', 'icon' => 'fa-chart-bar', 'route' => 'admin.usage.analytics'],
             ['label' => 'Monitoreo de Trabajos', 'icon' => 'fa-tasks', 'route' => 'admin.job.monitor'],
             ['label' => 'Análisis de Créditos', 'icon' => 'fa-coins', 'route' => 'admin.credit.analytics'],
