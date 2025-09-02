@@ -29,6 +29,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('download.upload');
 
     // Billing routes
+    Route::get('billing', \App\Livewire\Billing\BillingPage::class)->name('billing');
+    Route::post('billing/portal-redirect', [\App\Http\Controllers\Billing\BillingPortalController::class, 'redirect'])->name('billing.portal.redirect');
     Route::get('billing/subscriptions', \App\Livewire\Billing\SubscriptionManager::class)->name('billing.subscriptions');
 });
 
