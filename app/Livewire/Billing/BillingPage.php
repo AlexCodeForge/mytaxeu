@@ -149,7 +149,7 @@ class BillingPage extends Component
         }
 
         $stripePriceId = $this->subscriptionDetails['stripe_price'];
-        
+
         foreach ($this->availablePlans as $plan) {
             if ($plan['stripe_price_id'] === $stripePriceId) {
                 return $plan['name'];
@@ -179,7 +179,7 @@ class BillingPage extends Component
         }
 
         $stripePriceId = $this->subscriptionDetails['stripe_price'];
-        
+
         foreach ($this->availablePlans as $plan) {
             if ($plan['stripe_price_id'] === $stripePriceId) {
                 return $plan['features'];
@@ -251,7 +251,7 @@ class BillingPage extends Component
 
     public function shouldShowManageButton(): bool
     {
-        return $this->hasActiveSubscription || 
+        return $this->hasActiveSubscription ||
                in_array($this->subscriptionStatus, ['canceled', 'past_due', 'incomplete']);
     }
 
@@ -268,6 +268,6 @@ class BillingPage extends Component
             'availablePlans' => $this->getAvailablePlans(),
             'showUpgradeCta' => $this->shouldShowUpgradeCta(),
             'showManageButton' => $this->shouldShowManageButton(),
-        ]);
+        ])->layout('layouts.panel');
     }
 }
