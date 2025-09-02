@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Billing;
 
 use App\Services\StripePortalService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\View\View;
 use Laravel\Cashier\Subscription;
 use Livewire\Component;
@@ -13,7 +12,6 @@ use Carbon\Carbon;
 
 class BillingPage extends Component
 {
-    use AuthorizesRequests;
 
     public bool $hasActiveSubscription = false;
     public ?array $subscriptionDetails = null;
@@ -80,7 +78,6 @@ class BillingPage extends Component
 
     public function mount(): void
     {
-        $this->authorize('view', auth()->user());
         $this->loadSubscriptionData();
     }
 
