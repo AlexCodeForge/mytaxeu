@@ -57,7 +57,7 @@
         <!-- Current Plan & Credits -->
         <div class="lg:col-span-2">
             <!-- Current Plan Card -->
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg mb-6">
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-6">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-semibold text-gray-900">
@@ -65,7 +65,7 @@
                         </h2>
                         <button
                             wire:click="refreshSubscriptionStatus"
-                            class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            class="text-sm text-blue-600 hover:text-blue-800"
                             title="Actualizar estado">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -76,11 +76,11 @@
                     <!-- Subscription Status -->
                     <div class="mb-4">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                            @if($hasActiveSubscription && $subscriptionStatus === 'active') bg-green-100 text-green-800 dark:bg-green-900/10 dark:text-green-400
-                            @elseif($subscriptionStatus === 'trialing') bg-blue-100 text-blue-800 dark:bg-blue-900/10 dark:text-blue-400
-                            @elseif($subscriptionStatus === 'canceled') bg-yellow-100 text-yellow-800 dark:bg-yellow-900/10 dark:text-yellow-400
-                            @elseif($subscriptionStatus === 'past_due') bg-red-100 text-red-800 dark:bg-red-900/10 dark:text-red-400
-                            @else bg-gray-100 text-gray-800 dark:bg-gray-900/10 dark:text-gray-400
+                            @if($hasActiveSubscription && $subscriptionStatus === 'active') bg-green-100 text-green-800
+                            @elseif($subscriptionStatus === 'trialing') bg-blue-100 text-blue-800
+                            @elseif($subscriptionStatus === 'canceled') bg-yellow-100 text-yellow-800
+                            @elseif($subscriptionStatus === 'past_due') bg-red-100 text-red-800
+                            @else bg-gray-100 text-gray-800
                             @endif">
                             {{ $statusMessage }}
                         </span>
@@ -89,7 +89,7 @@
                     <!-- Next Billing Date -->
                     @if($nextBillingDate && $hasActiveSubscription)
                         <div class="mb-4">
-                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                            <p class="text-sm text-gray-600">
                                 <span class="font-medium">Próximo pago:</span> {{ $nextBillingDate }}
                             </p>
                         </div>
@@ -116,7 +116,7 @@
                             <button
                                 wire:click="redirectToPortal"
                                 wire:loading.attr="disabled"
-                                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600">
+                                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <span wire:loading.remove>Gestionar Plan</span>
                                 <span wire:loading class="flex items-center">
                                     <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -176,12 +176,12 @@
         <!-- Sidebar -->
         <div class="lg:col-span-1">
             <!-- Credits Card -->
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg mb-6">
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-6">
                 <div class="p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Créditos Disponibles</h3>
 
                     <div class="text-center">
-                        <div class="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                        <div class="text-4xl font-bold text-blue-600 mb-2">
                             {{ $currentCredits }}
                         </div>
                         <p class="text-sm text-gray-600">
@@ -190,8 +190,8 @@
                     </div>
 
                     @if($currentCredits <= 5)
-                        <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md dark:bg-yellow-900/10 dark:border-yellow-800">
-                            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+                        <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                            <p class="text-sm text-yellow-700">
                                 <strong>Atención:</strong> Te quedan pocos créditos.
                                 @if(!$hasActiveSubscription)
                                     Considera actualizar tu plan.
@@ -203,7 +203,7 @@
             </div>
 
             <!-- Quick Actions -->
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg">
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                 <div class="p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
 
