@@ -160,7 +160,7 @@
                         </div>
 
                         <div class="mt-6">
-                            <a href="{{ route('subscription.plans') }}" 
+                            <a href="{{ route('billing.subscriptions') }}" 
                                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 Elegir Plan
                                 <svg class="ml-2 -mr-1 w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
