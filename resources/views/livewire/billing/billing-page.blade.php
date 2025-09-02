@@ -1,8 +1,8 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Page Header -->
     <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Facturación</h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <h1 class="text-3xl font-bold text-gray-900">Facturación</h1>
+        <p class="mt-2 text-sm text-gray-600">
             Gestiona tu suscripción, facturación y créditos
         </p>
     </div>
@@ -60,10 +60,10 @@
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg mb-6">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                        <h2 class="text-xl font-semibold text-gray-900">
                             {{ $planName }}
                         </h2>
-                        <button 
+                        <button
                             wire:click="refreshSubscriptionStatus"
                             class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                             title="Actualizar estado">
@@ -97,10 +97,10 @@
 
                     <!-- Plan Features -->
                     <div class="mb-6">
-                        <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-2">Características incluidas:</h3>
+                        <h3 class="text-sm font-medium text-gray-900 mb-2">Características incluidas:</h3>
                         <ul class="space-y-1">
                             @foreach($planFeatures as $feature)
-                                <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                                <li class="flex items-center text-sm text-gray-600">
                                     <svg class="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                     </svg>
@@ -113,7 +113,7 @@
                     <!-- Action Buttons -->
                     <div class="flex flex-col sm:flex-row gap-3">
                         @if($showManageButton)
-                            <button 
+                            <button
                                 wire:click="redirectToPortal"
                                 wire:loading.attr="disabled"
                                 class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600">
@@ -137,7 +137,7 @@
                     <div class="p-6 text-white">
                         <h2 class="text-2xl font-bold mb-2">¡Actualiza tu plan!</h2>
                         <p class="text-blue-100 mb-4">Obtén más créditos y funciones avanzadas para gestionar más clientes de manera eficiente.</p>
-                        
+
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                             @foreach($availablePlans as $plan)
                                 <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -160,7 +160,7 @@
                         </div>
 
                         <div class="mt-6">
-                            <a href="{{ route('billing.subscriptions') }}" 
+                            <a href="{{ route('billing.subscriptions') }}"
                                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 Elegir Plan
                                 <svg class="ml-2 -mr-1 w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -178,13 +178,13 @@
             <!-- Credits Card -->
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg mb-6">
                 <div class="p-6">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Créditos Disponibles</h3>
-                    
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Créditos Disponibles</h3>
+
                     <div class="text-center">
                         <div class="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
                             {{ $currentCredits }}
                         </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                        <p class="text-sm text-gray-600">
                             créditos restantes
                         </p>
                     </div>
@@ -192,7 +192,7 @@
                     @if($currentCredits <= 5)
                         <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md dark:bg-yellow-900/10 dark:border-yellow-800">
                             <p class="text-sm text-yellow-700 dark:text-yellow-400">
-                                <strong>Atención:</strong> Te quedan pocos créditos. 
+                                <strong>Atención:</strong> Te quedan pocos créditos.
                                 @if(!$hasActiveSubscription)
                                     Considera actualizar tu plan.
                                 @endif
@@ -205,29 +205,29 @@
             <!-- Quick Actions -->
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg">
                 <div class="p-6">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Acciones Rápidas</h3>
-                    
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
+
                     <div class="space-y-3">
                         @if($hasActiveSubscription)
-                            <a href="#" 
-                               class="w-full flex items-center justify-between p-3 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600">
+                            <a href="#"
+                               class="w-full flex items-center justify-between p-3 text-sm text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100">
                                 <span>Ver historial de pagos</span>
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                                 </svg>
                             </a>
-                            
-                            <a href="#" 
-                               class="w-full flex items-center justify-between p-3 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600">
+
+                            <a href="#"
+                               class="w-full flex items-center justify-between p-3 text-sm text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100">
                                 <span>Descargar facturas</span>
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                                 </svg>
                             </a>
                         @endif
-                        
-                        <a href="{{ route('dashboard') }}" 
-                           class="w-full flex items-center justify-between p-3 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600">
+
+                        <a href="{{ route('dashboard') }}"
+                           class="w-full flex items-center justify-between p-3 text-sm text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100">
                             <span>Volver al panel</span>
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
