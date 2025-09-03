@@ -94,4 +94,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(UploadMetric::class);
     }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
 }

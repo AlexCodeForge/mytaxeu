@@ -11,7 +11,7 @@ use InvalidArgumentException;
 
 class CsvLineCountService
 {
-    public const MAX_FILE_SIZE_MB = 10;
+    public const MAX_FILE_SIZE_MB = 100;
     public const SUPPORTED_ENCODINGS = ['UTF-8', 'ISO-8859-1', 'Windows-1252'];
 
     /**
@@ -176,7 +176,7 @@ class CsvLineCountService
             $testCsv->setDelimiter($delimiter);
 
             try {
-                $fields = $testCsv->fetchOne(0);
+                $fields = $testCsv->nth(0);
 
                 if (is_array($fields) && count($fields) > $maxFields) {
                     $maxFields = count($fields);

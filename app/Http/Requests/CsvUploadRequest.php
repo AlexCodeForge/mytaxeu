@@ -31,7 +31,7 @@ class CsvUploadRequest extends FormRequest
                 'required',
                 'file',
                 'mimes:csv,txt',
-                'max:10240', // 10MB max
+                'max:102400', // 100MB max
             ],
         ];
     }

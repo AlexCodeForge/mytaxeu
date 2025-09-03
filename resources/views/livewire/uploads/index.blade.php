@@ -180,7 +180,7 @@
         <!-- Pagination -->
         @if($uploads->hasPages())
             <div class="mt-6 border-t border-gray-200 pt-4">
-                {{ $uploads->links() }}
+                {{ $uploads->links('custom.pagination') }}
             </div>
         @endif
 

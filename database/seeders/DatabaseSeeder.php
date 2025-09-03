@@ -15,22 +15,18 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
 
         // Admin test user
         User::factory()->create([
             'name' => 'Admin User',
-            'email' => 'admin@example.com',
+            'email' => 'axldeth@gmail.com',
             'password' => 'password',
             'is_admin' => true,
         ]);
 
-        $this->call([
-            JobStatusTestDataSeeder::class,
-        ]);
+        // $this->call([
+        //     JobStatusTestDataSeeder::class,
+        // ]);
     }
 
 }

@@ -10,13 +10,16 @@ use Livewire\Component;
 
 class Sidebar extends Component
 {
-    public array $links = [];
+    public array $userLinks = [];
+    public array $adminLinks = [];
+    public bool $isAdmin = false;
 
     public function mount(): void
     {
         $user = Auth::user();
+        $this->isAdmin = $user && method_exists($user, 'isAdmin') && $user->isAdmin();
 
-        $baseLinks = [
+        $this->userLinks = [
             ['label' => 'Dashboard', 'icon' => 'fa-chart-line', 'route' => 'dashboard'],
             ['label' => 'Mis Archivos', 'icon' => 'fa-file-csv', 'route' => 'uploads.index'],
             ['label' => 'Subir CSV', 'icon' => 'fa-upload', 'route' => 'uploads.create'],
@@ -24,7 +27,7 @@ class Sidebar extends Component
             ['label' => 'Suscripciones', 'icon' => 'fa-credit-card', 'route' => 'billing.subscriptions'],
         ];
 
-        $adminLinks = [
+        $this->adminLinks = [
             ['label' => 'Admin Dashboard', 'icon' => 'fa-tachometer-alt', 'route' => 'admin.index'],
             ['label' => 'Panel Financiero', 'icon' => 'fa-euro-sign', 'route' => 'admin.financial.dashboard'],
             ['label' => 'Usuarios', 'icon' => 'fa-users', 'route' => 'admin.users.index'],
@@ -35,12 +38,6 @@ class Sidebar extends Component
             ['label' => 'Análisis de Créditos', 'icon' => 'fa-coins', 'route' => 'admin.credit.analytics'],
             ['label' => 'Configuración Stripe', 'icon' => 'fa-stripe-s', 'route' => 'admin.stripe.config'],
         ];
-
-        $this->links = $baseLinks;
-
-        if ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) {
-            $this->links = array_merge($this->links, $adminLinks);
-        }
     }
 
     public function render()

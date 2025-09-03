@@ -8,6 +8,7 @@ use App\Models\Upload;
 use App\Models\UploadMetric;
 use App\Services\CreditService;
 use App\Services\CsvTransformer;
+use App\Services\StreamingCsvTransformer;
 use App\Services\JobStatusService;
 use App\Services\NotificationService;
 use App\Services\UsageMeteringService;
@@ -155,14 +156,19 @@ class ProcessUploadJob implements ShouldQueue
                 'job_id' => $this->job->getJobId(),
             ]);
 
-            // Verify file exists
+                        // Verify file exists
             if (! Storage::disk($upload->disk)->exists($upload->path)) {
+                Log::error('Upload file not found in storage', [
+                    'upload_id' => $upload->id,
+                    'path' => $upload->path,
+                    'disk' => $upload->disk
+                ]);
                 throw new \Exception('Upload file not found in storage');
             }
 
-            // Get file content
-            $content = Storage::disk($upload->disk)->get($upload->path);
-            if (empty($content)) {
+            // Check file size instead of loading entire content
+            $fileSize = Storage::disk($upload->disk)->size($upload->path);
+            if ($fileSize === 0) {
                 throw new \Exception('Upload file is empty');
             }
 
@@ -179,20 +185,45 @@ class ProcessUploadJob implements ShouldQueue
                 );
             }
 
-            // Process CSV with transformation
-            $this->processCsvTransformation($upload, $csvTransformer, $jobStatusService);
+            // Choose transformer based on file size for optimal performance
+            $fileSize = Storage::disk($upload->disk)->size($upload->path);
+            $fileSizeMB = round($fileSize / 1024 / 1024, 2);
 
-            // Update row count if not set
-            if (! $upload->rows_count) {
+            if ($fileSizeMB > 50) {
+                // Use streaming transformer for large files (>50MB)
+                $streamingTransformer = app(StreamingCsvTransformer::class);
+                $this->processCsvTransformationStreaming($upload, $streamingTransformer, $jobStatusService);
+
+                Log::info('ProcessUploadJob: Used streaming transformer for large file', [
+                    'upload_id' => $upload->id,
+                    'file_size_mb' => $fileSizeMB,
+                    'transformer' => 'StreamingCsvTransformer'
+                ]);
+            } else {
+                // Use regular transformer for smaller files
+                $this->processCsvTransformation($upload, $csvTransformer, $jobStatusService);
+
+                Log::info('ProcessUploadJob: Used regular transformer for small file', [
+                    'upload_id' => $upload->id,
+                    'file_size_mb' => $fileSizeMB,
+                    'transformer' => 'CsvTransformer'
+                ]);
+            }
+
+            // Update row count if not set (skip for large files to avoid memory issues)
+            if (! $upload->rows_count && $fileSize < 50 * 1024 * 1024) { // Only for files < 50MB
+                $content = Storage::disk($upload->disk)->get($upload->path);
                 $rowCount = substr_count($content, "\n") + 1;
                 $upload->update(['rows_count' => $rowCount]);
 
-                $jobStatusService->logJobActivity(
-                    jobId: (int) $this->job->getJobId(),
-                    level: JobStatusService::LOG_LEVEL_INFO,
-                    message: "CSV row count determined: {$rowCount} rows",
-                    metadata: ['rows_count' => $rowCount]
-                );
+                if (!$this->shouldSkipJobStatusTracking()) {
+                    $jobStatusService->logJobActivity(
+                        jobId: (int) $this->job->getJobId(),
+                        level: JobStatusService::LOG_LEVEL_INFO,
+                        message: "CSV row count determined: {$rowCount} rows",
+                        metadata: ['rows_count' => $rowCount]
+                    );
+                }
             }
 
             // Force garbage collection to free up memory
@@ -366,7 +397,7 @@ class ProcessUploadJob implements ShouldQueue
         }
     }
 
-    /**
+        /**
      * Handle job failure.
      */
     public function failed(\Throwable $exception): void
@@ -505,7 +536,7 @@ class ProcessUploadJob implements ShouldQueue
     private function processCsvTransformation(Upload $upload, CsvTransformer $csvTransformer, JobStatusService $jobStatusService): void
     {
         try {
-            // Get absolute paths for the transformer
+                        // Get absolute paths for the transformer
             $inputPath = Storage::disk($upload->disk)->path($upload->path);
             $outputPath = $this->generateOutputPath($upload);
 
@@ -609,6 +640,60 @@ class ProcessUploadJob implements ShouldQueue
                     'error_line' => $e->getLine(),
                 ]
             );
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Process CSV transformation using the StreamingCsvTransformer service for large files.
+     */
+    private function processCsvTransformationStreaming(Upload $upload, StreamingCsvTransformer $streamingTransformer, JobStatusService $jobStatusService): void
+    {
+        try {
+            // Get absolute paths for the transformer
+            $inputPath = Storage::disk($upload->disk)->path($upload->path);
+            $outputPath = $this->generateOutputPath($upload);
+
+            // Ensure output directory exists
+            $outputDirectory = dirname($outputPath);
+            if (!Storage::disk($upload->disk)->exists($outputDirectory)) {
+                Storage::disk($upload->disk)->makeDirectory($outputDirectory);
+            }
+
+            $absoluteOutputPath = Storage::disk($upload->disk)->path($outputPath);
+
+            Log::info('ProcessUploadJob: Starting streaming CSV transformation', [
+                'upload_id' => $upload->id,
+                'input_path' => $inputPath,
+                'output_path' => $absoluteOutputPath,
+                'job_id' => $this->job->getJobId(),
+            ]);
+
+            // Perform the streaming CSV transformation
+            $streamingTransformer->transform($inputPath, $absoluteOutputPath);
+
+            // Verify output file was created
+            if (!Storage::disk($upload->disk)->exists($outputPath)) {
+                throw new \Exception('Streaming transformation completed but output file not found');
+            }
+
+            // Save the transformed file path to the upload record
+            $upload->update(['transformed_path' => $outputPath]);
+
+            Log::info('ProcessUploadJob: Streaming CSV transformation completed', [
+                'upload_id' => $upload->id,
+                'output_path' => $outputPath,
+                'output_size' => Storage::disk($upload->disk)->size($outputPath),
+                'job_id' => $this->job->getJobId(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('ProcessUploadJob: Streaming CSV transformation failed', [
+                'upload_id' => $upload->id,
+                'error' => $e->getMessage(),
+                'job_id' => $this->job->getJobId(),
+            ]);
 
             throw $e;
         }

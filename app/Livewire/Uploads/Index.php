@@ -25,6 +25,7 @@ class Index extends Component
         'statusFilter' => ['except' => ''],
         'sortField' => ['except' => 'created_at'],
         'sortDirection' => ['except' => 'desc'],
+        'perPage' => ['except' => 15],
     ];
 
     public function mount(): void
@@ -33,6 +34,11 @@ class Index extends Component
     }
 
     public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
     {
         $this->resetPage();
     }

@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Log;
 
 class UsageMeteringService
 {
-    // Free tier monthly limit (lines)
-    private const FREE_TIER_MONTHLY_LIMIT = 1000;
+    // Free tier monthly limit (lines) - only for users with NO credits
+    private const FREE_TIER_MONTHLY_LIMIT = 100;
 
     /**
      * Track the start of an upload process.
@@ -124,11 +124,23 @@ class UsageMeteringService
         return UploadMetric::getCurrentMonthUsageForUser($user->id);
     }
 
-    /**
+        /**
      * Check if user can process the specified number of lines.
+     * Only applies to free tier users (no credits).
      */
     public function canProcessLines(User $user, int $lineCount): bool
     {
+        // Admins have no limits at all
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        // Users with credits have no line limits - only credit limits apply
+        if ($user->credits > 0) {
+            return true;
+        }
+
+        // Only free tier users (no credits) have line limits
         $currentUsage = $this->getCurrentMonthUsage($user);
         $newTotal = $currentUsage + $lineCount;
 
@@ -234,13 +246,22 @@ class UsageMeteringService
         ];
     }
 
-    /**
+        /**
      * Get the monthly limit for a user based on their tier.
      */
     public function getMonthlyLimit(User $user): int
     {
-        // For now, all users have the same free tier limit
-        // This can be extended to support different subscription tiers
+        // Admins have no limits
+        if ($user->isAdmin()) {
+            return PHP_INT_MAX; // Effectively unlimited
+        }
+
+        // Users with credits have no line limits - only credit limits
+        if ($user->credits > 0) {
+            return PHP_INT_MAX; // Effectively unlimited
+        }
+
+        // Only free tier users (no credits) have line limits
         return self::FREE_TIER_MONTHLY_LIMIT;
     }
 

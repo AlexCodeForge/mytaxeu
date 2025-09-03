@@ -65,6 +65,26 @@
         Livewire.on('upload-error', (event) => {
             showToast('error', event.message || 'Error al subir el archivo. Inténtalo de nuevo.');
         });
+
+        Livewire.on('upload-info', (event) => {
+            showToast('success', event.message, 8000); // Show for 8 seconds
+        });
+
+        Livewire.on('show-period-confirmation', (event) => {
+            console.log('Period confirmation event received:', event);
+            // Show the period confirmation modal
+            const modal = document.getElementById('period-confirmation-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.classList.remove('hidden');
+                console.log('Modal shown');
+            } else {
+                console.error('Modal not found');
+                // Fallback: show an alert with the information
+                const periodsText = event.periods ? event.periods.join(', ') : 'N/A';
+                alert(`Períodos detectados: ${event.periodCount} (${periodsText})\nCréditos requeridos: ${event.requiredCredits}\nTus créditos actuales: ${event.userCredits}`);
+            }
+        });
     });
 </script>
 @endpush
@@ -197,7 +217,13 @@
                                 wire:model="csvFile"
                                 accept=".csv"
                                 x-ref="fileInput"
-                                x-on:change="fileSelected = $event.target.files.length > 0"
+                                x-on:change="
+                                    console.log('File input changed:', $event.target.files);
+                                    fileSelected = $event.target.files.length > 0;
+                                    if ($event.target.files.length > 0) {
+                                        console.log('File selected:', $event.target.files[0].name);
+                                    }
+                                "
                                 class="hidden"
                             >
 
@@ -211,7 +237,7 @@
                                 <p class="mb-2 text-sm text-gray-600">
                                     <span class="font-semibold text-blue-600">Haz clic para subir</span> o arrastra y suelta
                                 </p>
-                                <p class="text-xs text-gray-500">CSV (Máx. 10MB)</p>
+                                <p class="text-xs text-gray-500">CSV (Máx. 100MB)</p>
                             </div>
 
                             <!-- Analyzing State -->
@@ -272,7 +298,7 @@
 
                     <!-- Format Info -->
                     <div class="text-sm text-gray-500">
-                        <p>Formatos permitidos: CSV • Tamaño máximo: 10MB</p>
+        <p>Formatos permitidos: CSV • Tamaño máximo: 100MB</p>
                     </div>
 
                     <!-- Error Messages -->
@@ -313,14 +339,104 @@
                     </div>
                 @endif
 
+                                <!-- Period Confirmation Modal -->
+                @teleport('body')
+                <div id="period-confirmation-modal"
+                     class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                     style="display: {{ $showPeriodConfirmation && !empty($periodAnalysis) ? 'flex' : 'none' }};"
+                >
+                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Confirmar Procesamiento</h3>
+                            <button wire:click="cancelConfirmation" class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                <h4 class="text-sm font-medium text-blue-900 mb-2">Análisis del Archivo:</h4>
+                                <div class="text-sm text-blue-700 space-y-1">
+                                    <p><strong>Archivo:</strong> {{ $csvFile?->getClientOriginalName() }}</p>
+                                    <p><strong>Períodos detectados:</strong> {{ $periodAnalysis['period_count'] ?? 0 }}</p>
+                                    @if(!empty($periodAnalysis['periods']))
+                                        <div class="mt-2">
+                                            <p><strong>Períodos encontrados:</strong></p>
+                                            <ul class="list-disc list-inside ml-2 mt-1">
+                                                @foreach($periodAnalysis['periods'] as $period)
+                                                    <li>{{ $period }}</li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <h4 class="text-sm font-medium text-yellow-900 mb-2">Costo de Procesamiento:</h4>
+                                <div class="text-sm text-yellow-700 space-y-2">
+                                    <p>
+                                        <strong>Créditos requeridos:</strong>
+                                        <span class="font-bold text-yellow-900">{{ $periodAnalysis['required_credits'] ?? 0 }} crédito(s)</span>
+                                    </p>
+                                    <p>
+                                        <strong>Tus créditos actuales:</strong>
+                                        <span class="font-bold {{ $userCredits >= ($periodAnalysis['required_credits'] ?? 0) ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $userCredits }} crédito(s)
+                                        </span>
+                                    </p>
+                                    @if($userCredits >= ($periodAnalysis['required_credits'] ?? 0))
+                                        <p>
+                                            <strong>Créditos restantes después del procesamiento:</strong>
+                                            <span class="font-bold text-green-600">
+                                                {{ $userCredits - ($periodAnalysis['required_credits'] ?? 0) }} crédito(s)
+                                            </span>
+                                        </p>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="mt-4 text-sm text-gray-600">
+                                <p class="flex items-start">
+                                    <svg class="w-4 h-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Se cobrará <strong>1 crédito por cada período</strong> (mes) de actividad detectado en tu archivo CSV.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-3">
+                            <button
+                                wire:click="cancelConfirmation"
+                                class="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                wire:click="confirmUpload"
+                                class="flex-1 px-4 py-2 text-white bg-primary rounded-lg hover:bg-blue-700 transition-colors"
+                                @if($userCredits < ($periodAnalysis['required_credits'] ?? 0)) disabled @endif
+                            >
+                                Confirmar y Procesar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                @endteleport
+
                 <!-- Upload Instructions -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h4 class="text-sm font-medium text-blue-900 mb-2">Instrucciones:</h4>
                     <ul class="text-sm text-blue-700 space-y-1">
-                        <li>• Asegúrate de que tu archivo CSV tenga la estructura correcta</li>
+                        <li>• Asegúrate de que tu archivo CSV contenga la columna 'ACTIVITY_PERIOD' requerida</li>
+                        <li>• El costo es de <strong>1 crédito por cada período (mes)</strong> detectado en tu archivo</li>
+                        <li>• Se permite un máximo de 3 períodos distintos por archivo</li>
+                        <li>• <strong>Usuarios sin créditos:</strong> máximo 100 líneas por mes</li>
                         <li>• Los archivos se procesarán automáticamente en segundo plano</li>
                         <li>• Recibirás notificaciones por email sobre el estado del procesamiento</li>
-                        <li>• Puedes ver el progreso en la sección "Mis Archivos"</li>
                     </ul>
                 </div>
 
@@ -335,6 +451,8 @@
                     >
                         Cancelar
                     </button>
+
+
 
                     <button
                         type="submit"

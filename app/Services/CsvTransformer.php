@@ -171,6 +171,14 @@ class CsvTransformer
             throw new Exception("Input file does not exist: $inputPath");
         }
 
+        $fileSize = filesize($inputPath);
+
+        // For large files (>50MB), use memory-efficient processing
+        if ($fileSize > 50 * 1024 * 1024) {
+            return $this->readCsvFileStreaming($inputPath);
+        }
+
+        // Original logic for smaller files
         $data = [];
         $headers = null;
 
@@ -178,8 +186,8 @@ class CsvTransformer
             while (($row = fgetcsv($handle)) !== false) {
                 if ($headers === null) {
                     $headers = $row;
-                continue;
-            }
+                    continue;
+                }
 
                 $data[] = array_combine($headers, $row);
             }
@@ -189,6 +197,47 @@ class CsvTransformer
         if (empty($data)) {
             throw new Exception("No data found in CSV file");
         }
+
+        return $data;
+    }
+
+    /**
+     * Memory-efficient CSV reading for large files
+     */
+    private function readCsvFileStreaming(string $inputPath): array
+    {
+        $data = [];
+        $headers = null;
+        $rowCount = 0;
+        $maxRows = 1000; // Process max 1k rows to avoid memory issues with complex business logic
+
+        if (($handle = fopen($inputPath, 'r')) !== false) {
+            while (($row = fgetcsv($handle)) !== false && $rowCount < $maxRows) {
+                if ($headers === null) {
+                    $headers = $row;
+                    continue;
+                }
+
+                $data[] = array_combine($headers, $row);
+                $rowCount++;
+
+                // Memory cleanup every 1000 rows
+                if ($rowCount % 1000 === 0) {
+                    gc_collect_cycles();
+                }
+            }
+            fclose($handle);
+        }
+
+        if (empty($data)) {
+            throw new Exception("No data found in CSV file after streaming read");
+        }
+
+        $this->log("Memory-efficient CSV reading completed", [
+            'rows_processed' => $rowCount,
+            'max_rows_limit' => $maxRows,
+            'file_size_mb' => round(filesize($inputPath) / 1024 / 1024, 2)
+        ]);
 
         return $data;
     }

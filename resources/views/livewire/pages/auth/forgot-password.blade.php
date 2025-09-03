@@ -37,25 +37,52 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
-    <div class="mb-4 text-sm text-gray-600">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-black text-gray-900 mb-2">
+            <i class="fas fa-key text-primary mr-3"></i>Recuperar Contraseña
+        </h1>
+        <p class="text-gray-600">Te enviaremos un enlace para restablecer tu contraseña</p>
     </div>
 
     <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    <x-auth-session-status class="mb-6" :status="session('status')" />
 
-    <form wire:submit="sendPasswordResetLink">
+    <form wire:submit="sendPasswordResetLink" class="space-y-6">
         <!-- Email Address -->
         <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus />
+            <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">
+                <i class="fas fa-envelope text-primary mr-2"></i>Correo Electrónico
+            </label>
+            <input wire:model="email"
+                   id="email"
+                   type="email"
+                   name="email"
+                   required
+                   autofocus
+                   placeholder="tu@email.com"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 bg-white/90 backdrop-blur-sm text-gray-900 placeholder-gray-500" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
-                {{ __('Email Password Reset Link') }}
-            </x-primary-button>
+        <!-- Send Link Button -->
+                <button type="submit"
+                class="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center">
+            <i class="fas fa-paper-plane mr-2"></i>
+            <span wire:loading.remove wire:target="sendPasswordResetLink">Enviar Enlace de Recuperación</span>
+            <span wire:loading wire:target="sendPasswordResetLink" class="flex items-center">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Enviando enlace...
+            </span>
+        </button>
+
+        <!-- Back to Login -->
+        <div class="text-center pt-4 border-t border-gray-200">
+            <p class="text-gray-600 text-sm mb-3">¿Recordaste tu contraseña?</p>
+            <a href="{{ route('login') }}"
+               wire:navigate
+               class="inline-flex items-center px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-all duration-200">
+                <i class="fas fa-sign-in-alt mr-2"></i>Volver al Login
+            </a>
         </div>
     </form>
 </div>

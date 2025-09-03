@@ -30,12 +30,31 @@ new class extends Component
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <!-- User Links -->
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <x-nav-link :href="route('billing')" :active="request()->routeIs('billing*')" wire:navigate>
                         Facturación
                     </x-nav-link>
+
+                    <!-- Divider -->
+                    <div class="flex items-center">
+                        <div class="h-6 w-px bg-gray-300"></div>
+                    </div>
+
+                    <!-- Admin Links -->
+                    @can('admin')
+                        <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')" wire:navigate>
+                            Admin Panel
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.users')" :active="request()->routeIs('admin.users*')" wire:navigate>
+                            Usuarios
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings*')" wire:navigate>
+                            Configuración
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -84,12 +103,36 @@ new class extends Component
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
-                {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('billing')" :active="request()->routeIs('billing*')" wire:navigate>
-                Facturación
-            </x-responsive-nav-link>
+            <!-- User Links -->
+            <div class="border-b border-gray-200 pb-2 mb-2">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-1">
+                    Usuario
+                </div>
+                <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
+                    {{ __('Dashboard') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('billing')" :active="request()->routeIs('billing*')" wire:navigate>
+                    Facturación
+                </x-responsive-nav-link>
+            </div>
+
+            <!-- Admin Links -->
+            @can('admin')
+                <div class="pt-2">
+                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-1">
+                        Administración
+                    </div>
+                    <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')" wire:navigate>
+                        Admin Panel
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.users')" :active="request()->routeIs('admin.users*')" wire:navigate>
+                        Usuarios
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings*')" wire:navigate>
+                        Configuración
+                    </x-responsive-nav-link>
+                </div>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->
