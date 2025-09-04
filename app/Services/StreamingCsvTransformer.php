@@ -44,9 +44,9 @@ class StreamingCsvTransformer
         'TOTAL_PRICE_OF_ITEMS_AMT_VAT_EXCL', 'SHIP_CHARGE_AMT_VAT_EXCL', 'PROMO_SHIP_CHARGE_AMT_VAT_EXCL',
         'TOTAL_SHIP_CHARGE_AMT_VAT_EXCL', 'GIFT_WRAP_AMT_VAT_EXCL', 'PROMO_GIFT_WRAP_AMT_VAT_EXCL',
         'TOTAL_GIFT_WRAP_AMT_VAT_EXCL', 'TOTAL_ACTIVITY_VALUE_AMT_VAT_EXCL',
-        'PRICE_OF_ITEMS_VAT_RATE_PERCENT', 'PRICE_OF_ITEMS_VAT_AMT', 'PROMO_PRICE_OF_ITEMS_VAT_AMT',
-        'TOTAL_PRICE_OF_ITEMS_VAT_AMT', 'SHIP_CHARGE_VAT_RATE_PERCENT', 'SHIP_CHARGE_VAT_AMT',
-        'PROMO_SHIP_CHARGE_VAT_AMT', 'TOTAL_SHIP_CHARGE_VAT_AMT', 'GIFT_WRAP_VAT_RATE_PERCENT',
+        'PRICE_OF_ITEMS_VAT_AMT', 'PROMO_PRICE_OF_ITEMS_VAT_AMT',
+        'TOTAL_PRICE_OF_ITEMS_VAT_AMT', 'SHIP_CHARGE_VAT_AMT',
+        'PROMO_SHIP_CHARGE_VAT_AMT', 'TOTAL_SHIP_CHARGE_VAT_AMT',
         'GIFT_WRAP_VAT_AMT', 'PROMO_GIFT_WRAP_VAT_AMT', 'TOTAL_GIFT_WRAP_VAT_AMT', 'TOTAL_ACTIVITY_VALUE_VAT_AMT',
         'PRICE_OF_ITEMS_AMT_VAT_INCL', 'PROMO_PRICE_OF_ITEMS_AMT_VAT_INCL', 'TOTAL_PRICE_OF_ITEMS_AMT_VAT_INCL',
         'SHIP_CHARGE_AMT_VAT_INCL', 'PROMO_SHIP_CHARGE_AMT_VAT_INCL', 'TOTAL_SHIP_CHARGE_AMT_VAT_INCL',
@@ -259,24 +259,25 @@ class StreamingCsvTransformer
 
         $categories = [];
 
-        // EXACT Python logic structure: B2C/B2B is standalone IF (can be combined with others)
+        // PYTHON EXACT LOGIC: B2C/B2B is standalone IF (can combine with anything)
         if (in_array($reportingScheme, ['REGULAR', 'UK_VOEC-DOMESTIC']) && $taxResponsibility === 'SELLER') {
             $categories[] = 'Ventas locales al consumidor final - B2C y B2B (EUR)';
         }
 
-        // SIN IVA is also standalone IF (can be combined with B2C/B2B)
+        // PYTHON EXACT LOGIC: SIN IVA + ELIF chain (SIN IVA is mutually exclusive with the elif categories)
+        // Python uses pd.isna() which only returns True for actual null/NaN values, not empty strings
         if ($departCountry === $arrivalCountry &&
             $vatAmount == 0 &&
-            empty($buyerVat) &&
+            $buyerVat === null &&
             $taxResponsibility === 'SELLER') {
             $categories[] = 'Ventas locales SIN IVA (EUR)';
         }
-        // The rest form an ELIF chain (mutually exclusive)
+        // ELIF chain relative to SIN IVA check above (Python lines 125-172)
         elseif ($departCountry !== $arrivalCountry &&
             in_array($departCountry, self::EU_COUNTRIES) &&
             in_array($arrivalCountry, self::EU_COUNTRIES) &&
             $departCountry !== 'GB' && $arrivalCountry !== 'GB' &&
-            !empty($buyerVat) && $taxResponsibility === 'SELLER' && $reportingScheme === 'REGULAR') {
+            $buyerVat !== null && $taxResponsibility === 'SELLER' && $reportingScheme === 'REGULAR') {
             $categories[] = 'Ventas Intracomunitarias de bienes - B2B (EUR)';
         }
         elseif ($reportingScheme === 'UNION-OSS') {
@@ -338,15 +339,18 @@ class StreamingCsvTransformer
         $jurisdiction = $transaction['TAXABLE_JURISDICTION'] ?? '';
         if (empty($jurisdiction)) return;
 
+
         // Python logic: Calculate "Calculated Base" using VAT rate division, but keep original IVA
-        $vatRate = $transaction['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0;
-        $ivaAmount = $transaction['IVA (€)'];
+        $vatRate = (float)($transaction['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0);
+        $ivaAmount = (float)($transaction['IVA (€)'] ?? 0);
+        $baseAmount = (float)($transaction['Base (€)'] ?? 0);
 
         // Python line 226-229: IVA / VAT_RATE if IVA > 0, else Base
-        if ($ivaAmount > 0) {
-            $calculatedBase = $ivaAmount / $vatRate;  // Python uses direct division, no percentage conversion
+        // Handle division by zero case properly
+        if ($ivaAmount > 0 && $vatRate > 0) {
+            $calculatedBase = $ivaAmount / $vatRate;  // Python uses direct division
         } else {
-            $calculatedBase = $transaction['Base (€)'];
+            $calculatedBase = $baseAmount;
         }
 
         if (!isset($this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction])) {
@@ -359,8 +363,8 @@ class StreamingCsvTransformer
         }
 
         $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $calculatedBase;
-        $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['IVA (€)'] += $transaction['IVA (€)'];
-        $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Total (€)'] += $transaction['Total (€)'];
+        $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['IVA (€)'] += $ivaAmount;
+        $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Total (€)'] += (float)($transaction['Total (€)'] ?? 0);
     }
 
     private function aggregateIntracomunitarias(array $transaction): void
