@@ -20,6 +20,7 @@ class Index extends Component
     public string $sortField = 'created_at';
     public string $sortDirection = 'desc';
     public int $perPage = 15;
+    public bool $autoRefresh = true;
 
     protected $queryString = [
         'statusFilter' => ['except' => ''],
@@ -68,6 +69,15 @@ class Index extends Component
 
     public function deleteUpload(int $uploadId): void
     {
+        // Ensure only admins can delete uploads
+        if (!auth()->user()->isAdmin()) {
+            $this->dispatch('flash-message', [
+                'type' => 'error',
+                'message' => 'No tienes permisos para realizar esta acción.'
+            ]);
+            return;
+        }
+
         $upload = Upload::findOrFail($uploadId);
 
         $this->authorize('delete', $upload);
@@ -129,6 +139,17 @@ class Index extends Component
     {
         // Refresh the uploads list when a new upload is created
         $this->resetPage();
+    }
+
+    public function refreshUploads(): void
+    {
+        // Force refresh of the uploads list to get latest status
+        $this->dispatch('$refresh');
+    }
+
+    public function toggleAutoRefresh(): void
+    {
+        $this->autoRefresh = !$this->autoRefresh;
     }
 
     public function getStatusCounts(): array

@@ -1,25 +1,11 @@
-<div class="p-6 bg-white min-h-screen" @if($autoRefresh) wire:poll.{{ $pollingInterval }}s @endif>
+<div class="p-6 bg-white min-h-screen" wire:poll.30s x-data="adminDashboard()" x-init="init()">
     {{-- Header --}}
     <div class="mb-8">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p class="mt-1 text-sm text-gray-600">
-                    System Overview and Key Metrics
-                </p>
-            </div>
-            <div class="flex items-center space-x-4">
-                <button wire:click="$refresh"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    <i class="fas fa-sync-alt mr-2"></i>
-                    Refresh
-                </button>
-                <button wire:click="toggleAutoRefresh"
-                        class="px-4 py-2 {{ $autoRefresh ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700' }} text-white rounded-lg transition-colors">
-                    <i class="fas fa-{{ $autoRefresh ? 'pause' : 'play' }} mr-2"></i>
-                    {{ $autoRefresh ? 'Pause' : 'Auto-refresh' }}
-                </button>
-            </div>
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Panel de Administración</h1>
+            <p class="mt-1 text-sm text-gray-600">
+                Resumen del Sistema y Métricas Clave
+            </p>
         </div>
     </div>
 
@@ -35,7 +21,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Total de Usuarios</dt>
                         <dd class="text-2xl font-semibold text-gray-900">{{ number_format($metrics['total_users']) }}</dd>
                     </dl>
                 </div>
@@ -43,7 +29,7 @@
             <div class="mt-4">
                 <div class="flex items-center text-sm">
                     <span class="text-green-600 font-medium">+{{ $metrics['new_users_today'] }}</span>
-                    <span class="text-gray-500 ml-2">today</span>
+                    <span class="text-gray-500 ml-2">hoy</span>
                 </div>
             </div>
         </div>
@@ -58,7 +44,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Total Uploads</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Total de Cargas</dt>
                         <dd class="text-2xl font-semibold text-gray-900">{{ number_format($metrics['total_uploads']) }}</dd>
                     </dl>
                 </div>
@@ -66,29 +52,29 @@
             <div class="mt-4">
                 <div class="flex items-center text-sm">
                     <span class="text-green-600 font-medium">+{{ $metrics['uploads_today'] }}</span>
-                    <span class="text-gray-500 ml-2">today</span>
+                    <span class="text-gray-500 ml-2">hoy</span>
                 </div>
             </div>
         </div>
 
-        {{-- Success Rate --}}
+        {{-- Error Rate --}}
         <div class="bg-white p-6 rounded-lg shadow border">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-chart-line text-white"></i>
+                    <div class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-white"></i>
                     </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Success Rate</dt>
-                        <dd class="text-2xl font-semibold text-gray-900">{{ number_format($metrics['success_rate'], 1) }}%</dd>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Tasa de Error</dt>
+                        <dd class="text-2xl font-semibold text-gray-900">{{ number_format($metrics['error_rate'], 1) }}%</dd>
                     </dl>
                 </div>
             </div>
             <div class="mt-4">
                 <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-yellow-500 h-2 rounded-full" style="width: {{ $metrics['success_rate'] }}%"></div>
+                    <div class="bg-red-500 h-2 rounded-full" style="width: {{ $metrics['error_rate'] }}%"></div>
                 </div>
             </div>
         </div>
@@ -103,7 +89,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Active Users</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Usuarios Activos</dt>
                         <dd class="text-2xl font-semibold text-gray-900">{{ number_format($metrics['active_users']) }}</dd>
                     </dl>
                 </div>
@@ -111,7 +97,7 @@
             <div class="mt-4">
                 <div class="flex items-center text-sm">
                     <span class="text-purple-600 font-medium">{{ number_format($metrics['active_percentage'], 1) }}%</span>
-                    <span class="text-gray-500 ml-2">of total</span>
+                    <span class="text-gray-500 ml-2">del total</span>
                 </div>
             </div>
         </div>
@@ -121,24 +107,36 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {{-- Upload Trends Chart --}}
         <div class="bg-white p-6 rounded-lg shadow border">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Upload Trends (Last 7 Days)</h3>
-            <div class="h-64">
-                <canvas id="uploadsChart"></canvas>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Tendencias de Carga (Últimos 7 Días)</h3>
+            <div class="h-64 relative">
+                            {{-- Chart Canvas --}}
+            <canvas id="uploadsChart"
+                    x-ref="uploadsChart"
+                    class="w-full h-full border border-gray-200"
+                    wire:ignore
+                    style="display: block; width: 100%; height: 100%;">
+            </canvas>
+
+            {{-- Debug Info --}}
+            <div class="absolute top-2 right-2 text-xs text-gray-500">
+                <span x-text="chart ? 'Chart OK' : 'No Chart'"></span>
+                <span> | Data: {{ count($trendData ?? []) }} points</span>
+            </div>
             </div>
         </div>
 
         {{-- System Status --}}
         <div class="bg-white p-6 rounded-lg shadow border">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Estado del Sistema</h3>
             <div class="space-y-4">
                 {{-- Queue Status --}}
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <div class="w-3 h-3 rounded-full {{ $systemHealth['queue_status'] === 'healthy' ? 'bg-green-500' : 'bg-red-500' }} mr-3"></div>
-                        <span class="text-sm font-medium text-gray-900">Queue System</span>
+                        <span class="text-sm font-medium text-gray-900">Sistema de Colas</span>
                     </div>
                     <span class="text-sm text-gray-500">
-                        {{ $systemHealth['queued_jobs'] }} jobs queued
+                        {{ $systemHealth['queued_jobs'] }} trabajos en cola
                     </span>
                 </div>
 
@@ -146,10 +144,10 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <div class="w-3 h-3 rounded-full {{ $systemHealth['storage_status'] === 'healthy' ? 'bg-green-500' : 'bg-yellow-500' }} mr-3"></div>
-                        <span class="text-sm font-medium text-gray-900">Storage</span>
+                        <span class="text-sm font-medium text-gray-900">Almacenamiento</span>
                     </div>
                     <span class="text-sm text-gray-500">
-                        {{ $storageMetrics['total_storage_formatted'] }} used
+                        {{ $storageMetrics['total_storage_formatted'] }} utilizados
                     </span>
                 </div>
 
@@ -157,107 +155,172 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <div class="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-                        <span class="text-sm font-medium text-gray-900">Database</span>
+                        <span class="text-sm font-medium text-gray-900">Base de Datos</span>
                     </div>
-                    <span class="text-sm text-gray-500">Operational</span>
+                    <span class="text-sm text-gray-500">Operacional</span>
                 </div>
             </div>
         </div>
     </div>
 
     {{-- Storage and Performance Metrics --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {{-- Storage Metrics --}}
         <div class="bg-white p-6 rounded-lg shadow border">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Storage Usage</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Uso de Almacenamiento</h3>
             <div class="space-y-4">
                 <div>
                     <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        <span>Total Storage Used</span>
+                        <span>Almacenamiento Total Usado</span>
                         <span>{{ $storageMetrics['total_storage_formatted'] }}</span>
                     </div>
                 </div>
                 <div>
                     <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        <span>Average File Size</span>
+                        <span>Tamaño Promedio de Archivo</span>
                         <span>{{ $storageMetrics['average_file_size_formatted'] }}</span>
                     </div>
                 </div>
                 <div>
                     <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        <span>Files Processed Today</span>
+                        <span>Archivos Procesados Hoy</span>
                         <span>{{ number_format($storageMetrics['files_today']) }}</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Performance Metrics & Export --}}
+        {{-- Performance Metrics --}}
         <div class="bg-white p-6 rounded-lg shadow border">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Performance & Reports</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Métricas de Rendimiento</h3>
             <div class="space-y-4">
                 <div>
                     <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        <span>Avg Processing Time</span>
+                        <span>Tiempo Promedio de Procesamiento</span>
                         <span>{{ $performanceMetrics['average_processing_time_formatted'] }}</span>
                     </div>
                 </div>
                 <div>
                     <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        <span>Files Processed</span>
+                        <span>Archivos Procesados</span>
                         <span>{{ number_format($performanceMetrics['processed_count']) }}</span>
                     </div>
                 </div>
                 <div>
                     <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        <span>Queue Health</span>
+                        <span>Estado de la Cola</span>
                         <span class="
                             @if($systemHealth['queued_jobs'] < 10) text-green-600
                             @elseif($systemHealth['queued_jobs'] < 50) text-yellow-600
                             @else text-red-600
                             @endif">
-                            {{ $systemHealth['queued_jobs'] }} queued
+                            {{ $systemHealth['queued_jobs'] }} en cola
                         </span>
-                    </div>
-                </div>
-                <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <div class="space-y-2">
-                        <button wire:click="exportSystemMetrics"
-                                class="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">
-                            Export System Metrics
-                        </button>
-                        <button wire:click="exportUploadMetrics"
-                                class="w-full px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
-                            Export Processing Metrics
-                        </button>
-                        <button wire:click="exportUsers"
-                                class="w-full px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors">
-                            Export Users Report
-                        </button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        {{-- Quick Actions --}}
-        <div class="bg-white p-6 rounded-lg shadow border">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div class="space-y-3">
-                <button wire:click="navigateToUsers"
-                        class="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors text-left">
-                    <i class="fas fa-users mr-2"></i>
-                    Manage Users
+    {{-- Detailed Usage Analytics --}}
+    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-900">Análisis Detallado de Uso</h3>
+                <button wire:click="loadUsageAnalytics"
+                        class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                    <svg class="-ml-1 mr-1.5 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Actualizar
                 </button>
-                <button wire:click="navigateToUploads"
-                        class="w-full px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors text-left">
-                    <i class="fas fa-file-upload mr-2"></i>
-                    View Uploads
-                </button>
-                <button wire:click="navigateToJobs"
-                        class="w-full px-4 py-2 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700 transition-colors text-left">
-                    <i class="fas fa-tasks mr-2"></i>
-                    Monitor Jobs
-                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {{-- Total Lines Processed --}}
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['total_lines_processed'] ?? 0) }}</p>
+                            <p class="text-sm text-gray-600">Líneas Procesadas</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Successful Uploads --}}
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['successful_uploads'] ?? 0) }}</p>
+                            <p class="text-sm text-gray-600">Cargas Exitosas</p>
+                            <p class="text-xs text-gray-500">{{ number_format($usageAnalytics['success_rate_percentage'] ?? 0, 1) }}% éxito</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Total File Size --}}
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['total_file_size_mb'] ?? 0, 1) }}</p>
+                            <p class="text-sm text-gray-600">MB Procesados</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Failed Uploads --}}
+                <div class="bg-red-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['failed_uploads'] ?? 0) }}</p>
+                            <p class="text-sm text-gray-600">Cargas Fallidas</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {{-- Processing Time --}}
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 mb-2">Tiempo Total de Procesamiento</h4>
+                    <p class="text-lg font-semibold">{{ gmdate('H:i:s', $usageAnalytics['total_processing_time_seconds'] ?? 0) }}</p>
+                </div>
+
+                {{-- Average Processing Time --}}
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 mb-2">Tiempo Promedio por Archivo</h4>
+                    <p class="text-lg font-semibold">{{ number_format($usageAnalytics['average_processing_time_seconds'] ?? 0, 1) }}s</p>
+                </div>
+
+                {{-- Successful vs Failed --}}
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 mb-2">Exitosos / Fallidos</h4>
+                    <p class="text-lg font-semibold">
+                        <span class="text-green-600">{{ number_format($usageAnalytics['successful_uploads'] ?? 0) }}</span>
+                        /
+                        <span class="text-red-600">{{ number_format($usageAnalytics['failed_uploads'] ?? 0) }}</span>
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -267,8 +330,8 @@
         {{-- Recent Activity --}}
         <div class="bg-white p-6 rounded-lg shadow border">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
-                <span class="text-sm text-gray-500">Last 24 hours</span>
+                <h3 class="text-lg font-semibold text-gray-900">Actividad Reciente</h3>
+                <span class="text-sm text-gray-500">Últimas 24 horas</span>
             </div>
             @if($recentActivity && count($recentActivity) > 0)
                 <div class="space-y-3">
@@ -303,7 +366,7 @@
             @else
                 <div class="text-center py-8">
                     <i class="fas fa-clock text-gray-400 text-3xl mb-4"></i>
-                    <p class="text-gray-500">No recent activity</p>
+                    <p class="text-gray-500">Sin actividad reciente</p>
                 </div>
             @endif
         </div>
@@ -311,8 +374,8 @@
         {{-- Recent Users --}}
         <div class="bg-white p-6 rounded-lg shadow border">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Recent Users</h3>
-                <span class="text-sm text-gray-500">Last 7 days</span>
+                <h3 class="text-lg font-semibold text-gray-900">Usuarios Recientes</h3>
+                <span class="text-sm text-gray-500">Últimos 7 días</span>
             </div>
             @if($recentUsers && count($recentUsers) > 0)
                 <div class="space-y-3">
@@ -328,7 +391,7 @@
                                     {{ $user['name'] }}
                                 </p>
                                 <p class="text-sm text-gray-500">
-                                    {{ $user['email'] }} • {{ $user['uploads_count'] }} uploads
+                                    {{ $user['email'] }} • {{ $user['uploads_count'] }} cargas
                                 </p>
                             </div>
                         </div>
@@ -337,7 +400,7 @@
             @else
                 <div class="text-center py-8">
                     <i class="fas fa-users text-gray-400 text-3xl mb-4"></i>
-                    <p>No recent users</p>
+                    <p>Sin usuarios recientes</p>
                 </div>
             @endif
         </div>
@@ -346,111 +409,269 @@
 
 </div>
 
-@assets
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-@endassets
+{{-- Chart.js is already loaded via app.js --}}
 
 @script
 <script>
-// Initialize chart
-function initializeChart() {
-    const ctx = document.getElementById('uploadsChart');
-    if (!ctx) return;
+Alpine.data('adminDashboard', () => ({
+    chart: null,
 
-    const trendData = @json($trendData);
+    init() {
+        console.log('🚀 Alpine adminDashboard init started');
+        console.log('🚀 Available refs:', Object.keys(this.$refs || {}));
 
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: trendData.map(item => item.date),
-            datasets: [{
-                label: 'Uploads',
-                data: trendData.map(item => item.uploads),
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(0,0,0,0.1)'
-                    }
-                },
-                x: {
-                    grid: {
-                        color: 'rgba(0,0,0,0.1)'
-                    }
-                }
+        // Initialize chart if canvas exists
+        this.$nextTick(() => {
+            console.log('🔄 Next tick - checking for canvas');
+            console.log('🔄 Canvas ref:', this.$refs.uploadsChart);
+
+            if (this.$refs.uploadsChart) {
+                console.log('✅ Canvas found, initializing chart');
+                this.initializeChart();
+            } else {
+                console.error('❌ Canvas not found in refs');
             }
-        }
-    });
-}
-
-// Initialize chart when component loads
-initializeChart();
-
-// Handle export functionality
-$wire.on('start-export', async (data) => {
-    try {
-        const response = await fetch(`/admin/exports/${data[0].type}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify(data[0].filters || {})
         });
 
-        const result = await response.json();
+        // Listen for Livewire updates
+        this.$wire.on('dashboard-data-refreshed', () => {
+            console.log('Dashboard data refreshed');
+            this.updateChart();
+        });
 
-        if (result.success) {
-            // Show success notification with download link
-            const notification = document.createElement('div');
-            notification.className = 'fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50';
-            notification.innerHTML = `
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-check-circle"></i>
-                    <div>
-                        <p class="font-medium">Export ready!</p>
-                        <button onclick="window.open('${result.download_url}', '_blank')"
-                                class="mt-2 px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">
-                            Download CSV
-                        </button>
-                    </div>
-                    <button onclick="this.parentElement.parentElement.remove()"
-                            class="ml-4 text-green-200 hover:text-white">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            document.body.appendChild(notification);
+        // Listen for Livewire component updates
+        Livewire.hook('morph.updated', ({ el, component }) => {
+            if (el.querySelector('[x-ref="uploadsChart"]')) {
+                setTimeout(() => {
+                    this.initializeChart();
+                }, 100);
+            }
+        });
+    },
 
-            // Auto-remove notification after 30 seconds
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 30000);
-        } else {
-            // Show error notification
-            alert('Export failed: ' + result.message);
+    initializeChart() {
+        console.log('🎯 Chart initialization started');
+        console.log('Alpine refs:', this.$refs);
+        console.log('Window Chart:', !!window.Chart);
+        console.log('Canvas element:', this.$refs.uploadsChart);
+
+        if (this.$refs.uploadsChart) {
+            const canvas = this.$refs.uploadsChart;
+            console.log('📏 Canvas dimensions:', {
+                width: canvas.width,
+                height: canvas.height,
+                clientWidth: canvas.clientWidth,
+                clientHeight: canvas.clientHeight,
+                offsetWidth: canvas.offsetWidth,
+                offsetHeight: canvas.offsetHeight,
+                style: canvas.style.cssText,
+                display: getComputedStyle(canvas).display,
+                visibility: getComputedStyle(canvas).visibility
+            });
         }
-    } catch (error) {
-        console.error('Export error:', error);
-        alert('Export failed: ' + error.message);
+
+        if (!window.Chart) {
+            console.error('❌ Chart.js not loaded!');
+            return;
+        }
+
+        if (!this.$refs.uploadsChart) {
+            console.error('❌ Canvas not found!');
+            return;
+        }
+
+        const ctx = this.$refs.uploadsChart.getContext('2d');
+        const trendData = @js($trendData ?? []);
+
+        console.log('📊 Chart data received:', trendData);
+        console.log('📊 Data type:', typeof trendData);
+        console.log('📊 Is array:', Array.isArray(trendData));
+        console.log('📊 Data length:', trendData ? trendData.length : 0);
+
+        // Destroy existing chart if it exists
+        if (this.chart) {
+            console.log('🗑️ Destroying existing chart');
+            this.chart.destroy();
+        }
+
+        try {
+            console.log('📈 Creating chart with trend data:', trendData);
+
+            this.chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trendData.map(item => item.date || ''),
+                    datasets: [{
+                        label: 'Cargas',
+                        data: trendData.map(item => item.uploads || 0),
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: 'rgb(59, 130, 246)',
+                            borderWidth: 1,
+                            cornerRadius: 6,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Cargas: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#6B7280',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                color: '#6B7280',
+                                font: {
+                                    size: 11
+                                },
+                                stepSize: 1,
+                                callback: function(value) {
+                                    return Math.floor(value) === value ? value : '';
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    elements: {
+                        point: {
+                            hoverRadius: 8
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+
+            console.log('✅ Chart created successfully!', this.chart);
+            console.log('📊 Chart canvas:', this.chart.canvas);
+            console.log('📊 Chart visible:', this.chart.canvas.style.display !== 'none');
+
+            // Force a manual render to make sure chart shows up
+            setTimeout(() => {
+                if (this.chart) {
+                    this.chart.resize();
+                    this.chart.update();
+                    console.log('🔄 Chart manually updated');
+                }
+            }, 100);
+
+        } catch (error) {
+            console.error('❌ Error creating chart:', error);
+            console.error('Error details:', error.message);
+            console.error('Error stack:', error.stack);
+
+            // Try a simple fallback chart
+            this.createFallbackChart(ctx);
+        }
+    },
+
+    updateChart() {
+        if (!this.chart) {
+            this.initializeChart();
+            return;
+        }
+
+        // Get fresh trend data from Livewire
+        this.$wire.get('trendData').then(trendData => {
+            if (!trendData || !Array.isArray(trendData)) {
+                return;
+            }
+
+            this.chart.data.labels = trendData.map(item => item.date || '');
+            this.chart.data.datasets[0].data = trendData.map(item => item.uploads || 0);
+            this.chart.update('active');
+
+            console.log('Chart updated with new data');
+        }).catch(error => {
+            console.error('Error updating chart data:', error);
+        });
+    },
+
+    createFallbackChart(ctx) {
+        console.log('🔄 Creating fallback chart');
+        try {
+            this.chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Test'],
+                    datasets: [{
+                        label: 'Test Data',
+                        data: [10],
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Chart.js Test'
+                        }
+                    }
+                }
+            });
+            console.log('✅ Fallback chart created');
+        } catch (error) {
+            console.error('❌ Even fallback chart failed:', error);
+        }
     }
-});
+}));
 </script>
 @endscript

@@ -287,24 +287,6 @@
     </div>
   </div>
 
-  <!-- Export Section -->
-  <div class="rounded-lg bg-white p-6 shadow">
-    <div class="flex items-center justify-between">
-      <div>
-        <h3 class="text-lg font-medium leading-6 text-gray-900">Exportar Datos</h3>
-        <p class="mt-1 text-sm text-gray-500">Descarga los datos financieros para análisis externo.</p>
-      </div>
-      <div class="flex space-x-3">
-        <button wire:click="exportData('csv')"
-                class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-          <svg class="-ml-0.5 mr-1.5 h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-          </svg>
-          Exportar CSV
-        </button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- Alpine.js for enhanced interactivity -->
@@ -345,10 +327,6 @@
         this.updateSubscriptionChart();
       });
 
-      this.$wire.on('financial-data-exported', (format) => {
-        console.log('Data exported in format:', format);
-        this.showToast('success', `Datos exportados en formato ${format.toUpperCase()}`);
-      });
 
       this.$wire.on('show-toast', (event) => {
         this.showToast(event.type || 'info', event.message);
@@ -472,7 +450,12 @@
       const ctx = this.$refs.subscriptionChart.getContext('2d');
       const subscriptionData = @js($subscriptionBreakdown ?? []);
 
-      if (Object.keys(subscriptionData).length === 0) {
+      // Check if we have any data or if all values are zero
+      const hasData = Object.keys(subscriptionData).length > 0;
+      const totalSubscriptions = hasData ? Object.values(subscriptionData).reduce((a, b) => a + b, 0) : 0;
+
+      if (!hasData) {
+        console.log('No subscription data available');
         return;
       }
 
@@ -500,6 +483,42 @@
       const backgroundColors = Object.keys(subscriptionData).map(status =>
         statusColors[status] || statusColors.default
       );
+
+      // Create empty doughnut plugin for when all values are zero
+      const emptyDoughnutPlugin = {
+        id: 'emptyDoughnut',
+        afterDraw(chart, args, options) {
+          const {datasets} = chart.data;
+          const {color, width, radiusDecrease} = options;
+          let hasData = false;
+
+          for (let i = 0; i < datasets.length; i += 1) {
+            const dataset = datasets[i];
+            const total = dataset.data.reduce((a, b) => a + b, 0);
+            hasData |= total > 0;
+          }
+
+          if (!hasData) {
+            const {chartArea: {left, top, right, bottom}, ctx} = chart;
+            const centerX = (left + right) / 2;
+            const centerY = (top + bottom) / 2;
+            const r = Math.min(right - left, bottom - top) / 2;
+
+            ctx.beginPath();
+            ctx.lineWidth = width || 2;
+            ctx.strokeStyle = color || 'rgba(156, 163, 175, 0.5)'; // gray-400
+            ctx.arc(centerX, centerY, (r - (radiusDecrease || 20)), 0, 2 * Math.PI);
+            ctx.stroke();
+
+            // Add text in the center
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'rgba(107, 114, 128, 0.8)'; // gray-500
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillText('Sin datos', centerX, centerY);
+          }
+        }
+      };
 
       this.subscriptionChart = new Chart(ctx, {
         type: 'doughnut',
@@ -532,10 +551,16 @@
               callbacks: {
                 label: function(context) {
                   const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  if (total === 0) return `${context.label}: 0 (0%)`;
                   const percentage = Math.round((context.parsed / total) * 100);
                   return `${context.label}: ${context.parsed} (${percentage}%)`;
                 }
               }
+            },
+            emptyDoughnut: {
+              color: 'rgba(156, 163, 175, 0.5)',
+              width: 3,
+              radiusDecrease: 20
             }
           },
           cutout: '50%',
@@ -543,7 +568,8 @@
             duration: 1000,
             easing: 'easeInOutQuart'
           }
-        }
+        },
+        plugins: [emptyDoughnutPlugin]
       });
     },
 
@@ -603,6 +629,8 @@
         this.subscriptionChart.data.labels = labels;
         this.subscriptionChart.data.datasets[0].data = data;
         this.subscriptionChart.data.datasets[0].backgroundColor = backgroundColors;
+
+        // Update will trigger the empty state plugin if all values are 0
         this.subscriptionChart.update('active');
       });
     },
@@ -617,6 +645,7 @@
         this.initializeChart();
       }
     },
+
 
     showToast(type, message) {
       // Simple toast implementation

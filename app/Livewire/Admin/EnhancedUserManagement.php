@@ -14,10 +14,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class EnhancedUserManagement extends Component
 {
-    use WithPagination;
+    use WithPagination, AuthorizesRequests;
 
     public string $search = '';
     public string $activityFilter = 'all'; // all, active, inactive
@@ -35,7 +36,11 @@ class EnhancedUserManagement extends Component
     public ?User $selectedUser = null;
     public array $userStats = [];
     public array $userActivity = [];
-    public array $userLoginHistory = [];
+
+    // Credit management
+    public bool $showCreditsModal = false;
+    public int $creditsChange = 0;
+    public string $creditsOperation = 'add'; // add or subtract
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -48,7 +53,7 @@ class EnhancedUserManagement extends Component
     public function mount(): void
     {
         if (!Auth::user()->isAdmin()) {
-            abort(403, 'Access denied');
+            abort(403, 'Acceso denegado');
         }
     }
 
@@ -95,7 +100,8 @@ class EnhancedUserManagement extends Component
     {
         $this->selectedUserId = $userId;
         $this->selectedUser = User::with(['uploads', 'uploadMetrics'])->findOrFail($userId);
-        $this->loadUserData();
+        $this->loadUserStats();
+        $this->loadUserActivity();
         $this->showUserModal = true;
     }
 
@@ -106,14 +112,13 @@ class EnhancedUserManagement extends Component
         $this->selectedUser = null;
         $this->userStats = [];
         $this->userActivity = [];
-        $this->userLoginHistory = [];
     }
 
     public function suspendUser(int $userId): void
     {
         if ($userId === Auth::id()) {
             $this->dispatch('show-notification', [
-                'message' => 'You cannot suspend yourself',
+                'message' => 'No puedes suspenderte a ti mismo',
                 'type' => 'error',
             ]);
             return;
@@ -123,7 +128,7 @@ class EnhancedUserManagement extends Component
 
         if ($user->isAdmin()) {
             $this->dispatch('show-notification', [
-                'message' => 'Admin users cannot be suspended',
+                'message' => 'Los usuarios administradores no pueden ser suspendidos',
                 'type' => 'error',
             ]);
             return;
@@ -135,10 +140,10 @@ class EnhancedUserManagement extends Component
             'suspended_by' => Auth::id(),
         ]);
 
-        $this->logAdminAction('user_suspended', $userId, "User {$user->email} suspended");
+        $this->logAdminAction('user_suspended', $userId, "Usuario {$user->email} suspendido");
 
         $this->dispatch('show-notification', [
-            'message' => "User {$user->name} has been suspended successfully",
+            'message' => "El usuario {$user->name} ha sido suspendido exitosamente",
             'type' => 'success',
         ]);
 
@@ -158,10 +163,10 @@ class EnhancedUserManagement extends Component
             'suspension_reason' => null,
         ]);
 
-        $this->logAdminAction('user_activated', $userId, "User {$user->email} activated");
+        $this->logAdminAction('user_activated', $userId, "Usuario {$user->email} activado");
 
         $this->dispatch('show-notification', [
-            'message' => "User {$user->name} has been activated successfully",
+            'message' => "El usuario {$user->name} ha sido activado exitosamente",
             'type' => 'success',
         ]);
 
@@ -208,7 +213,7 @@ class EnhancedUserManagement extends Component
 
         if ($adminUsers->isNotEmpty()) {
             $this->dispatch('show-notification', [
-                'message' => 'Admin users cannot be suspended. Only regular users were suspended.',
+                'message' => 'Los usuarios administradores no pueden ser suspendidos. Solo se suspendieron los usuarios regulares.',
                 'type' => 'warning',
             ]);
         }
@@ -221,12 +226,12 @@ class EnhancedUserManagement extends Component
                 'suspended_by' => Auth::id(),
             ]);
 
-            $this->logAdminAction('user_suspended', $user->id, "Bulk suspension of user {$user->email}");
+            $this->logAdminAction('user_suspended', $user->id, "Suspensión masiva del usuario {$user->email}");
             $suspendedCount++;
         }
 
         $this->dispatch('show-notification', [
-            'message' => "{$suspendedCount} users suspended successfully",
+            'message' => "{$suspendedCount} usuarios suspendidos exitosamente",
             'type' => 'success',
         ]);
 
@@ -249,23 +254,84 @@ class EnhancedUserManagement extends Component
                 'suspension_reason' => null,
             ]);
 
-            $this->logAdminAction('user_activated', $user->id, "Bulk activation of user {$user->email}");
+            $this->logAdminAction('user_activated', $user->id, "Activación masiva del usuario {$user->email}");
         }
 
         $this->dispatch('show-notification', [
-            'message' => count($this->selectedUsers) . " users activated successfully",
+            'message' => count($this->selectedUsers) . " usuarios activados exitosamente",
             'type' => 'success',
         ]);
 
         $this->selectedUsers = [];
     }
 
-    public function exportUserActivity(int $userId): void
+    public function openCreditsModal(int $userId): void
     {
-        $this->dispatch('start-export', [
-            'type' => 'users',
-            'filters' => ['user_id' => $userId],
+        $this->selectedUserId = $userId;
+        $this->selectedUser = User::findOrFail($userId);
+        $this->creditsChange = 0;
+        $this->creditsOperation = 'add';
+        $this->showCreditsModal = true;
+    }
+
+    public function closeCreditsModal(): void
+    {
+        $this->showCreditsModal = false;
+        $this->selectedUserId = null;
+        $this->creditsChange = 0;
+        $this->creditsOperation = 'add';
+        $this->resetErrorBag();
+    }
+
+    public function updateCredits(): void
+    {
+        $this->validate([
+            'creditsChange' => 'required|integer|min:1',
+            'creditsOperation' => 'required|in:add,subtract',
+        ], [
+            'creditsChange.required' => 'La cantidad de créditos es obligatoria.',
+            'creditsChange.integer' => 'La cantidad debe ser un número entero.',
+            'creditsChange.min' => 'La cantidad debe ser mayor a 0.',
+            'creditsOperation.required' => 'La operación es obligatoria.',
+            'creditsOperation.in' => 'La operación debe ser agregar o quitar.',
         ]);
+
+        if (!$this->selectedUser) {
+            $this->addError('user', 'Usuario no encontrado.');
+            return;
+        }
+
+        $newCredits = $this->creditsOperation === 'add'
+            ? $this->selectedUser->credits + $this->creditsChange
+            : $this->selectedUser->credits - $this->creditsChange;
+
+        if ($newCredits < 0) {
+            $this->addError('creditsChange', 'No se pueden quitar más créditos de los disponibles.');
+            return;
+        }
+
+        $this->selectedUser->update(['credits' => $newCredits]);
+
+        logger()->info('Cambio de créditos por administrador', [
+            'admin_id' => auth()->id(),
+            'user_id' => $this->selectedUser->id,
+            'operation' => $this->creditsOperation,
+            'amount' => $this->creditsChange,
+            'old_credits' => $this->selectedUser->credits - ($this->creditsOperation === 'add' ? $this->creditsChange : -$this->creditsChange),
+            'new_credits' => $newCredits,
+        ]);
+
+        $this->dispatch('show-notification', [
+            'message' => "Créditos actualizados correctamente para {$this->selectedUser->name}.",
+            'type' => 'success',
+        ]);
+
+        $this->closeCreditsModal();
+
+        // Refresh user data if modal is open
+        if ($this->showUserModal) {
+            $this->selectedUser = $this->selectedUser->fresh();
+        }
     }
 
     public function clearFilters(): void
@@ -315,16 +381,6 @@ class EnhancedUserManagement extends Component
         return $query;
     }
 
-    private function loadUserData(): void
-    {
-        if (!$this->selectedUser) {
-            return;
-        }
-
-        $this->loadUserStats();
-        $this->loadUserActivity();
-        $this->loadUserLoginHistory();
-    }
 
     private function loadUserStats(): void
     {
@@ -383,24 +439,6 @@ class EnhancedUserManagement extends Component
             ->toArray();
     }
 
-    private function loadUserLoginHistory(): void
-    {
-        $this->userLoginHistory = DB::table('user_login_logs')
-            ->where('user_id', $this->selectedUser->id)
-            ->orderBy('logged_in_at', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function ($log) {
-                return [
-                    'ip_address' => $log->ip_address,
-                    'user_agent' => $log->user_agent,
-                    'logged_in_at' => $log->logged_in_at,
-                    'logged_out_at' => $log->logged_out_at,
-                    'successful' => $log->successful,
-                ];
-            })
-            ->toArray();
-    }
 
     private function logAdminAction(string $action, ?int $targetUserId = null, string $details = ''): void
     {

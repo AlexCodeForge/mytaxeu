@@ -21,6 +21,7 @@ class SubscriptionManager extends Component
     public ?array $currentSubscription = null;
     public array $availablePlans = [];
     public bool $willRenew = true;
+    public ?string $currentPlanId = null;
 
     // Hardcoded plan configuration (in a real app, this would come from database/config)
     protected array $plans = [
@@ -89,18 +90,82 @@ class SubscriptionManager extends Component
 
         if ($user->subscribed()) {
             $subscription = $user->subscription();
+            $stripeSubscription = $subscription->asStripeSubscription();
+
+            // Determine current plan ID by matching Stripe price ID or credits
+            $this->currentPlanId = $this->getCurrentPlanId($stripeSubscription);
+
+            $currentPlan = collect($this->plans)->firstWhere('id', $this->currentPlanId);
+
             $this->currentSubscription = [
-                'name' => $subscription->type ?? 'Suscripción Activa',
+                'name' => $currentPlan['name'] ?? $subscription->type ?? 'Suscripción Activa',
                 'status' => $subscription->stripe_status,
-                'current_period_end' => $subscription->asStripeSubscription()->current_period_end,
-                'cancel_at_period_end' => $subscription->asStripeSubscription()->cancel_at_period_end ?? false,
+                'current_period_end' => $stripeSubscription->current_period_end,
+                'cancel_at_period_end' => $stripeSubscription->cancel_at_period_end ?? false,
                 'stripe_id' => $subscription->stripe_id,
+                'plan_id' => $this->currentPlanId,
             ];
 
             $this->willRenew = !$this->currentSubscription['cancel_at_period_end'];
         } else {
             $this->currentSubscription = null;
+            $this->currentPlanId = null;
         }
+    }
+
+    /**
+     * Determine which plan the user currently has based on their Stripe subscription.
+     */
+    protected function getCurrentPlanId($stripeSubscription): ?string
+    {
+        if (empty($stripeSubscription->items->data)) {
+            return null;
+        }
+
+        $subscriptionItem = $stripeSubscription->items->data[0];
+        $priceId = $subscriptionItem->price->id;
+        $amount = $subscriptionItem->price->unit_amount; // Amount in cents
+
+        // First, try to match by Stripe price ID (if we have real Stripe price IDs)
+        foreach ($this->plans as $plan) {
+            if (isset($plan['stripe_price_id']) && $plan['stripe_price_id'] === $priceId) {
+                return $plan['id'];
+            }
+        }
+
+        // Fallback: match by price amount (convert our price to cents)
+        foreach ($this->plans as $plan) {
+            if ((int)($plan['price'] * 100) === $amount) {
+                return $plan['id'];
+            }
+        }
+
+        // Fallback: try to get plan_id from product metadata
+        try {
+            $product = \Stripe\Product::retrieve($subscriptionItem->price->product);
+            if (isset($product->metadata['plan_id'])) {
+                return $product->metadata['plan_id'];
+            }
+        } catch (\Exception $e) {
+            // Silently continue if we can't retrieve product metadata
+        }
+
+        // Default fallback based on credit amount if available in metadata
+        try {
+            $product = \Stripe\Product::retrieve($subscriptionItem->price->product);
+            if (isset($product->metadata['credits'])) {
+                $credits = (int) $product->metadata['credits'];
+                foreach ($this->plans as $plan) {
+                    if ($plan['credits'] === $credits) {
+                        return $plan['id'];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently continue if we can't retrieve product metadata
+        }
+
+        return null; // Couldn't determine plan
     }
 
     public function subscribe(string $planId): void
@@ -112,6 +177,12 @@ class SubscriptionManager extends Component
 
             if (!$plan) {
                 session()->flash('error', 'Plan no encontrado.');
+                return;
+            }
+
+            // Check if user is trying to subscribe to the same plan they already have
+            if ($this->currentPlanId === $planId) {
+                session()->flash('error', 'Ya tienes este plan activo. No puedes suscribirte al mismo plan nuevamente.');
                 return;
             }
 
@@ -259,6 +330,34 @@ class SubscriptionManager extends Component
     {
         $creditService = app(CreditService::class);
         return $creditService->getCreditBalance(auth()->user());
+    }
+
+    /**
+     * Check if a plan is the user's current plan.
+     */
+    public function isCurrentPlan(string $planId): bool
+    {
+        return $this->currentPlanId === $planId;
+    }
+
+    /**
+     * Get button text for a plan based on whether it's current or not.
+     */
+    public function getPlanButtonText(string $planId): string
+    {
+        if ($this->isCurrentPlan($planId)) {
+            return 'Plan Actual';
+        }
+
+        return 'Cambiar a este plan';
+    }
+
+    /**
+     * Check if a plan button should be disabled.
+     */
+    public function isPlanButtonDisabled(string $planId): bool
+    {
+        return $this->isCurrentPlan($planId) || $this->loading;
     }
 
     public function render()

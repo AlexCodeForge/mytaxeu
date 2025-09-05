@@ -34,8 +34,17 @@ new class extends Component
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('billing')" :active="request()->routeIs('billing*')" wire:navigate>
+                    <x-nav-link :href="route('billing')" :active="request()->routeIs('billing')" wire:navigate>
                         Facturación
+                    </x-nav-link>
+                    <x-nav-link :href="route('uploads.index')" :active="request()->routeIs('uploads.index')" wire:navigate>
+                        Mis Archivos
+                    </x-nav-link>
+                    <x-nav-link :href="route('uploads.create')" :active="request()->routeIs('uploads.create')" wire:navigate>
+                        Subir CSV
+                    </x-nav-link>
+                    <x-nav-link :href="route('billing.subscriptions')" :active="request()->routeIs('billing.subscriptions')" wire:navigate>
+                        Suscripciones
                     </x-nav-link>
 
                     <!-- Divider -->
@@ -45,13 +54,13 @@ new class extends Component
 
                     <!-- Admin Links -->
                     @can('admin')
-                        <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')" wire:navigate>
+                        <x-nav-link :href="route('admin.index')" :active="request()->routeIs('admin.index')" wire:navigate>
                             Admin Panel
                         </x-nav-link>
-                        <x-nav-link :href="route('admin.users')" :active="request()->routeIs('admin.users*')" wire:navigate>
+                        <x-nav-link :href="route('admin.users.enhanced')" :active="request()->routeIs('admin.users.enhanced')" wire:navigate>
                             Usuarios
                         </x-nav-link>
-                        <x-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings*')" wire:navigate>
+                        <x-nav-link :href="route('admin.stripe.config')" :active="request()->routeIs('admin.stripe.config')" wire:navigate>
                             Configuración
                         </x-nav-link>
                     @endcan
@@ -111,8 +120,17 @@ new class extends Component
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                     {{ __('Dashboard') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('billing')" :active="request()->routeIs('billing*')" wire:navigate>
+                <x-responsive-nav-link :href="route('billing')" :active="request()->routeIs('billing')" wire:navigate>
                     Facturación
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('uploads.index')" :active="request()->routeIs('uploads.index')" wire:navigate>
+                    Mis Archivos
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('uploads.create')" :active="request()->routeIs('uploads.create')" wire:navigate>
+                    Subir CSV
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('billing.subscriptions')" :active="request()->routeIs('billing.subscriptions')" wire:navigate>
+                    Suscripciones
                 </x-responsive-nav-link>
             </div>
 
@@ -122,13 +140,13 @@ new class extends Component
                     <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-1">
                         Administración
                     </div>
-                    <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')" wire:navigate>
+                    <x-responsive-nav-link :href="route('admin.index')" :active="request()->routeIs('admin.index')" wire:navigate>
                         Admin Panel
                     </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('admin.users')" :active="request()->routeIs('admin.users*')" wire:navigate>
+                    <x-responsive-nav-link :href="route('admin.users.enhanced')" :active="request()->routeIs('admin.users.enhanced')" wire:navigate>
                         Usuarios
                     </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings*')" wire:navigate>
+                    <x-responsive-nav-link :href="route('admin.stripe.config')" :active="request()->routeIs('admin.stripe.config')" wire:navigate>
                         Configuración
                     </x-responsive-nav-link>
                 </div>

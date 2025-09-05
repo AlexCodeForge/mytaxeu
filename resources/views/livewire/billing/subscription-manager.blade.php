@@ -129,10 +129,20 @@
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 @foreach($availablePlans as $plan)
-                    <div class="relative rounded-2xl border border-gray-200 p-8 shadow-sm flex flex-col
-                        @if($plan['id'] === 'professional') ring-2 ring-indigo-600 @endif">
+                    <div class="relative rounded-2xl border p-8 shadow-sm flex flex-col
+                        @if($this->isCurrentPlan($plan['id']))
+                            border-green-500 ring-2 ring-green-500 bg-green-50/30
+                        @elseif($plan['id'] === 'professional')
+                            border-indigo-600 ring-2 ring-indigo-600
+                        @else
+                            border-gray-200
+                        @endif">
 
-                        @if($plan['id'] === 'professional')
+                        @if($this->isCurrentPlan($plan['id']))
+                            <div class="absolute -top-5 left-0 right-0 mx-auto w-32 rounded-full bg-green-600 px-3 py-2 text-sm font-medium text-white text-center">
+                                Plan Actual
+                            </div>
+                        @elseif($plan['id'] === 'professional')
                             <div class="absolute -top-5 left-0 right-0 mx-auto w-32 rounded-full bg-indigo-600 px-3 py-2 text-sm font-medium text-white text-center">
                                 Recomendado
                             </div>
@@ -161,35 +171,50 @@
 
                         <!-- Action Button -->
                         <div class="mt-8">
-                            @if($currentSubscription)
-                                @if($currentSubscription['status'] === 'active')
-                                    <button wire:click="subscribe('{{ $plan['id'] }}')"
-                                            wire:loading.attr="disabled"
-                                            class="w-full rounded-md px-3 py-2 text-center text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-                                                @if($plan['id'] === 'professional') bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-indigo-600
-                                                @else bg-white text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 @endif">
-                                        <span wire:loading.remove wire:target="subscribe('{{ $plan['id'] }}')">Cambiar a este plan</span>
-                                        <span wire:loading wire:target="subscribe('{{ $plan['id'] }}')">Procesando...</span>
-                                    </button>
+                            @if($this->isCurrentPlan($plan['id']))
+                                <!-- Current Plan Button - Disabled -->
+                                <button disabled
+                                        class="w-full rounded-md px-3 py-2 text-center text-sm font-semibold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 cursor-not-allowed">
+                                    <svg class="inline-block w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                                    </svg>
+                                    Plan Actual
+                                </button>
+                            @else
+                                <!-- Subscribe/Change Plan Button -->
+                                @if($currentSubscription)
+                                    @if($currentSubscription['status'] === 'active')
+                                        <button wire:click="subscribe('{{ $plan['id'] }}')"
+                                                wire:loading.attr="disabled"
+                                                @disabled($this->isPlanButtonDisabled($plan['id']))
+                                                class="w-full rounded-md px-3 py-2 text-center text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
+                                                    @if($plan['id'] === 'professional') bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-indigo-600
+                                                    @else bg-white text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 @endif">
+                                            <span wire:loading.remove wire:target="subscribe('{{ $plan['id'] }}')">{{ $this->getPlanButtonText($plan['id']) }}</span>
+                                            <span wire:loading wire:target="subscribe('{{ $plan['id'] }}')">Procesando...</span>
+                                        </button>
+                                    @else
+                                        <button wire:click="subscribe('{{ $plan['id'] }}')"
+                                                wire:loading.attr="disabled"
+                                                @disabled($this->isPlanButtonDisabled($plan['id']))
+                                                class="w-full rounded-md px-3 py-2 text-center text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
+                                                    @if($plan['id'] === 'professional') bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-indigo-600
+                                                    @else bg-white text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 @endif">
+                                            <span wire:loading.remove wire:target="subscribe('{{ $plan['id'] }}')">Suscribirse</span>
+                                            <span wire:loading wire:target="subscribe('{{ $plan['id'] }}')">Procesando...</span>
+                                        </button>
+                                    @endif
                                 @else
                                     <button wire:click="subscribe('{{ $plan['id'] }}')"
                                             wire:loading.attr="disabled"
-                                            class="w-full rounded-md px-3 py-2 text-center text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                                            @disabled($this->isPlanButtonDisabled($plan['id']))
+                                            class="w-full rounded-md px-3 py-2 text-center text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
                                                 @if($plan['id'] === 'professional') bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-indigo-600
                                                 @else bg-white text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 @endif">
-                                        <span wire:loading.remove wire:target="subscribe('{{ $plan['id'] }}')">Suscribirse</span>
+                                        <span wire:loading.remove wire:target="subscribe('{{ $plan['id'] }}')">Comenzar</span>
                                         <span wire:loading wire:target="subscribe('{{ $plan['id'] }}')">Procesando...</span>
                                     </button>
                                 @endif
-                            @else
-                                <button wire:click="subscribe('{{ $plan['id'] }}')"
-                                        wire:loading.attr="disabled"
-                                        class="w-full rounded-md px-3 py-2 text-center text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-                                            @if($plan['id'] === 'professional') bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-indigo-600
-                                            @else bg-white text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 @endif">
-                                    <span wire:loading.remove wire:target="subscribe('{{ $plan['id'] }}')">Comenzar</span>
-                                    <span wire:loading wire:target="subscribe('{{ $plan['id'] }}')">Procesando...</span>
-                                </button>
                             @endif
                         </div>
                     </div>

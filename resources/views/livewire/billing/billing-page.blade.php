@@ -1,10 +1,15 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Page Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Facturación</h1>
-        <p class="mt-2 text-sm text-gray-600">
-            Gestiona tu suscripción, facturación y créditos
-        </p>
+    <!-- Billing Overview Card -->
+    <div class="glass-white p-6 rounded-xl shadow-lg mb-8">
+        <div class="flex items-center">
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-credit-card text-blue-600 text-xl"></i>
+            </div>
+            <div class="ml-4">
+                <h1 class="text-2xl font-bold text-gray-900">Facturación</h1>
+                <p class="text-gray-600 mt-1">Gestiona tu suscripción, facturación y créditos</p>
+            </div>
+        </div>
     </div>
 
     <!-- Flash Messages -->
@@ -57,7 +62,7 @@
         <!-- Current Plan & Credits -->
         <div class="lg:col-span-2">
             <!-- Current Plan Card -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-6">
+            <div class="bg-white overflow-hidden shadow-lg rounded-lg mb-6">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-semibold text-gray-900">
@@ -133,7 +138,7 @@
 
             <!-- Upgrade CTA for non-subscribers -->
             @if($showUpgradeCta)
-                <div class="bg-gradient-to-r from-blue-500 to-purple-600 overflow-hidden shadow-sm rounded-lg mb-6">
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 overflow-hidden shadow-lg rounded-lg mb-6">
                     <div class="p-6 text-white">
                         <h2 class="text-2xl font-bold mb-2">¡Actualiza tu plan!</h2>
                         <p class="text-blue-100 mb-4">Obtén más créditos y funciones avanzadas para gestionar más clientes de manera eficiente.</p>
@@ -176,7 +181,7 @@
         <!-- Sidebar -->
         <div class="lg:col-span-1">
             <!-- Credits Card -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-6">
+            <div class="bg-white overflow-hidden shadow-lg rounded-lg mb-6">
                 <div class="p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Créditos Disponibles</h3>
 
@@ -203,7 +208,7 @@
             </div>
 
             <!-- Quick Actions -->
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="bg-white overflow-hidden shadow-lg rounded-lg">
                 <div class="p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
 

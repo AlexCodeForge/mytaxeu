@@ -119,33 +119,6 @@ class FinancialDashboard extends Component
 
 
 
-    public function exportData(string $format = 'csv'): void
-    {
-        // Ensure user is still admin
-        if (!Auth::user() || !Auth::user()->isAdmin()) {
-            abort(403, 'Access denied');
-        }
-
-        try {
-            Log::info('FinancialDashboard: Exporting data', [
-                'format' => $format,
-                'time_period' => $this->timePeriod,
-            ]);
-
-            $this->dispatch('financial-data-exported', $format);
-
-        } catch (\Exception $e) {
-            Log::error('FinancialDashboard: Export failed', [
-                'error' => $e->getMessage(),
-                'format' => $format,
-            ]);
-
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'Error al exportar los datos financieros.',
-            ]);
-        }
-    }
 
     public function getFinancialDataProperty(): array
     {

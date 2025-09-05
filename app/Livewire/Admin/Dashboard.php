@@ -7,6 +7,7 @@ namespace App\Livewire\Admin;
 use App\Models\User;
 use App\Models\Upload;
 use App\Models\UploadMetric;
+use App\Services\UsageMeteringService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -14,74 +15,12 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
-    public bool $autoRefresh = true;
-    public int $pollingInterval = 30; // seconds
-
     public function mount(): void
     {
         // Ensure user is admin
         if (!Auth::user()->isAdmin()) {
-            abort(403, 'Access denied');
+            abort(403, 'Acceso denegado');
         }
-    }
-
-    public function refreshData(): void
-    {
-        $this->dispatch('$refresh');
-    }
-
-    public function navigateToUsers()
-    {
-        return redirect()->route('admin.users.index');
-    }
-
-    public function navigateToUploads()
-    {
-        return redirect()->route('admin.uploads');
-    }
-
-    public function navigateToJobs()
-    {
-        return redirect()->route('admin.job.monitor');
-    }
-
-    public function exportSystemMetrics(): void
-    {
-        $this->dispatch('start-export', [
-            'type' => 'system-metrics',
-            'filters' => [],
-        ]);
-
-        $this->dispatch('show-notification', [
-            'message' => 'System metrics export started.',
-            'type' => 'info',
-        ]);
-    }
-
-    public function exportUploadMetrics(): void
-    {
-        $this->dispatch('start-export', [
-            'type' => 'upload-metrics',
-            'filters' => [],
-        ]);
-
-        $this->dispatch('show-notification', [
-            'message' => 'Upload metrics export started.',
-            'type' => 'info',
-        ]);
-    }
-
-    public function exportUsers(): void
-    {
-        $this->dispatch('start-export', [
-            'type' => 'users',
-            'filters' => [],
-        ]);
-
-        $this->dispatch('show-notification', [
-            'message' => 'Users export started.',
-            'type' => 'info',
-        ]);
     }
 
     public function getMetricsProperty(): array
@@ -146,7 +85,7 @@ class Dashboard extends Component
                 return [
                     'id' => $upload->id,
                     'type' => 'upload',
-                    'description' => "Upload '{$upload->original_name}' by {$upload->user->name}",
+                    'description' => "Carga '{$upload->original_name}' por {$upload->user->name}",
                     'status' => $upload->status,
                     'timestamp' => $upload->created_at,
                     'time' => $upload->created_at->diffForHumans(),
@@ -239,18 +178,34 @@ class Dashboard extends Component
         ];
     }
 
+    public function getUsageAnalyticsProperty(): array
+    {
+        $usageMeteringService = app(UsageMeteringService::class);
+        return $usageMeteringService->getSystemUsageStatistics();
+    }
+
     public function getTrendDataProperty(): array
     {
         // Get upload trends for the last 7 days
         $trends = [];
+        $spanishMonths = [
+            'Jan' => 'Ene', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Abr',
+            'May' => 'May', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Ago',
+            'Sep' => 'Sep', 'Oct' => 'Oct', 'Nov' => 'Nov', 'Dec' => 'Dic'
+        ];
+
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i);
             $count = Upload::whereDate('created_at', $date)->count();
+            $monthAbbr = $date->format('M');
+            $spanishMonth = $spanishMonths[$monthAbbr] ?? $monthAbbr;
+
             $trends[] = [
-                'date' => $date->format('M j'),
+                'date' => $spanishMonth . ' ' . $date->format('j'),
                 'uploads' => $count,
             ];
         }
+
 
         return $trends;
     }
@@ -278,6 +233,17 @@ class Dashboard extends Component
         }
     }
 
+    public function refreshDashboard(): void
+    {
+        $this->dispatch('dashboard-data-refreshed');
+    }
+
+    public function loadUsageAnalytics(): void
+    {
+        // Force refresh of usage analytics data
+        $this->dispatch('dashboard-data-refreshed');
+    }
+
     public function render()
     {
         return view('livewire.admin.dashboard', [
@@ -289,6 +255,7 @@ class Dashboard extends Component
             'storageMetrics' => $this->storageMetrics,
             'performanceMetrics' => $this->performanceMetrics,
             'trendData' => $this->trendData,
+            'usageAnalytics' => $this->usageAnalytics,
         ])->layout('layouts.panel');
     }
 }

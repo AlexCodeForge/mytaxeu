@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\AdminSetting;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Stripe\Stripe;
+use Stripe\Subscription as StripeSubscription;
 
 class Subscription extends Model
 {
@@ -113,5 +116,18 @@ class Subscription extends Model
     public function valid(): bool
     {
         return $this->active() || $this->onTrial() || $this->onGracePeriod();
+    }
+
+    /**
+     * Get the Stripe subscription instance.
+     */
+    public function asStripeSubscription(): StripeSubscription
+    {
+        // Set Stripe API key
+        $stripeConfig = AdminSetting::getStripeConfig();
+        Stripe::setApiKey($stripeConfig['secret_key']);
+
+        // Retrieve and return the Stripe subscription
+        return StripeSubscription::retrieve($this->stripe_id);
     }
 }

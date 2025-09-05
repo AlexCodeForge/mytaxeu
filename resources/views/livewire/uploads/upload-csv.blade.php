@@ -50,24 +50,74 @@
 
     // Listen for Livewire events
     document.addEventListener('livewire:init', () => {
+        console.log('🚀 Livewire initialized, setting up event listeners...');
+
+        // Debug: Listen for all Livewire calls
+        Livewire.hook('morph.updated', () => {
+            console.log('🔍 Livewire component updated');
+        });
+
+        Livewire.hook('request', ({ uri, options, payload, respond, succeed, fail }) => {
+            console.log('🌐 Livewire request:', { uri, payload });
+        });
+
+        // Try to catch all events
+        Livewire.hook('commit', ({ component, commit, respond, succeed, fail }) => {
+            console.log('📝 Livewire commit hook:', { commit });
+            if (commit.effects && commit.effects.listeners) {
+                console.log('🎧 Event listeners triggered:', commit.effects.listeners);
+            }
+        });
+
         Livewire.on('flash-message', (event) => {
+            console.log('📨 Flash message event:', event);
             showToast(event.type, event.message);
         });
 
         Livewire.on('upload-success', (event) => {
-            showToast('success', 'Archivo subido exitosamente. El procesamiento ha comenzado.');
+            console.log('🎉 Upload success event received:', event);
+
+            // Hide modal if it's open
+            const modal = document.getElementById('period-confirmation-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.add('hidden');
+                console.log('✅ Modal hidden after success');
+            }
+
+            showToast('success', event.message || 'Archivo subido exitosamente. El procesamiento ha comenzado.');
+
+            console.log('🔄 Redirecting to uploads page in 2.5 seconds...');
             // Redirect after showing toast
             setTimeout(() => {
+                console.log('🚀 Executing redirect to /uploads');
                 window.location.href = '/uploads';
-            }, 2000);
+            }, 2500);
         });
 
         Livewire.on('upload-error', (event) => {
+            console.log('Upload error event received:', event);
             showToast('error', event.message || 'Error al subir el archivo. Inténtalo de nuevo.');
+
+            // Make sure modal stays visible if there was an error during confirmation
+            const modal = document.getElementById('period-confirmation-modal');
+            if (modal && modal.style.display === 'none') {
+                console.log('Showing modal again due to error');
+            }
         });
 
         Livewire.on('upload-info', (event) => {
             showToast('success', event.message, 8000); // Show for 8 seconds
+        });
+
+        Livewire.on('file-cancelled', () => {
+            // Clear file selection when modal is cancelled
+            const fileInput = document.getElementById('csvFile');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            // Update Alpine.js state
+            window.dispatchEvent(new CustomEvent('file-cleared'));
         });
 
         Livewire.on('show-period-confirmation', (event) => {
@@ -92,11 +142,14 @@
 @php
     $user = auth()->user();
     $limitValidator = app(\App\Services\UploadLimitValidator::class);
-    $isAdmin = $user && $user->isAdmin();
-    $currentLimit = $user ? $limitValidator->getCurrentLimit($user) : 100;
-    $userLimit = $user ? $limitValidator->getUserLimit($user) : null;
-    $displayLimit = $isAdmin ? 'unlimited' : $currentLimit;
-    $jsLimit = $isAdmin ? 999999999 : $currentLimit; // Use large number for JS comparison
+    $limitInfo = $user ? $limitValidator->getLimitInfo($user) : $limitValidator->getLimitInfo(null, request()->ip());
+    $isAdmin = $limitInfo['is_admin'] ?? false;
+    $currentLimit = $limitInfo['limit'];
+    $userLimit = ($limitInfo['is_custom'] ?? false) ? $limitValidator->getUserLimit($user) : null;
+    $isSubscription = $limitInfo['is_subscription'] ?? false;
+    $hasUnlimitedAccess = $isAdmin || $isSubscription;
+    $displayLimit = $hasUnlimitedAccess ? 'unlimited' : $currentLimit;
+    $jsLimit = $hasUnlimitedAccess ? 999999999 : $currentLimit; // Use large number for JS comparison
 @endphp
 
 <div>
@@ -108,13 +161,33 @@
     analyzing: false,
     lineCount: 0,
     fileName: '',
-    isAdmin: {{ $isAdmin ? 'true' : 'false' }},
+    hasUnlimitedAccess: {{ $hasUnlimitedAccess ? 'true' : 'false' }},
     init() {
         this.$watch('fileSelected', (value) => {
             if (!value) {
                 this.lineCount = 0;
                 this.fileName = '';
             }
+        });
+
+        // Watch for upload success
+        this.$watch('$wire.uploadSuccess', (value) => {
+            if (value) {
+                console.log('🎉 Upload success detected, redirecting...');
+                showToast('success', 'Archivo subido exitosamente. El procesamiento ha comenzado.');
+                setTimeout(() => {
+                    console.log('🚀 Redirecting to /uploads');
+                    window.location.href = '/uploads';
+                }, 2000);
+            }
+        });
+
+        // Listen for file cancellation event
+        window.addEventListener('file-cleared', () => {
+            this.fileSelected = false;
+            this.analyzing = false;
+            this.lineCount = 0;
+            this.fileName = '';
         });
     },
     async countLines(file) {
@@ -141,7 +214,7 @@
 
         <!-- Current Limit Information -->
 
-        <div class="mb-6 p-4 @if($isAdmin) bg-green-50 border-green-200 @else bg-blue-50 border-blue-200 @endif border rounded-lg">
+        <div class="mb-6 p-4 @if($hasUnlimitedAccess) bg-green-50 border-green-200 @else bg-blue-50 border-blue-200 @endif border rounded-lg">
             <div class="flex items-center justify-between">
                 <div>
                     @if($isAdmin)
@@ -149,23 +222,29 @@
                             Administrador: sin límites de líneas por archivo.
                         </h4>
                         <p class="text-xs text-green-700">Como administrador, puede procesar archivos CSV de cualquier tamaño.</p>
+                    @elseif($isSubscription)
+                        <h4 class="text-sm font-medium text-green-900">
+                            Plan Premium: sin límites de líneas por archivo.
+                        </h4>
+                        <p class="text-xs text-green-700">Como suscriptor activo, puede procesar archivos CSV de cualquier tamaño.</p>
+                    @elseif($userLimit)
+                        <h4 class="text-sm font-medium text-blue-900">
+                            Su límite actual es de {{ number_format($currentLimit) }} líneas por archivo.
+                        </h4>
+                        <p class="text-xs text-blue-700">
+                            Límite personalizado: {{ number_format($currentLimit) }} líneas por archivo
+                            @if($userLimit->expires_at)
+                                - Este límite expira el {{ $userLimit->expires_at->format('d/m/Y') }}
+                            @endif
+                        </p>
                     @else
                         <h4 class="text-sm font-medium text-blue-900">
                             Su límite actual es de {{ number_format($currentLimit) }} líneas por archivo.
                         </h4>
-                        @if($userLimit)
-                            <p class="text-xs text-blue-700">
-                                Límite personalizado: {{ number_format($currentLimit) }} líneas por archivo
-                                @if($userLimit->expires_at)
-                                    - Este límite expira el {{ $userLimit->expires_at->format('d/m/Y') }}
-                                @endif
-                            </p>
-                        @else
-                            <p class="text-xs text-blue-700">Plan gratuito: limitado a {{ number_format($currentLimit) }} líneas por archivo CSV.</p>
-                        @endif
+                        <p class="text-xs text-blue-700">Plan gratuito: limitado a {{ number_format($currentLimit) }} líneas por archivo CSV.</p>
                     @endif
                 </div>
-                @if(!$isAdmin && !$userLimit)
+                @if(!$hasUnlimitedAccess && !$userLimit)
                     <a href="{{ route('billing.subscriptions') }}" wire:navigate class="text-xs text-blue-600 hover:text-blue-800 underline">
                         Actualizar Plan
                     </a>
@@ -173,15 +252,51 @@
             </div>
         </div>
 
-        @if($uploading)
+        @if($uploading || $processingConfirmation || $uploadSuccess)
             <!-- Upload Progress -->
             <div class="mb-6">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm text-gray-600">Progreso de subida</span>
-                    <span class="text-sm text-gray-600">{{ $uploadProgress }}</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-primary h-2 rounded-full animate-pulse" style="width: 70%"></div>
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="relative">
+                            <div class="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                            @if($uploadSuccess)
+                                ¡Procesamiento exitoso!
+                            @elseif($processingConfirmation)
+                                Iniciando procesamiento
+                            @else
+                                Procesando archivo
+                            @endif
+                        </h3>
+                        <p class="text-sm text-blue-700 font-medium mb-4">
+                            @if($uploadSuccess)
+                                Archivo subido exitosamente. Redirigiendo a la página de archivos...
+                            @elseif($processingConfirmation)
+                                Confirmando y preparando el archivo para procesamiento...
+                            @else
+                                {{ $uploadProgress }}
+                            @endif
+                        </p>
+                        <div class="w-full bg-blue-200 rounded-full h-3">
+                            <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full @if($uploadSuccess) w-full bg-green-500 @else animate-pulse @endif"
+                                 style="width: @if($uploadSuccess) 100% @else 75% @endif"></div>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-3">
+                            @if($uploadSuccess)
+                                ¡Completado! Te redirigiremos en unos segundos...
+                            @else
+                                Por favor espera mientras procesamos tu archivo CSV...
+                            @endif
+                        </p>
+                    </div>
                 </div>
             </div>
         @else
@@ -200,8 +315,8 @@
                             for="csvFile"
                             class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200 ease-in-out"
                             :class="{
-                                'border-red-400 bg-red-50 hover:bg-red-100 hover:border-red-500': fileSelected && !isAdmin && lineCount > {{ $jsLimit }},
-                                'border-green-400 bg-green-50 hover:bg-green-100 hover:border-green-500': fileSelected && (isAdmin || lineCount <= {{ $jsLimit }}),
+                                'border-red-400 bg-red-50 hover:bg-red-100 hover:border-red-500': fileSelected && !hasUnlimitedAccess && lineCount > {{ $jsLimit }},
+                                'border-green-400 bg-green-50 hover:bg-green-100 hover:border-green-500': fileSelected && (hasUnlimitedAccess || lineCount <= {{ $jsLimit }}),
                                 'border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400': !fileSelected || analyzing
                             }"
 
@@ -241,16 +356,27 @@
                             </div>
 
                             <!-- Analyzing State -->
-                            <div x-show="analyzing && fileSelected" x-cloak class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <div x-show="analyzing && fileSelected" x-cloak class="flex flex-col items-center justify-center pt-8 pb-8">
                                 <div class="text-center">
-                                    <div class="flex items-center justify-center mb-2">
-                                        <svg class="animate-spin h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span class="text-sm text-blue-600 font-medium">Analizando archivo...</span>
+                                    <!-- Larger, more prominent spinner -->
+                                    <div class="relative mb-6">
+                                        <div class="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                        </div>
                                     </div>
-                                    <p class="text-xs text-blue-500">Cargando archivo...</p>
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Analizando archivo...</h3>
+                                    <p class="text-sm text-gray-600 mb-2">Verificando períodos y contenido del CSV</p>
+                                    <div class="flex items-center justify-center text-xs text-gray-500">
+                                        <div class="flex space-x-1">
+                                            <div class="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                                            <div class="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                                            <div class="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                                        </div>
+                                        <span class="ml-2">Esto puede tomar unos segundos</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -343,7 +469,9 @@
                 @teleport('body')
                 <div id="period-confirmation-modal"
                      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-                     style="display: {{ $showPeriodConfirmation && !empty($periodAnalysis) ? 'flex' : 'none' }};"
+                     x-show="$wire.showPeriodConfirmation && !$wire.processingConfirmation && !$wire.uploadSuccess"
+                     x-transition.opacity
+                     @click.self="console.log('🔴 Modal backdrop clicked')"
                 >
                     <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
                         <div class="flex items-center justify-between mb-4">
@@ -375,36 +503,41 @@
                             </div>
 
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                <h4 class="text-sm font-medium text-yellow-900 mb-2">Costo de Procesamiento:</h4>
-                                <div class="text-sm text-yellow-700 space-y-2">
-                                    <p>
-                                        <strong>Créditos requeridos:</strong>
-                                        <span class="font-bold text-yellow-900">{{ $periodAnalysis['required_credits'] ?? 0 }} crédito(s)</span>
-                                    </p>
-                                    <p>
-                                        <strong>Tus créditos actuales:</strong>
-                                        <span class="font-bold {{ $userCredits >= ($periodAnalysis['required_credits'] ?? 0) ? 'text-green-600' : 'text-red-600' }}">
-                                            {{ $userCredits }} crédito(s)
+                                <h4 class="text-sm font-medium text-yellow-900 mb-3">Costo de Procesamiento:</h4>
+                                <div class="text-sm text-yellow-700 space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <span><strong>Créditos requeridos:</strong></span>
+                                        <span class="font-bold text-yellow-900 text-lg">{{ $periodAnalysis['required_credits'] ?? 0 }}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span><strong>Tus créditos actuales:</strong></span>
+                                        <span class="font-bold text-lg {{ $userCredits >= ($periodAnalysis['required_credits'] ?? 0) ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $userCredits }}
                                         </span>
-                                    </p>
+                                    </div>
                                     @if($userCredits >= ($periodAnalysis['required_credits'] ?? 0))
-                                        <p>
-                                            <strong>Créditos restantes después del procesamiento:</strong>
-                                            <span class="font-bold text-green-600">
-                                                {{ $userCredits - ($periodAnalysis['required_credits'] ?? 0) }} crédito(s)
-                                            </span>
-                                        </p>
+                                        <div class="border-t border-yellow-200 pt-3 mt-3">
+                                            <div class="flex justify-between items-center">
+                                                <span><strong>Créditos restantes:</strong></span>
+                                                <span class="font-bold text-green-600 text-lg">
+                                                    {{ $userCredits - ($periodAnalysis['required_credits'] ?? 0) }}
+                                                </span>
+                                            </div>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
 
-                            <div class="mt-4 text-sm text-gray-600">
-                                <p class="flex items-start">
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <div class="flex items-start text-sm text-blue-700">
                                     <svg class="w-4 h-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
-                                    Se cobrará <strong>1 crédito por cada período</strong> (mes) de actividad detectado en tu archivo CSV.
-                                </p>
+                                    <div class="leading-relaxed">
+                                        <div class="font-medium">Se cobrará <strong>1 crédito por cada período</strong></div>
+                                        <div class="text-xs text-blue-600 mt-1">(mes) de actividad detectado en tu archivo CSV.</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -412,15 +545,57 @@
                             <button
                                 wire:click="cancelConfirmation"
                                 class="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                :disabled="$wire.processingConfirmation"
+                                :class="{ 'opacity-50 cursor-not-allowed': $wire.processingConfirmation }"
                             >
                                 Cancelar
                             </button>
                             <button
                                 wire:click="confirmUpload"
-                                class="flex-1 px-4 py-2 text-white bg-primary rounded-lg hover:bg-blue-700 transition-colors"
-                                @if($userCredits < ($periodAnalysis['required_credits'] ?? 0)) disabled @endif
+                                x-data="{
+                                    buttonLoading: false,
+                                    init() {
+                                        this.$watch('$wire.processingConfirmation', (value) => {
+                                            if (value) {
+                                                console.log('✅ Livewire processingConfirmation is true, clearing buttonLoading');
+                                                this.buttonLoading = false;
+                                            }
+                                        });
+                                    }
+                                }"
+                                @click="
+                                    console.log('🔴 CONFIRM BUTTON CLICKED!');
+                                    buttonLoading = true;
+                                    console.log('Button loading set to true');
+                                    console.log('Processing confirmation:', $wire.processingConfirmation);
+                                    console.log('showPeriodConfirmation:', $wire.showPeriodConfirmation);
+                                "
+                                class="flex-1 px-4 py-2 text-white rounded-lg transition-colors flex items-center justify-center"
+                                :class="{
+                                    'bg-gray-400 cursor-not-allowed': buttonLoading || $wire.processingConfirmation || {{ $userCredits < ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }},
+                                    'bg-primary hover:bg-blue-700': !buttonLoading && !$wire.processingConfirmation && {{ $userCredits >= ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }}
+                                }"
+                                :disabled="buttonLoading || $wire.processingConfirmation || {{ $userCredits < ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }}"
+                                wire:loading.attr="disabled"
+                                wire:target="confirmUpload"
                             >
-                                Confirmar y Procesar
+                                <!-- Loading Spinner (shows immediately on click OR when Livewire processing) -->
+                                <svg x-show="buttonLoading || $wire.processingConfirmation" x-cloak class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+
+                                <!-- Backup Livewire Loading Spinner -->
+                                <svg wire:loading wire:target="confirmUpload" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+
+                                <!-- Button Text States -->
+                                <span x-show="!buttonLoading && !$wire.processingConfirmation" wire:loading.remove wire:target="confirmUpload">Confirmar y Procesar</span>
+                                <span x-show="buttonLoading && !$wire.processingConfirmation" x-cloak>Confirmando...</span>
+                                <span x-show="$wire.processingConfirmation" x-cloak>Procesando...</span>
+                                <span wire:loading wire:target="confirmUpload">Enviando...</span>
                             </button>
                         </div>
                     </div>
@@ -434,7 +609,9 @@
                         <li>• Asegúrate de que tu archivo CSV contenga la columna 'ACTIVITY_PERIOD' requerida</li>
                         <li>• El costo es de <strong>1 crédito por cada período (mes)</strong> detectado en tu archivo</li>
                         <li>• Se permite un máximo de 3 períodos distintos por archivo</li>
+                        @if(!$hasUnlimitedAccess && !$userLimit)
                         <li>• <strong>Usuarios sin créditos:</strong> máximo 100 líneas por mes</li>
+                        @endif
                         <li>• Los archivos se procesarán automáticamente en segundo plano</li>
                         <li>• Recibirás notificaciones por email sobre el estado del procesamiento</li>
                     </ul>

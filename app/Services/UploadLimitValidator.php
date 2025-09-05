@@ -52,25 +52,61 @@ class UploadLimitValidator
             ];
         }
 
-        // Check for custom user limits first
+        // Check for custom user limits first (highest priority)
         $userLimit = $this->getUserLimit($user);
-        $limit = $userLimit ? $userLimit->csv_line_limit : self::FREE_TIER_LINE_LIMIT;
+        if ($userLimit) {
+            $limit = $userLimit->csv_line_limit;
 
+            if ($lineCount > $limit) {
+                return [
+                    'allowed' => false,
+                    'reason' => 'File exceeds your current upload limit',
+                    'limit' => $limit,
+                    'is_custom_limit' => true,
+                ];
+            }
+
+            return [
+                'allowed' => true,
+                'limit' => $limit,
+                'is_custom_limit' => true,
+            ];
+        }
+
+        // Check for subscription-based limits
+        $subscriptionLimit = $this->getSubscriptionLimit($user);
+        if ($subscriptionLimit) {
+            if ($lineCount > $subscriptionLimit) {
+                return [
+                    'allowed' => false,
+                    'reason' => 'File exceeds your subscription plan limit',
+                    'limit' => $subscriptionLimit,
+                    'is_subscription_limit' => true,
+                ];
+            }
+
+            return [
+                'allowed' => true,
+                'limit' => $subscriptionLimit,
+                'is_subscription_limit' => true,
+            ];
+        }
+
+        // Default to free tier limit
+        $limit = self::FREE_TIER_LINE_LIMIT;
         if ($lineCount > $limit) {
             return [
                 'allowed' => false,
-                'reason' => $userLimit
-                    ? 'File exceeds your current upload limit'
-                    : 'File exceeds free tier limit',
+                'reason' => 'File exceeds free tier limit',
                 'limit' => $limit,
-                'is_custom_limit' => (bool) $userLimit,
+                'is_free_tier' => true,
             ];
         }
 
         return [
             'allowed' => true,
             'limit' => $limit,
-            'is_custom_limit' => (bool) $userLimit,
+            'is_free_tier' => true,
         ];
     }
 
@@ -119,8 +155,20 @@ class UploadLimitValidator
             return PHP_INT_MAX;
         }
 
+        // Check for custom user limits first (highest priority)
         $userLimit = $this->getUserLimit($user);
-        return $userLimit ? $userLimit->csv_line_limit : self::FREE_TIER_LINE_LIMIT;
+        if ($userLimit) {
+            return $userLimit->csv_line_limit;
+        }
+
+        // Check for subscription-based limits
+        $subscriptionLimit = $this->getSubscriptionLimit($user);
+        if ($subscriptionLimit) {
+            return $subscriptionLimit;
+        }
+
+        // Default to free tier limit
+        return self::FREE_TIER_LINE_LIMIT;
     }
 
     /**
@@ -147,13 +195,24 @@ class UploadLimitValidator
     }
 
     /**
-     * Check if user has premium subscription (placeholder for future implementation)
+     * Check if user has premium subscription
      */
     public function hasPremiumSubscription(User $user): bool
     {
-        // TODO: Implement when subscription tiers are defined
-        // This would check if user has an active paid subscription
-        return false;
+        return $user->subscribed() && $user->subscription()?->valid();
+    }
+
+    /**
+     * Get subscription-based line limit for user
+     */
+    public function getSubscriptionLimit(User $user): ?int
+    {
+        if (!$this->hasPremiumSubscription($user)) {
+            return null;
+        }
+
+        // All subscription users get unlimited line processing
+        return PHP_INT_MAX;
     }
 
     /**
@@ -168,25 +227,50 @@ class UploadLimitValidator
                     'limit' => PHP_INT_MAX,
                     'is_admin' => true,
                     'is_custom' => false,
+                    'is_subscription' => false,
                     'expires_at' => null,
                     'type' => 'admin',
                 ];
             }
 
+            // Check for custom user limits first (highest priority)
             $userLimit = $this->getUserLimit($user);
-            $limit = $userLimit ? $userLimit->csv_line_limit : self::FREE_TIER_LINE_LIMIT;
+            if ($userLimit) {
+                return [
+                    'limit' => $userLimit->csv_line_limit,
+                    'is_custom' => true,
+                    'is_subscription' => false,
+                    'expires_at' => $userLimit->expires_at,
+                    'type' => 'custom',
+                ];
+            }
 
+            // Check for subscription-based limits
+            $subscriptionLimit = $this->getSubscriptionLimit($user);
+            if ($subscriptionLimit) {
+                return [
+                    'limit' => $subscriptionLimit,
+                    'is_custom' => false,
+                    'is_subscription' => true,
+                    'expires_at' => null,
+                    'type' => 'subscription',
+                ];
+            }
+
+            // Default to free tier
             return [
-                'limit' => $limit,
-                'is_custom' => (bool) $userLimit,
-                'expires_at' => $userLimit?->expires_at,
-                'type' => 'user',
+                'limit' => self::FREE_TIER_LINE_LIMIT,
+                'is_custom' => false,
+                'is_subscription' => false,
+                'expires_at' => null,
+                'type' => 'free',
             ];
         }
 
         return [
             'limit' => self::FREE_TIER_LINE_LIMIT,
             'is_custom' => false,
+            'is_subscription' => false,
             'expires_at' => null,
             'type' => 'ip',
         ];

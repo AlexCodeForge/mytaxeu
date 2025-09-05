@@ -126,6 +126,42 @@ class ExportController extends Controller
     }
 
     /**
+     * Generate financial data export and return signed download URL
+     */
+    public function financialDataExport(Request $request)
+    {
+        $filters = $request->only(['start_date', 'end_date', 'time_period']);
+
+        // Clean empty filters
+        $filters = array_filter($filters, function ($value) {
+            return $value !== null && $value !== '';
+        });
+
+        try {
+            $filename = $this->exportService->saveFinancialDataExport($filters);
+
+            // Generate signed URL valid for 1 hour
+            $signedUrl = URL::temporarySignedRoute(
+                'admin.exports.download',
+                now()->addHour(),
+                ['filename' => basename($filename)]
+            );
+
+            return response()->json([
+                'success' => true,
+                'download_url' => $signedUrl,
+                'filename' => basename($filename),
+                'expires_at' => now()->addHour()->toISOString(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate export: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Generate upload metrics export and return signed download URL
      */
     public function uploadMetricsExport(Request $request)

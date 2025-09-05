@@ -1,8 +1,8 @@
 <div class="p-6 bg-white min-h-screen">
     {{-- Header --}}
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Enhanced User Management</h1>
-        <p class="text-gray-600">Manage users with advanced tracking and analytics</p>
+        <h1 class="text-2xl font-bold text-gray-900">Gestión Avanzada de Usuarios</h1>
+        <p class="text-gray-600">Administra usuarios con seguimiento y análisis avanzados</p>
     </div>
 
     {{-- Filters and Search --}}
@@ -10,27 +10,27 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {{-- Search --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Search Users</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Buscar Usuarios</label>
                 <input wire:model.live.debounce.300ms="search"
                        type="text"
-                       placeholder="Name or email..."
+                       placeholder="Nombre o email..."
                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900">
             </div>
 
             {{-- Activity Filter --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Activity Status</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Estado de Actividad</label>
                 <select wire:model.live="activityFilter"
                         class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900">
-                    <option value="all">All Users</option>
-                    <option value="active">Active Users</option>
-                    <option value="inactive">Inactive Users</option>
+                    <option value="all">Todos los Usuarios</option>
+                    <option value="active">Usuarios Activos</option>
+                    <option value="inactive">Usuarios Inactivos</option>
                 </select>
             </div>
 
             {{-- Date From --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Registered From</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Registrado Desde</label>
                 <input wire:model.live="dateFrom"
                        type="date"
                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900">
@@ -38,7 +38,7 @@
 
             {{-- Date To --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Registered To</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Registrado Hasta</label>
                 <input wire:model.live="dateTo"
                        type="date"
                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900">
@@ -50,33 +50,33 @@
             <div class="flex items-center space-x-4">
                 <button wire:click="clearFilters"
                         class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
-                    Clear Filters
+                    Limpiar Filtros
                 </button>
 
                 <button wire:click="toggleBulkMode"
                         class="px-3 py-2 {{ $bulkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700' }} text-white rounded-md transition-colors">
-                    {{ $bulkMode ? 'Exit Bulk Mode' : 'Bulk Actions' }}
+                    {{ $bulkMode ? 'Salir Modo Masivo' : 'Acciones Masivas' }}
                 </button>
             </div>
 
             @if ($bulkMode && !empty($selectedUsers))
                 <div class="flex items-center space-x-2">
                     <span class="text-sm text-gray-600">
-                        {{ count($selectedUsers) }} selected
+                        {{ count($selectedUsers) }} seleccionados
                     </span>
                     <button wire:click="bulkSuspendUsers"
-                            wire:confirm="Are you sure you want to suspend the selected users?"
+                            wire:confirm="¿Estás seguro de que quieres suspender los usuarios seleccionados?"
                             class="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors">
-                        Suspend Selected
+                        Suspender Seleccionados
                     </button>
                     <button wire:click="bulkActivateUsers"
-                            wire:confirm="Are you sure you want to activate the selected users?"
+                            wire:confirm="¿Estás seguro de que quieres activar los usuarios seleccionados?"
                             class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
-                        Activate Selected
+                        Activar Seleccionados
                     </button>
                     <button wire:click="clearSelection"
                             class="px-3 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors">
-                        Clear Selection
+                        Limpiar Selección
                     </button>
                 </div>
             @endif
@@ -100,19 +100,22 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                 wire:click="sortBy('name')">
                                 <div class="flex items-center space-x-1">
-                                    <span>User</span>
+                                    <span>Usuario</span>
                                     @if ($sortBy === 'name')
                                         <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} text-blue-500"></i>
                                     @endif
                                 </div>
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
+                                Estado
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Créditos
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                 wire:click="sortBy('uploads_count')">
                                 <div class="flex items-center space-x-1">
-                                    <span>Activity</span>
+                                    <span>Actividad</span>
                                     @if ($sortBy === 'uploads_count')
                                         <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} text-blue-500"></i>
                                     @endif
@@ -121,14 +124,14 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                 wire:click="sortBy('created_at')">
                                 <div class="flex items-center space-x-1">
-                                    <span>Registered</span>
+                                    <span>Registrado</span>
                                     @if ($sortBy === 'created_at')
                                         <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} text-blue-500"></i>
                                     @endif
                                 </div>
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
+                                Acciones
                             </th>
                         </tr>
                     </thead>
@@ -167,18 +170,27 @@
                                     @if ($user->is_suspended)
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                             <i class="fas fa-ban mr-1"></i>
-                                            Suspended
+                                            Suspendido
                                         </span>
                                     @else
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                             <i class="fas fa-check mr-1"></i>
-                                            Active
+                                            Activo
                                         </span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4">
+                                    <div class="text-sm font-semibold text-gray-900">
+                                        {{ number_format($user->credits) }} créditos
+                                    </div>
+                                    <button wire:click="openCreditsModal({{ $user->id }})"
+                                            class="text-xs text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-edit mr-1"></i>Ajustar
+                                    </button>
+                                </td>
+                                <td class="px-6 py-4">
                                     <div class="text-sm text-gray-900">
-                                        {{ $user->uploads_count }} uploads
+                                        {{ $user->uploads_count }} subidas
                                     </div>
                                     @if ($user->uploads->count() > 0)
                                         @php
@@ -186,13 +198,13 @@
                                             $successRate = $user->uploads_count > 0 ? round(($completedCount / $user->uploads_count) * 100) : 0;
                                         @endphp
                                         <div class="text-sm text-gray-500">
-                                            {{ $successRate }}% success rate
+                                            {{ $successRate }}% tasa de éxito
                                         </div>
                                         <div class="text-xs text-gray-400">
-                                            Last: {{ $user->uploads->first()?->created_at?->diffForHumans() ?? 'Never' }}
+                                            Última: {{ $user->uploads->first()?->created_at?->diffForHumans() ?? 'Nunca' }}
                                         </div>
                                     @else
-                                        <div class="text-sm text-gray-500">No activity</div>
+                                        <div class="text-sm text-gray-500">Sin actividad</div>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500">
@@ -202,33 +214,28 @@
                                 <td class="px-6 py-4 text-sm font-medium">
                                     <div class="flex items-center space-x-2">
                                         <button wire:click="openUserProfile({{ $user->id }})"
-                                                class="text-blue-600 hover:text-blue-900">
+                                                class="text-blue-600 hover:text-blue-900"
+                                                title="Ver Perfil">
                                             <i class="fas fa-eye"></i>
                                         </button>
 
                                         @if (!$user->is_admin)
                                             @if ($user->is_suspended)
                                                 <button wire:click="activateUser({{ $user->id }})"
-                                                        wire:confirm="Are you sure you want to activate this user?"
+                                                        wire:confirm="¿Estás seguro de que quieres activar este usuario?"
                                                         class="text-green-600 hover:text-green-900"
-                                                        title="Activate User">
+                                                        title="Activar Usuario">
                                                     <i class="fas fa-user-check"></i>
                                                 </button>
                                             @else
                                                 <button wire:click="suspendUser({{ $user->id }})"
-                                                        wire:confirm="Are you sure you want to suspend this user?"
+                                                        wire:confirm="¿Estás seguro de que quieres suspender este usuario?"
                                                         class="text-red-600 hover:text-red-900"
-                                                        title="Suspend User">
+                                                        title="Suspender Usuario">
                                                     <i class="fas fa-user-times"></i>
                                                 </button>
                                             @endif
                                         @endif
-
-                                        <button wire:click="exportUserActivity({{ $user->id }})"
-                                                class="text-purple-600 hover:text-purple-900"
-                                                title="Export User Data">
-                                            <i class="fas fa-download"></i>
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -308,11 +315,6 @@
                                             :class="{ 'border-blue-500 text-blue-600': activeTab === 'activity' }"
                                             class="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
                                         Activity Timeline
-                                    </button>
-                                    <button @click="activeTab = 'login'"
-                                            :class="{ 'border-blue-500 text-blue-600': activeTab === 'login' }"
-                                            class="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                                        Login History
                                     </button>
                                 </nav>
                             </div>
@@ -442,43 +444,6 @@
                             @endif
                         </div>
 
-                        {{-- Login History Tab --}}
-                        <div x-show="activeTab === 'login'" class="space-y-4">
-                            <h4 class="text-lg font-medium text-gray-900">Login History</h4>
-                            @if (!empty($userLoginHistory))
-                                <div class="space-y-3">
-                                    @foreach ($userLoginHistory as $login)
-                                        <div class="border border-gray-200 rounded-lg p-4">
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex items-center space-x-3">
-                                                    <div class="flex-shrink-0">
-                                                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                                            <i class="fas fa-sign-in-alt text-blue-600 text-sm"></i>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div class="text-sm font-medium text-gray-900">{{ $login['ip_address'] }}</div>
-                                                        <div class="text-xs text-gray-500">
-                                                            {{ \Carbon\Carbon::parse($login['logged_in_at'])->format('M j, Y g:i A') }}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="text-right">
-                                                    <div class="text-xs text-gray-500 max-w-48 truncate">
-                                                        {{ $login['user_agent'] }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                <div class="text-center py-8">
-                                    <i class="fas fa-history text-gray-400 text-3xl mb-4"></i>
-                                    <p class="text-gray-500">No login history found</p>
-                                </div>
-                            @endif
-                        </div>
                     </div>
 
                     {{-- Modal Footer --}}
@@ -488,31 +453,31 @@
                                 @if (!$selectedUser->is_admin)
                                     @if ($selectedUser->is_suspended)
                                         <button wire:click="activateUser({{ $selectedUser->id }})"
-                                                wire:confirm="Are you sure you want to activate this user?"
+                                                wire:confirm="¿Estás seguro de que quieres activar este usuario?"
                                                 class="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
                                             <i class="fas fa-user-check mr-1"></i>
-                                            Activate User
+                                            Activar Usuario
                                         </button>
                                     @else
                                         <button wire:click="suspendUser({{ $selectedUser->id }})"
-                                                wire:confirm="Are you sure you want to suspend this user?"
+                                                wire:confirm="¿Estás seguro de que quieres suspender este usuario?"
                                                 class="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors">
                                             <i class="fas fa-user-times mr-1"></i>
-                                            Suspend User
+                                            Suspender Usuario
                                         </button>
                                     @endif
                                 @endif
 
-                                <button wire:click="exportUserActivity({{ $selectedUser->id }})"
-                                        class="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">
-                                    <i class="fas fa-download mr-1"></i>
-                                    Export Data
+                                <button wire:click="openCreditsModal({{ $selectedUser->id }})"
+                                        class="px-4 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors">
+                                    <i class="fas fa-coins mr-1"></i>
+                                    Ajustar Créditos
                                 </button>
                             </div>
 
                             <button wire:click="closeUserModal"
                                     class="px-4 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors">
-                                Close
+                                Cerrar
                             </button>
                         </div>
                     </div>
@@ -521,60 +486,103 @@
         </div>
     @endif
 
-</div>
-
-@script
-<script>
-// Handle export generation with signed URLs
-$wire.on('start-export', async (data) => {
-    try {
-        const response = await fetch(`/admin/exports/${data[0].type}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify(data[0].filters || {})
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // Show success notification with download link
-            const notification = document.createElement('div');
-            notification.className = 'fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50';
-            notification.innerHTML = `
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-check-circle"></i>
+    {{-- Credits Modal --}}
+    @if($showCreditsModal && $selectedUser)
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+             wire:click="closeCreditsModal">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all"
+                 wire:click.stop>
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
                     <div>
-                        <p class="font-medium">Export ready!</p>
-                        <button onclick="window.open('${result.download_url}', '_blank')"
-                                class="mt-2 px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">
-                            Download CSV
-                        </button>
+                        <h3 class="text-lg font-semibold text-gray-900">Ajustar Créditos</h3>
+                        <p class="text-sm text-gray-600 mt-1">{{ $selectedUser->name }} ({{ $selectedUser->email }})</p>
+                        <p class="text-xs text-gray-500">Créditos actuales: <span class="font-semibold">{{ number_format($selectedUser->credits) }}</span></p>
                     </div>
-                    <button onclick="this.parentElement.parentElement.remove()"
-                            class="ml-4 text-green-200 hover:text-white">
-                        <i class="fas fa-times"></i>
+                    <button wire:click="closeCreditsModal"
+                            class="text-gray-400 hover:text-gray-600 transition-colors"
+                            type="button">
+                        <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
-            `;
-            document.body.appendChild(notification);
 
-            // Auto-remove notification after 30 seconds
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 30000);
-        } else {
-            // Show error notification
-            alert('Export failed: ' + result.message);
-        }
-    } catch (error) {
-        console.error('Export error:', error);
-        alert('Export failed: ' + error.message);
-    }
-});
-</script>
-@endscript
+                {{-- Modal Body --}}
+                <form wire:submit="updateCredits" class="p-6 space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Operación</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative">
+                                <input type="radio" wire:model="creditsOperation" value="add" class="sr-only peer">
+                                <div class="flex items-center justify-center p-3 border-2 border-gray-300 rounded-lg cursor-pointer transition-all peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    <span class="font-medium">Agregar</span>
+                                </div>
+                            </label>
+                            <label class="relative">
+                                <input type="radio" wire:model="creditsOperation" value="subtract" class="sr-only peer">
+                                <div class="flex items-center justify-center p-3 border-2 border-gray-300 rounded-lg cursor-pointer transition-all peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700">
+                                    <i class="fas fa-minus mr-2"></i>
+                                    <span class="font-medium">Quitar</span>
+                                </div>
+                            </label>
+                        </div>
+                        @error('creditsOperation')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="creditsChange" class="block text-sm font-medium text-gray-700 mb-2">
+                            Cantidad de Créditos
+                        </label>
+                        <input type="number" wire:model="creditsChange" id="creditsChange" min="1"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Ingresa la cantidad...">
+                        @error('creditsChange')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Preview --}}
+                    @if($creditsChange > 0)
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-sm text-gray-600 mb-1">Vista previa:</p>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm">Créditos actuales:</span>
+                                <span class="font-semibold">{{ number_format($selectedUser->credits) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm">{{ $creditsOperation === 'add' ? 'Agregar' : 'Quitar' }}:</span>
+                                <span class="font-semibold {{ $creditsOperation === 'add' ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ $creditsOperation === 'add' ? '+' : '-' }}{{ number_format($creditsChange) }}
+                                </span>
+                            </div>
+                            <div class="border-t pt-2 mt-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-medium">Nuevos créditos:</span>
+                                    <span class="font-bold text-lg">
+                                        {{ number_format($creditsOperation === 'add' ? $selectedUser->credits + $creditsChange : $selectedUser->credits - $creditsChange) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Footer --}}
+                    <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+                        <button type="button" wire:click="closeCreditsModal"
+                                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-save mr-2"></i>
+                            Actualizar Créditos
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+</div>

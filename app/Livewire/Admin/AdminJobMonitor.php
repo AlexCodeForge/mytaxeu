@@ -22,7 +22,7 @@ class AdminJobMonitor extends Component
     public string $dateFrom = '';
     public string $dateTo = '';
     public bool $autoRefresh = true;
-    public int $pollingInterval = 30; // seconds
+    public int $pollingInterval = 10; // seconds
     public string $selectedView = 'jobs'; // jobs, failed_jobs, stats
 
     // Modal properties
@@ -69,6 +69,26 @@ class AdminJobMonitor extends Component
     public function jobLogCreated(array $data): void
     {
         // Refresh if we're viewing a specific job's logs
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Listen for job creation events.
+     */
+    #[On('job-created')]
+    public function jobCreated(array $data): void
+    {
+        // Refresh the admin dashboard when a new job is created
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Listen for upload events that create jobs.
+     */
+    #[On('upload-created')]
+    public function uploadCreated(array $data): void
+    {
+        // Refresh when new uploads are created (which usually create jobs)
         $this->dispatch('$refresh');
     }
 
@@ -202,6 +222,139 @@ class AdminJobMonitor extends Component
         } catch (\Exception $e) {
             $this->dispatch('show-notification', [
                 'message' => 'Error al reintentar el trabajo: ' . $e->getMessage(),
+                'type' => 'error',
+            ]);
+        }
+    }
+
+    /**
+     * Cancel an active job.
+     */
+    public function cancelJob(int $jobId): void
+    {
+        try {
+            // Get the job first to check if it can be cancelled
+            $job = DB::table('jobs')->where('id', $jobId)->first();
+
+            if (!$job) {
+                $this->dispatch('show-notification', [
+                    'message' => 'Trabajo no encontrado',
+                    'type' => 'error',
+                ]);
+                return;
+            }
+
+            // Only allow cancelling queued jobs
+            if ($job->status !== 'queued') {
+                $this->dispatch('show-notification', [
+                    'message' => 'Solo se pueden cancelar trabajos en cola',
+                    'type' => 'warning',
+                ]);
+                return;
+            }
+
+            // Delete the job from the queue
+            DB::table('jobs')->where('id', $jobId)->delete();
+
+            // Log the cancellation
+            $jobStatusService = app(JobStatusService::class);
+            $jobStatusService->logJobActivity(
+                $jobId,
+                'info',
+                'Job cancelled by admin',
+                ['cancelled_by_user_id' => Auth::id()]
+            );
+
+            $this->dispatch('show-notification', [
+                'message' => 'Trabajo cancelado exitosamente',
+                'type' => 'success',
+            ]);
+            $this->refreshData();
+
+        } catch (\Exception $e) {
+            $this->dispatch('show-notification', [
+                'message' => 'Error al cancelar el trabajo: ' . $e->getMessage(),
+                'type' => 'error',
+            ]);
+        }
+    }
+
+    /**
+     * Delete a completed or failed job from records.
+     */
+    public function deleteJob(int $jobId): void
+    {
+        try {
+            // Get the job first to check its status
+            $job = DB::table('jobs')->where('id', $jobId)->first();
+
+            if (!$job) {
+                $this->dispatch('show-notification', [
+                    'message' => 'Trabajo no encontrado',
+                    'type' => 'error',
+                ]);
+                return;
+            }
+
+            // Only allow deleting completed or failed jobs
+            if (!in_array($job->status, ['completed', 'failed'])) {
+                $this->dispatch('show-notification', [
+                    'message' => 'Solo se pueden eliminar trabajos completados o fallidos',
+                    'type' => 'warning',
+                ]);
+                return;
+            }
+
+            DB::beginTransaction();
+
+            // Delete related job logs first
+            DB::table('job_logs')->where('job_id', $jobId)->delete();
+
+            // Delete the job
+            DB::table('jobs')->where('id', $jobId)->delete();
+
+            DB::commit();
+
+            $this->dispatch('show-notification', [
+                'message' => 'Trabajo eliminado exitosamente',
+                'type' => 'success',
+            ]);
+            $this->refreshData();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->dispatch('show-notification', [
+                'message' => 'Error al eliminar el trabajo: ' . $e->getMessage(),
+                'type' => 'error',
+            ]);
+        }
+    }
+
+    /**
+     * Delete a failed job permanently.
+     */
+    public function deleteFailedJob(string $failedJobUuid): void
+    {
+        try {
+            $deleted = DB::table('failed_jobs')
+                ->where('uuid', $failedJobUuid)
+                ->delete();
+
+            if ($deleted) {
+                $this->dispatch('show-notification', [
+                    'message' => 'Trabajo fallido eliminado exitosamente',
+                    'type' => 'success',
+                ]);
+                $this->refreshData();
+            } else {
+                $this->dispatch('show-notification', [
+                    'message' => 'Trabajo fallido no encontrado',
+                    'type' => 'error',
+                ]);
+            }
+        } catch (\Exception $e) {
+            $this->dispatch('show-notification', [
+                'message' => 'Error al eliminar el trabajo fallido: ' . $e->getMessage(),
                 'type' => 'error',
             ]);
         }

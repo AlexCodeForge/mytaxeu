@@ -149,10 +149,26 @@
                             {{ $job->completed_at ? \Carbon\Carbon::parse($job->completed_at)->format('d/m/Y H:i') : '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button wire:click="showJobLogs({{ $job->id }})"
-                                    class="text-blue-600 hover:text-blue-900 transition-colors duration-150">
-                                Ver Logs
-                            </button>
+                            <div class="flex items-center space-x-2">
+                                <button wire:click="showJobLogs({{ $job->id }})"
+                                        class="text-blue-600 hover:text-blue-900 transition-colors duration-150">
+                                    Ver Logs
+                                </button>
+
+                                @if($job->status === 'queued')
+                                    <button wire:click="cancelJob({{ $job->id }})"
+                                            wire:confirm="¿Estás seguro de que quieres cancelar este trabajo?"
+                                            class="text-red-600 hover:text-red-900 transition-colors duration-150">
+                                        Cancelar
+                                    </button>
+                                @elseif(in_array($job->status, ['completed', 'failed']))
+                                    <button wire:click="deleteJob({{ $job->id }})"
+                                            wire:confirm="¿Estás seguro de que quieres eliminar este trabajo? Esta acción no se puede deshacer."
+                                            class="text-red-600 hover:text-red-900 transition-colors duration-150">
+                                        Eliminar
+                                    </button>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @endforeach

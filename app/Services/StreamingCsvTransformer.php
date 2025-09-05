@@ -194,9 +194,35 @@ class StreamingCsvTransformer
         // Classify transaction (can belong to multiple categories)
         $categories = $this->classifyTransaction($transaction);
 
+
         // Add to appropriate aggregates
         foreach ($categories as $category) {
-            $this->addToAggregate($category, $transaction);
+            // PYTHON EXACT LOGIC: For Intracomunitarias, create modified copy with zeroed VAT
+            if ($category === 'Ventas Intracomunitarias de bienes - B2B (EUR)') {
+                $modifiedTransaction = $transaction; // Make a copy
+
+                // Zero out VAT amounts for Intracomunitarias transactions (Python lines 135-150)
+                $vatColumns = [
+                    'PRICE_OF_ITEMS_VAT_AMT', 'PROMO_PRICE_OF_ITEMS_VAT_AMT',
+                    'SHIP_CHARGE_VAT_AMT', 'PROMO_SHIP_CHARGE_VAT_AMT',
+                    'GIFT_WRAP_VAT_AMT', 'PROMO_GIFT_WRAP_VAT_AMT'
+                ];
+
+                foreach ($vatColumns as $column) {
+                    $modifiedTransaction[$column] = 0;
+                }
+
+                // Recalculate IVA and Total after zeroing VAT columns
+                $modifiedTransaction['IVA (€)'] = 0;
+                // Total should equal Base for Intracomunitarias
+                $modifiedTransaction['Total (€)'] = $modifiedTransaction['Base (€)'];
+
+
+                $this->addToAggregate($category, $modifiedTransaction);
+            } else {
+                // For all other categories, use original transaction
+                $this->addToAggregate($category, $transaction);
+            }
         }
     }
 
@@ -210,6 +236,10 @@ class StreamingCsvTransformer
 
         // Apply currency conversion if needed
         $currency = $transaction['TRANSACTION_CURRENCY_CODE'] ?? 'EUR';
+        $jurisdiction = $transaction['TAXABLE_JURISDICTION'] ?? '';
+        $orderId = $transaction['ORDER_ID'] ?? 'NO_ID';
+
+
         if ($currency !== 'EUR' && isset(self::EXCHANGE_RATES[$currency])) {
             $rate = self::EXCHANGE_RATES[$currency];
             foreach (self::NUMERIC_COLUMNS as $column) {
@@ -218,11 +248,15 @@ class StreamingCsvTransformer
                 }
             }
             $transaction['TRANSACTION_CURRENCY_CODE'] = 'EUR';
+
         }
     }
 
     private function calculateTotals(array &$transaction): void
     {
+        $jurisdiction = $transaction['TAXABLE_JURISDICTION'] ?? '';
+        $orderId = $transaction['ORDER_ID'] ?? 'NO_ID';
+
         // Calculate Base (€)
         $transaction['Base (€)'] = 0;
         foreach (self::VAT_EXCL_COLUMNS as $column) {
@@ -240,6 +274,7 @@ class StreamingCsvTransformer
         foreach (self::VAT_INCL_COLUMNS as $column) {
             $transaction['Total (€)'] += $transaction[$column] ?? 0;
         }
+
     }
 
     private function classifyTransaction(array $row): array
@@ -264,7 +299,7 @@ class StreamingCsvTransformer
             $categories[] = 'Ventas locales al consumidor final - B2C y B2B (EUR)';
         }
 
-        // PYTHON EXACT LOGIC: SIN IVA + ELIF chain (SIN IVA is mutually exclusive with the elif categories)
+        // PYTHON EXACT LOGIC: SIN IVA is standalone IF (can combine with B2C/B2B)
         // Python uses pd.isna() which only returns True for actual null/NaN values, not empty strings
         if ($departCountry === $arrivalCountry &&
             $vatAmount == 0 &&
@@ -272,7 +307,7 @@ class StreamingCsvTransformer
             $taxResponsibility === 'SELLER') {
             $categories[] = 'Ventas locales SIN IVA (EUR)';
         }
-        // ELIF chain relative to SIN IVA check above (Python lines 125-172)
+        // PYTHON EXACT LOGIC: ELIF chain starts here (mutually exclusive with SIN IVA only)
         elseif ($departCountry !== $arrivalCountry &&
             in_array($departCountry, self::EU_COUNTRIES) &&
             in_array($arrivalCountry, self::EU_COUNTRIES) &&
@@ -362,6 +397,7 @@ class StreamingCsvTransformer
             ];
         }
 
+
         $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $calculatedBase;
         $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['IVA (€)'] += $ivaAmount;
         $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Total (€)'] += (float)($transaction['Total (€)'] ?? 0);
@@ -389,7 +425,11 @@ class StreamingCsvTransformer
             ];
         }
 
+
+        // PYTHON EXACT LOGIC: Intracomunitarias transactions have IVA set to 0
+        // Use Base amount for both Base and Total, IVA should be 0
         $this->categoryAggregates['Ventas Intracomunitarias de bienes - B2B (EUR)'][$key]['Base (€)'] += $transaction['Base (€)'];
+        $this->categoryAggregates['Ventas Intracomunitarias de bienes - B2B (EUR)'][$key]['IVA (€)'] += 0; // Always 0 for Intracomunitarias
         $this->categoryAggregates['Ventas Intracomunitarias de bienes - B2B (EUR)'][$key]['Total (€)'] += $transaction['Base (€)'];
     }
 

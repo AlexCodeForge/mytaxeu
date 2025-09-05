@@ -27,6 +27,8 @@ class UploadCsv extends Component
     public int $userCredits = 0;
     public array $periodAnalysis = [];
     public bool $showPeriodConfirmation = false;
+    public bool $processingConfirmation = false;
+    public bool $uploadSuccess = false;
 
     public function __construct()
     {
@@ -216,13 +218,22 @@ class UploadCsv extends Component
         }
     }
 
-    public function processUpload(): void
+    public function processUpload(bool $isConfirmed = false): void
     {
-        // If we're showing confirmation, user needs to confirm first
-        if ($this->showPeriodConfirmation) {
-            logger()->info('⚠️ Upload attempted while confirmation pending - redirecting to confirmation', [
+        logger()->emergency('🚨 PROCESS UPLOAD METHOD STARTED');
+        logger()->info('🔍 Process upload params', [
+            'is_confirmed' => $isConfirmed,
+            'show_period_confirmation' => $this->showPeriodConfirmation,
+            'processing_confirmation' => $this->processingConfirmation,
+        ]);
+
+        // If we're showing confirmation and this isn't a confirmed upload, user needs to confirm first
+        if ($this->showPeriodConfirmation && !$isConfirmed) {
+            logger()->warning('⚠️ Upload attempted while confirmation pending - redirecting to confirmation', [
                 'periods' => $this->periodAnalysis['periods'] ?? [],
                 'required_credits' => $this->periodAnalysis['required_credits'] ?? 0,
+                'show_period_confirmation' => $this->showPeriodConfirmation,
+                'processing_confirmation' => $this->processingConfirmation,
             ]);
 
             $this->dispatch('upload-error', [
@@ -231,11 +242,13 @@ class UploadCsv extends Component
             return;
         }
 
-        logger()->info('🚀 Upload method called');
+        logger()->emergency('🚀 STARTING UPLOAD PROCESS');
         logger()->info('🚀 Upload method called', [
             'user_id' => auth()->id(),
             'file_present' => !is_null($this->csvFile),
             'uploading_state' => $this->uploading,
+            'csv_file_name' => $this->csvFile?->getClientOriginalName(),
+            'is_confirmed' => $isConfirmed,
         ]);
 
         try {
@@ -249,14 +262,15 @@ class UploadCsv extends Component
             throw $e;
         }
 
-        logger()->info('🔍 Starting validation');
+        logger()->emergency('🔍 STARTING VALIDATION');
         $this->validate();
-        logger()->info('✅ Validation completed', [
+        logger()->emergency('✅ VALIDATION COMPLETED', [
             'errors' => $this->getErrorBag()->toArray(),
+            'has_errors' => !$this->getErrorBag()->isEmpty(),
         ]);
 
         if (! $this->csvFile) {
-            logger()->warning('❌ No CSV file present after validation');
+            logger()->emergency('❌ NO CSV FILE PRESENT AFTER VALIDATION');
             $errorMessage = 'No se ha seleccionado ningún archivo.';
             $this->dispatch('upload-error', [
                 'message' => $errorMessage
@@ -264,6 +278,8 @@ class UploadCsv extends Component
             $this->addError('csvFile', $errorMessage);
             return;
         }
+
+        logger()->emergency('✅ CSV FILE IS PRESENT, CONTINUING...');
 
         logger()->info('📋 File details before processing', [
             'original_name' => $this->csvFile->getClientOriginalName(),
@@ -369,6 +385,8 @@ class UploadCsv extends Component
                     // Reset upload state
                     $this->uploading = false;
                     $this->uploadProgress = '';
+                    $this->processingConfirmation = false;
+                    $this->uploadSuccess = false;
 
                     $this->dispatch('upload-error', [
                         'message' => $errorMessage
@@ -483,6 +501,8 @@ class UploadCsv extends Component
 
                 $this->addError('csvFile', 'Error al guardar el archivo: ' . $e->getMessage());
                 $this->uploading = false;
+                $this->processingConfirmation = false;
+                $this->uploadSuccess = false;
                 return;
             }
 
@@ -520,11 +540,29 @@ class UploadCsv extends Component
             // Dispatch events
             logger()->info('📡 Dispatching events');
             $this->dispatch('upload-created', uploadId: $upload->id);
+
+            // Reset processing confirmation before dispatching success
+            $this->processingConfirmation = false;
+
             $this->dispatch('upload-success', [
                 'uploadId' => $upload->id,
                 'fileName' => $upload->original_name,
                 'message' => 'Archivo subido exitosamente. El procesamiento ha comenzado.'
             ]);
+
+            logger()->emergency('🚨 SUCCESS EVENT DISPATCHED', [
+                'upload_id' => $upload->id,
+                'file_name' => $upload->original_name,
+                'event_data' => [
+                    'uploadId' => $upload->id,
+                    'fileName' => $upload->original_name,
+                    'message' => 'Archivo subido exitosamente. El procesamiento ha comenzado.'
+                ]
+            ]);
+
+            // Set success state for frontend handling
+            $this->uploadSuccess = true;
+            logger()->emergency('✅ UPLOAD SUCCESS STATE SET TO TRUE');
 
             // Update user credits display
             logger()->info('💰 Updating user credits display');
@@ -534,14 +572,15 @@ class UploadCsv extends Component
                 'new_credits' => $this->userCredits,
             ]);
 
-            // Reset form
+            // Reset form (but keep processingConfirmation until after redirect)
             logger()->info('🔄 Resetting form state');
             $this->reset(['csvFile', 'uploading', 'uploadProgress', 'periodAnalysis', 'showPeriodConfirmation']);
 
-            logger()->info('✅ Upload process completed successfully', [
+            logger()->emergency('🎉 UPLOAD PROCESS COMPLETED SUCCESSFULLY!', [
                 'upload_id' => $upload->id,
                 'file_name' => $upload->original_name,
                 'line_count' => $csvLineCount,
+                'is_confirmed' => $isConfirmed,
             ]);
 
         } catch (\Exception $e) {
@@ -554,6 +593,8 @@ class UploadCsv extends Component
 
             $this->uploading = false;
             $this->uploadProgress = '';
+            $this->processingConfirmation = false;
+            $this->uploadSuccess = false;
 
             logger()->error('Upload failed', [
                 'user_id' => auth()->id(),
@@ -578,7 +619,7 @@ class UploadCsv extends Component
             'was_uploading' => $this->uploading,
         ]);
 
-        $this->reset(['csvFile', 'uploading', 'uploadProgress', 'periodAnalysis', 'showPeriodConfirmation']);
+        $this->reset(['csvFile', 'uploading', 'uploadProgress', 'periodAnalysis', 'showPeriodConfirmation', 'processingConfirmation', 'uploadSuccess']);
         $this->resetErrorBag();
 
         logger()->info('✅ Upload state reset after cancellation');
@@ -589,14 +630,46 @@ class UploadCsv extends Component
      */
     public function confirmUpload(): void
     {
+        logger()->emergency('🚨 CONFIRM UPLOAD METHOD CALLED');
         logger()->info('✅ User confirmed upload after period analysis', [
             'user_id' => auth()->id(),
             'periods' => $this->periodAnalysis['periods'] ?? [],
             'required_credits' => $this->periodAnalysis['required_credits'] ?? 0,
+            'csv_file_present' => !is_null($this->csvFile),
+            'period_analysis_valid' => $this->periodAnalysis['is_valid'] ?? false,
         ]);
 
-        $this->showPeriodConfirmation = false;
-        $this->processUpload();
+        $this->processingConfirmation = true;
+        logger()->info('🔄 Processing confirmation set to true');
+
+        try {
+            $this->showPeriodConfirmation = false;
+            logger()->info('🔄 Modal closed, calling processUpload with confirmation');
+
+            $this->processUpload(true); // Pass true to indicate this is a confirmed upload
+
+            logger()->info('✅ processUpload completed successfully');
+        } catch (\Exception $e) {
+            logger()->emergency('🚨 EXCEPTION IN CONFIRM UPLOAD: ' . $e->getMessage());
+            logger()->error('❌ Error during confirmed upload', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            // Reset processing state
+            $this->processingConfirmation = false;
+            $this->uploadSuccess = false;
+            $this->showPeriodConfirmation = true; // Show modal again
+
+            // Dispatch error event
+            $this->dispatch('upload-error', [
+                'message' => 'Error durante el procesamiento: ' . $e->getMessage()
+            ]);
+
+            logger()->info('🔄 Processing confirmation reset due to error');
+        }
     }
 
     /**
@@ -610,8 +683,13 @@ class UploadCsv extends Component
         ]);
 
         $this->showPeriodConfirmation = false;
+        $this->processingConfirmation = false;
+        $this->uploadSuccess = false;
         $this->reset(['csvFile', 'periodAnalysis']);
         $this->resetErrorBag();
+
+        // Dispatch event to clear file from frontend
+        $this->dispatch('file-cancelled');
     }
 
 

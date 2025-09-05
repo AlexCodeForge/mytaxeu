@@ -7,8 +7,12 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Upload;
 use App\Models\UploadMetric;
+use App\Models\CreditTransaction;
+use App\Services\FinancialDataService;
+use Laravel\Cashier\Subscription;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 use InvalidArgumentException;
 
 class AdminExportService
@@ -183,6 +187,135 @@ class AdminExportService
         });
 
         return $this->generateCsv($headers, $rows->toArray());
+    }
+
+    /**
+     * Export financial data to CSV format
+     */
+    public function exportFinancialData(array $filters = []): string
+    {
+        $this->validateFilters($filters, ['start_date', 'end_date', 'time_period']);
+
+        $financialService = app(FinancialDataService::class);
+
+        // Determine date range
+        $startDate = isset($filters['start_date']) ? Carbon::parse($filters['start_date']) : now()->startOfMonth();
+        $endDate = isset($filters['end_date']) ? Carbon::parse($filters['end_date']) : now()->endOfMonth();
+
+        // Get financial summary
+        $financialSummary = $financialService->getFinancialSummary($startDate, $endDate);
+        $subscriptionBreakdown = $financialService->getSubscriptionStatusBreakdown();
+
+        // Get credit transactions for the period
+        $creditTransactions = CreditTransaction::where('type', 'purchased')
+            ->where('description', 'NOT LIKE', '%TEST%')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Get subscriptions
+        $subscriptions = Subscription::with('user')
+            ->whereNotNull('stripe_status')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Create summary data
+        $summaryHeaders = ['Metric', 'Value', 'Period', 'Generated At'];
+        $summaryRows = [
+            ['Monthly Recurring Revenue (MRR)', '$' . number_format($financialSummary['mrr'], 2), $filters['time_period'] ?? 'custom', now()->format('Y-m-d H:i:s')],
+            ['Total Revenue', '$' . number_format($financialSummary['total_revenue'], 2), 'All time', now()->format('Y-m-d H:i:s')],
+            ['Period Revenue', '$' . number_format($financialSummary['period_revenue'], 2), $startDate->format('Y-m-d') . ' to ' . $endDate->format('Y-m-d'), now()->format('Y-m-d H:i:s')],
+            ['Revenue Growth', number_format($financialSummary['revenue_growth'], 2) . '%', 'vs Previous Period', now()->format('Y-m-d H:i:s')],
+            ['Active Subscriptions', number_format($financialSummary['active_subscriptions']), 'Current', now()->format('Y-m-d H:i:s')],
+            ['Average Revenue Per User (ARPU)', '$' . number_format($financialSummary['arpu'], 2), $startDate->format('Y-m-d') . ' to ' . $endDate->format('Y-m-d'), now()->format('Y-m-d H:i:s')],
+        ];
+
+        // Add subscription breakdown
+        foreach ($subscriptionBreakdown as $status => $count) {
+            $statusLabel = ucfirst(str_replace('_', ' ', $status)) . ' Subscriptions';
+            $percentage = $financialSummary['active_subscriptions'] > 0
+                ? round(($count / array_sum($subscriptionBreakdown)) * 100, 1)
+                : 0;
+            $summaryRows[] = [$statusLabel, $count . ' (' . $percentage . '%)', 'Current', now()->format('Y-m-d H:i:s')];
+        }
+
+        $csvContent = $this->generateCsv($summaryHeaders, $summaryRows);
+
+        // Add separator and credit transactions
+        $csvContent .= "\n\nCredit Transactions (" . $startDate->format('Y-m-d') . " to " . $endDate->format('Y-m-d') . ")\n";
+
+        $transactionHeaders = [
+            'Transaction ID',
+            'User Name',
+            'User Email',
+            'Amount (USD)',
+            'Credits',
+            'Type',
+            'Description',
+            'Created At',
+        ];
+
+        $transactionRows = $creditTransactions->map(function ($transaction) {
+            return [
+                $transaction->id,
+                $transaction->user->name ?? 'Unknown',
+                $transaction->user->email ?? 'Unknown',
+                '$' . number_format($transaction->amount / 100, 2), // Convert cents to dollars
+                $transaction->credits,
+                ucfirst($transaction->type),
+                $transaction->description,
+                $transaction->created_at->format('Y-m-d H:i:s'),
+            ];
+        })->toArray();
+
+        $csvContent .= $this->generateCsv($transactionHeaders, $transactionRows);
+
+        // Add separator and subscription data
+        $csvContent .= "\n\nSubscriptions\n";
+
+        $subscriptionHeaders = [
+            'Subscription ID',
+            'Stripe ID',
+            'User Name',
+            'User Email',
+            'Status',
+            'Created At',
+            'Updated At',
+            'Trial Ends At',
+            'Ends At',
+        ];
+
+        $subscriptionRows = $subscriptions->map(function ($subscription) {
+            return [
+                $subscription->id,
+                $subscription->stripe_id,
+                $subscription->user->name ?? 'Unknown',
+                $subscription->user->email ?? 'Unknown',
+                ucfirst($subscription->stripe_status),
+                $subscription->created_at->format('Y-m-d H:i:s'),
+                $subscription->updated_at->format('Y-m-d H:i:s'),
+                $subscription->trial_ends_at?->format('Y-m-d H:i:s') ?? '',
+                $subscription->ends_at?->format('Y-m-d H:i:s') ?? '',
+            ];
+        })->toArray();
+
+        $csvContent .= $this->generateCsv($subscriptionHeaders, $subscriptionRows);
+
+        return $csvContent;
+    }
+
+    /**
+     * Save financial export to storage and return filename
+     */
+    public function saveFinancialDataExport(array $filters = []): string
+    {
+        $csvContent = $this->exportFinancialData($filters);
+        $filename = $this->generateExportFilename('financial_data');
+
+        Storage::disk('local')->put($filename, $csvContent);
+
+        return $filename;
     }
 
     /**

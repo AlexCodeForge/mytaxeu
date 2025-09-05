@@ -6,8 +6,6 @@ namespace App\Livewire\Admin;
 
 use App\Models\Upload;
 use App\Models\User;
-use App\Jobs\ProcessUploadJob;
-use App\Services\BulkOperationsService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -34,15 +32,12 @@ class UploadManager extends Component
     public string $sortDirection = 'desc';
 
     // Pagination
-    public int $perPage = 20;
+    public int $perPage = 15;
 
     // Modal properties
     public bool $showDetailsModal = false;
     public ?Upload $selectedUpload = null;
 
-    // Bulk operations
-    public array $selectedUploads = [];
-    public bool $selectAll = false;
 
     protected $queryString = [
         'statusFilter' => ['except' => ''],
@@ -54,6 +49,7 @@ class UploadManager extends Component
         'maxFileSize' => ['except' => null],
         'sortField' => ['except' => 'created_at'],
         'sortDirection' => ['except' => 'desc'],
+        'perPage' => ['except' => 15],
     ];
 
     public function mount(): void
@@ -101,6 +97,11 @@ class UploadManager extends Component
         $this->resetPage();
     }
 
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
+
     public function sortBy(string $field): void
     {
         if ($this->sortField === $field) {
@@ -137,147 +138,37 @@ class UploadManager extends Component
         $this->selectedUpload = null;
     }
 
-    public function toggleUploadSelection(int $uploadId): void
-    {
-        if (in_array($uploadId, $this->selectedUploads)) {
-            $this->selectedUploads = array_values(array_diff($this->selectedUploads, [$uploadId]));
-        } else {
-            $this->selectedUploads[] = $uploadId;
-        }
-    }
 
-    public function toggleSelectAll(): void
-    {
-        if ($this->selectAll) {
-            $this->selectedUploads = $this->getUploads()->pluck('id')->toArray();
-        } else {
-            $this->selectedUploads = [];
-        }
-    }
-
-    public function clearSelection(): void
-    {
-        $this->selectedUploads = [];
-        $this->selectAll = false;
-    }
-
-    public function bulkRetry(): void
-    {
-        if (empty($this->selectedUploads)) {
-            $this->dispatch('show-notification', [
-                'message' => 'No uploads selected',
-                'type' => 'warning',
-            ]);
-            return;
-        }
-
-        $bulkService = new BulkOperationsService();
-        $result = $bulkService->retryUploads($this->selectedUploads, Auth::id());
-
-        $this->clearSelection();
-
-        $this->dispatch('show-notification', [
-            'message' => $result['message'],
-            'type' => $result['success'] ? 'success' : 'error',
-        ]);
-
-        if ($result['success'] && $result['processed_count'] > 0) {
-            $this->dispatch('bulk-operation-complete', [
-                'operation' => 'retry',
-                'result' => $result,
-            ]);
-        }
-    }
-
-    public function bulkUpdateStatus(string $status): void
-    {
-        if (empty($this->selectedUploads)) {
-            $this->dispatch('show-notification', [
-                'message' => 'No uploads selected',
-                'type' => 'warning',
-            ]);
-            return;
-        }
-
-        $bulkService = new BulkOperationsService();
-        $result = $bulkService->updateUploadStatus($this->selectedUploads, $status, Auth::id());
-
-        $this->clearSelection();
-
-        $this->dispatch('show-notification', [
-            'message' => $result['message'],
-            'type' => $result['success'] ? 'success' : 'error',
-        ]);
-
-        if ($result['success'] && $result['processed_count'] > 0) {
-            $this->dispatch('bulk-operation-complete', [
-                'operation' => 'status_update',
-                'result' => $result,
-            ]);
-        }
-    }
-
-    public function bulkDelete(): void
-    {
-        if (empty($this->selectedUploads)) {
-            $this->dispatch('show-notification', [
-                'message' => 'No uploads selected',
-                'type' => 'warning',
-            ]);
-            return;
-        }
-
-        $bulkService = new BulkOperationsService();
-        $result = $bulkService->deleteUploads($this->selectedUploads, Auth::id());
-
-        $this->clearSelection();
-
-        $this->dispatch('show-notification', [
-            'message' => $result['message'],
-            'type' => $result['success'] ? 'success' : 'error',
-        ]);
-
-        if ($result['success'] && $result['processed_count'] > 0) {
-            $this->dispatch('bulk-operation-complete', [
-                'operation' => 'delete',
-                'result' => $result,
-            ]);
-        }
-    }
-
-    public function retryUpload(int $uploadId): void
+    public function downloadUpload(int $uploadId)
     {
         $upload = Upload::findOrFail($uploadId);
 
-        if (!in_array($upload->status, [Upload::STATUS_FAILED])) {
+        // Check if file is completed and exists
+        if (!$upload->isCompleted()) {
             $this->dispatch('show-notification', [
-                'message' => 'Only failed uploads can be retried',
-                'type' => 'warning',
+                'message' => 'El archivo debe estar completado para poder descargarlo.',
+                'type' => 'error',
             ]);
             return;
         }
 
-        try {
-            $upload->update([
-                'status' => Upload::STATUS_QUEUED,
-                'failure_reason' => null,
-            ]);
-
-            ProcessUploadJob::dispatch($upload);
-
-                    $this->dispatch('show-notification', [
-            'message' => 'Upload retry initiated successfully',
-            'type' => 'success',
-        ]);
-
-        // Refresh the upload list
-        $this->dispatch('$refresh');
-        } catch (\Exception $e) {
+        // Check if transformed file exists
+        if (!$upload->hasTransformedFile()) {
             $this->dispatch('show-notification', [
-                'message' => 'Failed to retry upload: ' . $e->getMessage(),
+                'message' => 'El archivo transformado no se encuentra disponible para descarga.',
                 'type' => 'error',
             ]);
+            return;
         }
+
+        // Use the actual transformed filename (which already includes date and _transformado suffix)
+        $transformedFilename = basename($upload->transformed_path);
+
+        // Return download response for transformed file
+        return Storage::disk($upload->disk)->download(
+            $upload->transformed_path,
+            $transformedFilename
+        );
     }
 
     public function downloadOriginalFile(int $uploadId)
@@ -286,7 +177,7 @@ class UploadManager extends Component
 
         if (!Storage::disk($upload->disk)->exists($upload->path)) {
             $this->dispatch('show-notification', [
-                'message' => 'Original file not found',
+                'message' => 'Archivo original no encontrado',
                 'type' => 'error',
             ]);
             return;
@@ -301,7 +192,7 @@ class UploadManager extends Component
 
         if (!$upload->transformed_path || !Storage::disk($upload->disk)->exists($upload->transformed_path)) {
             $this->dispatch('show-notification', [
-                'message' => 'Transformed file not found',
+                'message' => 'Archivo transformado no encontrado',
                 'type' => 'error',
             ]);
             return;
@@ -311,45 +202,6 @@ class UploadManager extends Component
         return Storage::disk($upload->disk)->download($upload->transformed_path, $filename);
     }
 
-    public function exportToCsv(): void
-    {
-        // Collect current filters
-        $filters = array_filter([
-            'status' => $this->statusFilter,
-            'user_id' => $this->userFilter,
-            'date_from' => $this->dateFrom,
-            'date_to' => $this->dateTo,
-        ]);
-
-        $this->dispatch('start-export', [
-            'type' => 'uploads',
-            'filters' => $filters,
-        ]);
-
-        $this->dispatch('show-notification', [
-            'message' => 'Export started. You will receive a download link shortly.',
-            'type' => 'info',
-        ]);
-    }
-
-    public function exportToInstantCsv(): void
-    {
-        // For small exports, use instant download
-        $filters = array_filter([
-            'status' => $this->statusFilter,
-            'user_id' => $this->userFilter,
-            'date_from' => $this->dateFrom,
-            'date_to' => $this->dateTo,
-            'limit' => 500, // Limit for instant downloads
-        ]);
-
-        $queryString = http_build_query($filters);
-        $downloadUrl = route('admin.exports.instant.uploads') . '?' . $queryString;
-
-        $this->dispatch('instant-download', [
-            'url' => $downloadUrl,
-        ]);
-    }
 
 
 

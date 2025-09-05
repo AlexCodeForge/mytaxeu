@@ -99,4 +99,27 @@ class User extends Authenticatable
     {
         return $this->hasMany(Subscription::class);
     }
+
+    /**
+     * Get the user's subscription.
+     * Override Laravel Cashier's subscription method to work with our custom model.
+     */
+    public function subscription($type = 'default'): ?Subscription
+    {
+        return $this->subscriptions()
+            ->where('type', $type)
+            ->where('stripe_status', '!=', 'canceled')
+            ->latest()
+            ->first();
+    }
+
+    /**
+     * Determine if the user is subscribed.
+     * Override Laravel Cashier's subscribed method to work with our custom model.
+     */
+    public function subscribed($type = 'default'): bool
+    {
+        $subscription = $this->subscription($type);
+        return $subscription && $subscription->valid();
+    }
 }

@@ -189,8 +189,8 @@ class ProcessUploadJob implements ShouldQueue
             $fileSize = Storage::disk($upload->disk)->size($upload->path);
             $fileSizeMB = round($fileSize / 1024 / 1024, 2);
 
-            if ($fileSizeMB > 50) {
-                // Use streaming transformer for large files (>50MB)
+            if ($fileSizeMB > 5) {
+                // Use streaming transformer for files >5MB (optimized for memory efficiency)
                 $streamingTransformer = app(StreamingCsvTransformer::class);
                 $this->processCsvTransformationStreaming($upload, $streamingTransformer, $jobStatusService);
 
@@ -200,7 +200,7 @@ class ProcessUploadJob implements ShouldQueue
                     'transformer' => 'StreamingCsvTransformer'
                 ]);
             } else {
-                // Use regular transformer for smaller files
+                // Use regular transformer only for very small files (<5MB)
                 $this->processCsvTransformation($upload, $csvTransformer, $jobStatusService);
 
                 Log::info('ProcessUploadJob: Used regular transformer for small file', [
@@ -239,12 +239,27 @@ class ProcessUploadJob implements ShouldQueue
 
             // Consume credit for successful processing
             $creditService = app(CreditService::class);
-            $creditConsumed = $creditService->consumeCredits(
-                $upload->user,
-                1,
-                "Procesamiento de archivo CSV: {$upload->original_name}",
-                $upload
-            );
+
+            // Only consume credits if this upload hasn't been charged yet
+            $alreadyCharged = $upload->credits_consumed > 0;
+            $creditConsumed = false;
+
+            if (!$alreadyCharged) {
+                $creditConsumed = $creditService->consumeCredits(
+                    $upload->user,
+                    $upload->credits_required ?? 1,
+                    "Procesamiento de archivo CSV: {$upload->original_name}",
+                    $upload
+                );
+
+                // Update upload record to reflect credits consumed
+                if ($creditConsumed) {
+                    $upload->update(['credits_consumed' => $upload->credits_required ?? 1]);
+                }
+            } else {
+                // Credits already consumed for this upload
+                $creditConsumed = true;
+            }
 
             if (!$creditConsumed) {
                 Log::warning('ProcessUploadJob: Failed to consume credit after processing', [
@@ -505,15 +520,8 @@ class ProcessUploadJob implements ShouldQueue
      */
     private function initializeJobMetadata(Upload $upload, JobStatusService $jobStatusService): void
     {
-        // Skip job metadata initialization for Redis queues since they don't use database job records
-        if ($this->shouldSkipJobStatusTracking()) {
-            logger()->info('Skipping job metadata initialization for Redis queue', [
-                'upload_id' => $upload->id,
-                'queue_driver' => config('queue.default')
-            ]);
-            return;
-        }
-
+        // Always try to initialize job metadata for monitoring purposes
+        // Even for Redis queues, we want to track job information
         try {
             $jobStatusService->initializeJobMetadata(
                 jobId: (int) $this->job->getJobId(),
@@ -521,6 +529,13 @@ class ProcessUploadJob implements ShouldQueue
                 fileName: $upload->original_name,
                 status: JobStatusService::STATUS_QUEUED
             );
+
+            logger()->info('Successfully initialized job metadata', [
+                'upload_id' => $upload->id,
+                'job_id' => $this->job->getJobId(),
+                'user_id' => $upload->user_id,
+                'queue_driver' => config('queue.default')
+            ]);
         } catch (\Exception $e) {
             Log::warning('Failed to initialize job metadata', [
                 'upload_id' => $upload->id,

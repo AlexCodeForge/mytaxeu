@@ -18,8 +18,8 @@
                         <li>
                             <a href="{{ route($link['route']) }}"
                                wire:navigate.hover
-                               wire:current="sidebar-active"
-                               class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50">
+                               wire:current.exact="bg-blue-100 text-blue-800 border-l-4 border-blue-500"
+                               class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50 sidebar-nav-link">
                                 <i class="fas {{ $link['icon'] }} mr-3"></i>
                                 <span>{{ $link['label'] }}</span>
                             </a>
@@ -39,8 +39,8 @@
                             <li>
                                 <a href="{{ route($link['route']) }}"
                                    wire:navigate.hover
-                                   wire:current="sidebar-active"
-                                   class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50">
+                                   wire:current.exact="bg-blue-100 text-blue-800 border-l-4 border-blue-500"
+                                   class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50 sidebar-nav-link">
                                     <i class="fas {{ $link['icon'] }} mr-3"></i>
                                     <span>{{ $link['label'] }}</span>
                                 </a>

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\CreditService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -122,6 +123,27 @@ class StripeWebhookController extends WebhookController
             return;
         }
 
+        // Create local subscription record if it doesn't exist
+        $localSubscription = $user->subscriptions()->where('stripe_id', $subscription->id)->first();
+
+        if (!$localSubscription) {
+            $localSubscription = $user->subscriptions()->create([
+                'type' => 'default', // or extract from metadata if available
+                'stripe_id' => $subscription->id,
+                'stripe_status' => $subscription->status,
+                'stripe_price' => $subscription->items->data[0]->price->id ?? null,
+                'quantity' => $subscription->items->data[0]->quantity ?? 1,
+                'trial_ends_at' => $subscription->trial_end ? \Carbon\Carbon::createFromTimestamp($subscription->trial_end) : null,
+                'ends_at' => null,
+            ]);
+
+            Log::info('Local subscription record created', [
+                'user_id' => $user->id,
+                'subscription_id' => $subscription->id,
+                'local_subscription_id' => $localSubscription->id,
+            ]);
+        }
+
         // Allocate initial credits based on subscription
         $creditService = app(CreditService::class);
         $creditsToAllocate = $this->getCreditsForSubscription($subscription);
@@ -130,7 +152,7 @@ class StripeWebhookController extends WebhookController
             $user,
             $creditsToAllocate,
             "Créditos iniciales por suscripción: {$subscription->id}",
-            $user->subscriptions()->where('stripe_id', $subscription->id)->first()
+            $localSubscription
         );
 
         Log::info('Subscription created - credits allocated', [
@@ -183,6 +205,10 @@ class StripeWebhookController extends WebhookController
 
         // Skip if this is not a subscription invoice
         if (!$invoice->subscription) {
+            Log::debug('Skipping non-subscription invoice', [
+                'invoice_id' => $invoice->id,
+                'customer_id' => $stripeCustomerId,
+            ]);
             return;
         }
 
@@ -195,7 +221,48 @@ class StripeWebhookController extends WebhookController
             return;
         }
 
-        // Allocate monthly credits
+        // Find or create local subscription record
+        $localSubscription = $user->subscriptions()->where('stripe_id', $invoice->subscription)->first();
+
+        if (!$localSubscription) {
+            Log::warning('Local subscription not found for payment, creating it', [
+                'user_id' => $user->id,
+                'subscription_id' => $invoice->subscription,
+                'invoice_id' => $invoice->id,
+            ]);
+
+            // Try to fetch subscription from Stripe to create local record
+            try {
+                $stripeSubscription = \Stripe\Subscription::retrieve($invoice->subscription);
+                $localSubscription = $user->subscriptions()->create([
+                    'type' => 'default',
+                    'stripe_id' => $stripeSubscription->id,
+                    'stripe_status' => $stripeSubscription->status,
+                    'stripe_price' => $stripeSubscription->items->data[0]->price->id ?? null,
+                    'quantity' => $stripeSubscription->items->data[0]->quantity ?? 1,
+                    'trial_ends_at' => $stripeSubscription->trial_end ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end) : null,
+                    'ends_at' => null,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to create local subscription record from Stripe', [
+                    'error' => $e->getMessage(),
+                    'subscription_id' => $invoice->subscription,
+                ]);
+                return;
+            }
+        }
+
+        // Skip initial invoice for new subscriptions (credits are allocated in handleSubscriptionCreated)
+        if ($invoice->billing_reason === 'subscription_create') {
+            Log::info('Skipping initial subscription invoice - credits already allocated', [
+                'user_id' => $user->id,
+                'invoice_id' => $invoice->id,
+                'subscription_id' => $invoice->subscription,
+            ]);
+            return;
+        }
+
+        // Allocate monthly credits for recurring payments
         $creditService = app(CreditService::class);
         $creditsToAllocate = $this->getCreditsForInvoice($invoice);
 
@@ -203,12 +270,14 @@ class StripeWebhookController extends WebhookController
             $user,
             $creditsToAllocate,
             "Créditos mensuales por pago exitoso: {$invoice->id}",
-            $user->subscriptions()->where('stripe_id', $invoice->subscription)->first()
+            $localSubscription
         );
 
         Log::info('Payment succeeded - credits allocated', [
             'user_id' => $user->id,
             'invoice_id' => $invoice->id,
+            'subscription_id' => $invoice->subscription,
+            'billing_reason' => $invoice->billing_reason,
             'credits_allocated' => $creditsToAllocate,
             'success' => $success,
         ]);
@@ -236,8 +305,38 @@ class StripeWebhookController extends WebhookController
      */
     protected function getCreditsForSubscription($subscription): int
     {
+        // Try to get credits from product metadata
+        if (!empty($subscription->items->data)) {
+            $firstItem = $subscription->items->data[0];
+
+            try {
+                // Retrieve the product to get metadata
+                $product = \Stripe\Product::retrieve($firstItem->price->product);
+
+                if (isset($product->metadata['credits'])) {
+                    return (int) $product->metadata['credits'];
+                }
+
+                // Check price metadata as fallback
+                $price = \Stripe\Price::retrieve($firstItem->price->id);
+                if (isset($price->metadata['credits'])) {
+                    return (int) $price->metadata['credits'];
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to retrieve product metadata for credits', [
+                    'subscription_id' => $subscription->id,
+                    'product_id' => $firstItem->price->product ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // Default: 10 credits for new subscriptions
-        // This can be made configurable based on plan or price ID
+        Log::info('Using default credits for subscription', [
+            'subscription_id' => $subscription->id,
+            'credits' => 10,
+        ]);
+
         return 10;
     }
 
@@ -246,8 +345,40 @@ class StripeWebhookController extends WebhookController
      */
     protected function getCreditsForInvoice($invoice): int
     {
-        // Default: 10 credits per monthly payment
-        // This can be made configurable based on plan or price ID
+        // Try to get credits from the subscription items in the invoice
+        if (!empty($invoice->lines->data)) {
+            foreach ($invoice->lines->data as $line) {
+                if ($line->type === 'subscription') {
+                    try {
+                        // Retrieve the product to get metadata
+                        $product = \Stripe\Product::retrieve($line->price->product);
+
+                        if (isset($product->metadata['credits'])) {
+                            return (int) $product->metadata['credits'];
+                        }
+
+                        // Check price metadata as fallback
+                        $price = \Stripe\Price::retrieve($line->price->id);
+                        if (isset($price->metadata['credits'])) {
+                            return (int) $price->metadata['credits'];
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to retrieve product metadata for invoice credits', [
+                            'invoice_id' => $invoice->id,
+                            'product_id' => $line->price->product ?? 'unknown',
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+        }
+
+        // Default: 10 credits per payment
+        Log::info('Using default credits for invoice', [
+            'invoice_id' => $invoice->id,
+            'credits' => 10,
+        ]);
+
         return 10;
     }
 }
