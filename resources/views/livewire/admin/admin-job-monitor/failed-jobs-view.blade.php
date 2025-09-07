@@ -44,8 +44,7 @@
                                     class="text-blue-600 hover:text-blue-900">
                                 Reintentar
                             </button>
-                            <button wire:click="deleteFailedJob('{{ $failedJob->uuid }}')"
-                                    wire:confirm="¿Estás seguro de que quieres eliminar este trabajo fallido? Esta acción no se puede deshacer."
+                            <button wire:click="confirmDeleteFailed('{{ $failedJob->uuid }}')"
                                     class="text-red-600 hover:text-red-900">
                                 Eliminar
                             </button>

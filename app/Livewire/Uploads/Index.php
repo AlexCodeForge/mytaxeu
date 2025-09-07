@@ -11,6 +11,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Cache;
 
 class Index extends Component
 {
@@ -20,7 +21,6 @@ class Index extends Component
     public string $sortField = 'created_at';
     public string $sortDirection = 'desc';
     public int $perPage = 15;
-    public bool $autoRefresh = true;
 
     protected $queryString = [
         'statusFilter' => ['except' => ''],
@@ -141,16 +141,49 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function refreshUploads(): void
+    /**
+     * Listen for upload status changes and refresh automatically
+     */
+    #[On('upload-status-changed')]
+    public function onUploadStatusChanged(array $data): void
     {
-        // Force refresh of the uploads list to get latest status
-        $this->dispatch('$refresh');
+        // Check if this status change affects this user's uploads
+        if (isset($data['userId']) && $data['userId'] === auth()->id()) {
+            // Force component refresh to show updated status
+            $this->dispatch('$refresh');
+        }
     }
 
-    public function toggleAutoRefresh(): void
+    /**
+     * Check for status change events (for browser polling)
+     */
+    public function checkForStatusUpdates(): array
     {
-        $this->autoRefresh = !$this->autoRefresh;
+        // Get current user's upload IDs (only recent ones to avoid unnecessary checks)
+        $userUploads = Upload::where('user_id', auth()->id())
+            ->where('created_at', '>=', now()->subDays(7)) // Only check uploads from last 7 days
+            ->pluck('id');
+        $events = [];
+        $hasStatusChanges = false;
+
+        foreach ($userUploads as $uploadId) {
+            $eventData = Cache::get("upload_status_event_{$uploadId}");
+            if ($eventData) {
+                $events[] = $eventData;
+                Cache::forget("upload_status_event_{$uploadId}"); // Remove after reading
+                $hasStatusChanges = true;
+            }
+        }
+
+        // If we found events, trigger a refresh
+        if ($hasStatusChanges) {
+            $this->dispatch('$refresh');
+        }
+
+        return $events;
     }
+
+
 
     public function getStatusCounts(): array
     {

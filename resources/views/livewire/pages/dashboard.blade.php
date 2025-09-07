@@ -8,7 +8,7 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    {{-- <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <a href="{{ route('uploads.create') }}" wire:navigate class="glass-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all group">
             <div class="flex items-center">
                 <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
@@ -27,7 +27,7 @@
                     <i class="fas fa-file-csv text-green-600 text-xl"></i>
                 </div>
                 <div class="ml-4">
-                    <h3 class="text-lg font-semibold text-gray-900">Mis Archivos</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">    ivos</h3>
                     <p class="text-sm text-gray-600">Ver estado de tus archivos</p>
                 </div>
             </div>
@@ -56,7 +56,7 @@
                 </div>
             </div>
         </a>
-    </div>
+    </div> --}}
 
     <!-- Stats Section -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

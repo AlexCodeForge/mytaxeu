@@ -8,35 +8,8 @@
                 <p class="text-sm text-gray-600 mt-1">{{ $uploads->total() }} archivos subidos</p>
             </div>
 
-            <!-- Status Filter and Auto-refresh Controls -->
+            <!-- Status Filter -->
             <div class="flex items-center space-x-4">
-                <!-- Auto-refresh Toggle -->
-                <div class="flex items-center space-x-2">
-                    <label class="flex items-center cursor-pointer">
-                        <input
-                            type="checkbox"
-                            wire:model.live="autoRefresh"
-                            class="sr-only"
-                        >
-                        <div class="relative">
-                            <div class="block bg-gray-600 w-10 h-6 rounded-full" :class="{ 'bg-primary': $wire.autoRefresh }"></div>
-                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition" :class="{ 'transform translate-x-4': $wire.autoRefresh }"></div>
-                        </div>
-                        <span class="ml-2 text-sm text-gray-700">Auto-refresh</span>
-                    </label>
-                </div>
-
-                <!-- Manual Refresh Button -->
-                <button
-                    wire:click="refreshUploads"
-                    class="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                    title="Refrescar lista"
-                >
-                    <i class="fas fa-sync-alt mr-2" wire:loading.class="animate-spin" wire:target="refreshUploads"></i>
-                    Refrescar
-                </button>
-
-                <!-- Status Filter -->
                 <select wire:model.live="statusFilter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
                     <option value="">Todos los estados</option>
                     @foreach($allStatuses as $status)
@@ -218,23 +191,9 @@
             </div>
         @endif
 
-        <!-- Auto-refresh for uploads -->
-        @if($autoRefresh && ($uploads->where('status', 'processing')->count() > 0 || $uploads->where('status', 'queued')->count() > 0))
-            <div wire:poll.3s class="hidden"></div>
-            <div class="mt-4 text-center">
-                <div class="inline-flex items-center text-sm text-gray-600">
-                    <div class="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></div>
-                    Actualizando automáticamente cada 3 segundos...
-                </div>
-            </div>
-        @elseif($autoRefresh)
-            <div wire:poll.10s class="hidden"></div>
-            <div class="mt-4 text-center">
-                <div class="inline-flex items-center text-sm text-gray-600">
-                    <div class="animate-pulse rounded-full h-2 w-2 bg-green-500 mr-2"></div>
-                    Auto-refresh activado (cada 10 segundos)
-                </div>
-            </div>
-        @endif
+        <!-- Event-based real-time updates enabled -->
+        <div wire:poll.5s="checkForStatusUpdates" class="hidden"></div>
+        <div class="mt-4 text-center">
+        </div>
     </div>
 </div>

@@ -414,7 +414,7 @@
 @script
 <script>
 Alpine.data('adminDashboard', () => ({
-    chart: null,
+    chartId: 'dashboard-uploads-chart',
 
     init() {
         console.log('🚀 Alpine adminDashboard init started');
@@ -438,15 +438,14 @@ Alpine.data('adminDashboard', () => ({
             console.log('Dashboard data refreshed');
             this.updateChart();
         });
+    },
 
-        // Listen for Livewire component updates
-        Livewire.hook('morph.updated', ({ el, component }) => {
-            if (el.querySelector('[x-ref="uploadsChart"]')) {
-                setTimeout(() => {
-                    this.initializeChart();
-                }, 100);
-            }
-        });
+    destroy() {
+        // Cleanup chart when Alpine component is destroyed
+        if (window.chartManager) {
+            console.log('🗑️ Cleaning up dashboard chart on destroy');
+            window.chartManager.destroyChart(this.chartId);
+        }
     },
 
     initializeChart() {
@@ -455,23 +454,13 @@ Alpine.data('adminDashboard', () => ({
         console.log('Window Chart:', !!window.Chart);
         console.log('Canvas element:', this.$refs.uploadsChart);
 
-        if (this.$refs.uploadsChart) {
-            const canvas = this.$refs.uploadsChart;
-            console.log('📏 Canvas dimensions:', {
-                width: canvas.width,
-                height: canvas.height,
-                clientWidth: canvas.clientWidth,
-                clientHeight: canvas.clientHeight,
-                offsetWidth: canvas.offsetWidth,
-                offsetHeight: canvas.offsetHeight,
-                style: canvas.style.cssText,
-                display: getComputedStyle(canvas).display,
-                visibility: getComputedStyle(canvas).visibility
-            });
-        }
-
         if (!window.Chart) {
             console.error('❌ Chart.js not loaded!');
+            return;
+        }
+
+        if (!window.chartManager) {
+            console.error('❌ Chart manager not loaded!');
             return;
         }
 
@@ -480,7 +469,7 @@ Alpine.data('adminDashboard', () => ({
             return;
         }
 
-        const ctx = this.$refs.uploadsChart.getContext('2d');
+        const canvas = this.$refs.uploadsChart;
         const trendData = @js($trendData ?? []);
 
         console.log('📊 Chart data received:', trendData);
@@ -488,16 +477,10 @@ Alpine.data('adminDashboard', () => ({
         console.log('📊 Is array:', Array.isArray(trendData));
         console.log('📊 Data length:', trendData ? trendData.length : 0);
 
-        // Destroy existing chart if it exists
-        if (this.chart) {
-            console.log('🗑️ Destroying existing chart');
-            this.chart.destroy();
-        }
-
         try {
             console.log('📈 Creating chart with trend data:', trendData);
 
-            this.chart = new Chart(ctx, {
+            const chartConfig = {
                 type: 'line',
                 data: {
                     labels: trendData.map(item => item.date || ''),
@@ -594,17 +577,21 @@ Alpine.data('adminDashboard', () => ({
                         easing: 'easeInOutQuart'
                     }
                 }
-            });
+            };
 
-            console.log('✅ Chart created successfully!', this.chart);
-            console.log('📊 Chart canvas:', this.chart.canvas);
-            console.log('📊 Chart visible:', this.chart.canvas.style.display !== 'none');
+            // Create chart using chart manager
+            const chart = window.chartManager.createChart(this.chartId, canvas, chartConfig);
+
+            console.log('✅ Chart created successfully!', chart);
+            console.log('📊 Chart canvas:', chart.canvas);
+            console.log('📊 Chart visible:', chart.canvas.style.display !== 'none');
 
             // Force a manual render to make sure chart shows up
             setTimeout(() => {
-                if (this.chart) {
-                    this.chart.resize();
-                    this.chart.update();
+                const currentChart = window.chartManager.getChart(this.chartId);
+                if (currentChart) {
+                    currentChart.resize();
+                    currentChart.update();
                     console.log('🔄 Chart manually updated');
                 }
             }, 100);
@@ -615,12 +602,13 @@ Alpine.data('adminDashboard', () => ({
             console.error('Error stack:', error.stack);
 
             // Try a simple fallback chart
-            this.createFallbackChart(ctx);
+            this.createFallbackChart(canvas);
         }
     },
 
     updateChart() {
-        if (!this.chart) {
+        const chart = window.chartManager.getChart(this.chartId);
+        if (!chart) {
             this.initializeChart();
             return;
         }
@@ -631,20 +619,25 @@ Alpine.data('adminDashboard', () => ({
                 return;
             }
 
-            this.chart.data.labels = trendData.map(item => item.date || '');
-            this.chart.data.datasets[0].data = trendData.map(item => item.uploads || 0);
-            this.chart.update('active');
+            const newData = {
+                labels: trendData.map(item => item.date || ''),
+                datasets: [{
+                    ...chart.data.datasets[0],
+                    data: trendData.map(item => item.uploads || 0)
+                }]
+            };
 
+            window.chartManager.updateChart(this.chartId, newData, 'active');
             console.log('Chart updated with new data');
         }).catch(error => {
             console.error('Error updating chart data:', error);
         });
     },
 
-    createFallbackChart(ctx) {
+    createFallbackChart(canvas) {
         console.log('🔄 Creating fallback chart');
         try {
-            this.chart = new Chart(ctx, {
+            const fallbackConfig = {
                 type: 'bar',
                 data: {
                     labels: ['Test'],
@@ -666,7 +659,9 @@ Alpine.data('adminDashboard', () => ({
                         }
                     }
                 }
-            });
+            };
+
+            window.chartManager.createChart(this.chartId + '-fallback', canvas, fallbackConfig);
             console.log('✅ Fallback chart created');
         } catch (error) {
             console.error('❌ Even fallback chart failed:', error);

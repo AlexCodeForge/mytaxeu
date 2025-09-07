@@ -1,27 +1,9 @@
 <div class="space-y-6"
      x-data="{ autoRefresh: @entangle('autoRefresh') }"
-     @if($autoRefresh) wire:poll.{{ $pollingInterval }}s="refreshData" @endif>
-
-    {{-- Header Section --}}
-    <div class="bg-white rounded-xl shadow-sm p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="text-xl font-semibold text-gray-900">Monitoreo Administrativo de Trabajos</h2>
-                <p class="mt-1 text-sm text-gray-600">Vista completa de todos los trabajos de procesamiento en el sistema</p>
-            </div>
-
-            <div class="mt-4 sm:mt-0 flex items-center space-x-3">
-                {{-- Auto-refresh toggle --}}
-                <label class="flex items-center">
-                    <input type="checkbox"
-                           wire:model.live="autoRefresh"
-                           class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                    <span class="ml-2 text-sm text-gray-600">Auto-actualizar</span>
-                </label>
-
-            </div>
-        </div>
-    </div>
+     @upload-status-changed.window="$wire.$refresh()"
+     @upload-cancelled.window="$wire.$refresh()"
+     @upload-deleted.window="$wire.$refresh()"
+     wire:ignore.self>
 
     {{-- Statistics Cards --}}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -240,6 +222,50 @@
                     <button wire:click="closeLogsModal"
                             class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
                         Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+        @endteleport
+    @endif
+
+    {{-- Confirm Modal --}}
+    @if($showConfirmModal)
+        @teleport('body')
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center"
+             wire:click="closeConfirmModal">
+            <div class="relative bg-white rounded-lg p-6 shadow-xl max-w-md mx-auto"
+                 wire:click.stop>
+
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        {{ $confirmTitle }}
+                    </h3>
+                    <button wire:click="closeConfirmModal"
+                            class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Modal Body --}}
+                <div class="mb-6">
+                    <p class="text-gray-700">{{ $confirmMessage }}</p>
+                </div>
+
+                {{-- Modal Footer --}}
+                <div class="flex justify-end space-x-3">
+                    <button wire:click="closeConfirmModal"
+                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
+                        Cancelar
+                    </button>
+                    <button wire:click="executeConfirmedAction"
+                            class="px-4 py-2 rounded-md text-white transition-colors
+                                   @if($confirmButtonColor === 'red') bg-red-600 hover:bg-red-700
+                                   @else bg-yellow-600 hover:bg-yellow-700 @endif">
+                        {{ $confirmButtonText }}
                     </button>
                 </div>
             </div>

@@ -74,16 +74,87 @@
     </div>
 </div>
 
-{{-- Progress Chart Placeholder --}}
-<div class="mt-8 bg-white border border-gray-200 rounded-lg p-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-4">Tendencias de Procesamiento</h3>
-    <div class="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-        <div class="text-center">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Gráfico de Tendencias</h3>
-            <p class="mt-1 text-sm text-gray-500">Los gráficos estarán disponibles en futuras versiones.</p>
-        </div>
+{{-- Processing Trends Chart --}}
+<div class="mt-8 bg-white border border-gray-200 rounded-lg p-6"
+     x-data="processingChart()"
+     x-init="init()">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">Tendencias de Procesamiento (Últimos 7 días)</h3>
+    <div class="h-64">
+        <canvas id="job-monitor-processing-chart"
+                x-ref="chart"
+                wire:ignore
+                class="w-full h-full"></canvas>
     </div>
 </div>
+
+@script
+<script>
+Alpine.data('processingChart', () => ({
+    chartId: 'job-monitor-processing-chart',
+
+    init() {
+        this.$nextTick(() => {
+            this.createChart();
+        });
+
+        // Listen for Livewire refresh events
+        this.$wire.on('$refresh', () => {
+            this.$nextTick(() => {
+                this.createChart();
+            });
+        });
+    },
+
+    createChart() {
+        const canvas = this.$refs.chart;
+        if (!canvas || !window.chartManager) {
+            console.warn('Canvas or chartManager not available');
+            return;
+        }
+
+        const chartData = @json($stats['chart_data']);
+
+        const config = {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: false
+                    },
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 4,
+                        hoverRadius: 6
+                    }
+                }
+            }
+        };
+
+        // Use the global chart manager
+        window.chartManager.createChart(this.chartId, canvas, config);
+    },
+
+    destroy() {
+        // Cleanup when component is destroyed
+        if (window.chartManager) {
+            window.chartManager.destroyChart(this.chartId);
+        }
+    }
+}));
+</script>
+@endscript

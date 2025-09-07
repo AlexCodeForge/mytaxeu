@@ -127,7 +127,7 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ $job->file_name ?: "Archivo #{$job->id}" }}
+                            {{ $job->original_name ?: "Archivo #{$job->id}" }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
@@ -146,7 +146,7 @@
                             {{ \Carbon\Carbon::parse($job->created_at)->format('d/m/Y H:i') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ $job->completed_at ? \Carbon\Carbon::parse($job->completed_at)->format('d/m/Y H:i') : '-' }}
+                            {{ $job->processed_at ? \Carbon\Carbon::parse($job->processed_at)->format('d/m/Y H:i') : '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center space-x-2">
@@ -156,14 +156,12 @@
                                 </button>
 
                                 @if($job->status === 'queued')
-                                    <button wire:click="cancelJob({{ $job->id }})"
-                                            wire:confirm="¿Estás seguro de que quieres cancelar este trabajo?"
-                                            class="text-red-600 hover:text-red-900 transition-colors duration-150">
+                                    <button wire:click="confirmCancel({{ $job->id }})"
+                                            class="text-yellow-600 hover:text-yellow-900 transition-colors duration-150">
                                         Cancelar
                                     </button>
                                 @elseif(in_array($job->status, ['completed', 'failed']))
-                                    <button wire:click="deleteJob({{ $job->id }})"
-                                            wire:confirm="¿Estás seguro de que quieres eliminar este trabajo? Esta acción no se puede deshacer."
+                                    <button wire:click="confirmDelete({{ $job->id }})"
                                             class="text-red-600 hover:text-red-900 transition-colors duration-150">
                                         Eliminar
                                     </button>

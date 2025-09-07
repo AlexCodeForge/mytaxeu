@@ -2,7 +2,9 @@
     <div class="p-6 border-b border-blue-200 flex-shrink-0">
         <div class="flex items-center">
             <div class="text-2xl font-bold text-primary">MyTaxEU</div>
+            @if (Auth::user()->isAdmin())
             <div class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Admin</div>
+            @endif
         </div>
     </div>
 

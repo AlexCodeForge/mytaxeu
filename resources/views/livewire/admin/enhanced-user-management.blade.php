@@ -53,33 +53,8 @@
                     Limpiar Filtros
                 </button>
 
-                <button wire:click="toggleBulkMode"
-                        class="px-3 py-2 {{ $bulkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700' }} text-white rounded-md transition-colors">
-                    {{ $bulkMode ? 'Salir Modo Masivo' : 'Acciones Masivas' }}
-                </button>
             </div>
 
-            @if ($bulkMode && !empty($selectedUsers))
-                <div class="flex items-center space-x-2">
-                    <span class="text-sm text-gray-600">
-                        {{ count($selectedUsers) }} seleccionados
-                    </span>
-                    <button wire:click="bulkSuspendUsers"
-                            wire:confirm="¿Estás seguro de que quieres suspender los usuarios seleccionados?"
-                            class="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors">
-                        Suspender Seleccionados
-                    </button>
-                    <button wire:click="bulkActivateUsers"
-                            wire:confirm="¿Estás seguro de que quieres activar los usuarios seleccionados?"
-                            class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
-                        Activar Seleccionados
-                    </button>
-                    <button wire:click="clearSelection"
-                            class="px-3 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors">
-                        Limpiar Selección
-                    </button>
-                </div>
-            @endif
         </div>
     </div>
 
@@ -90,13 +65,6 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            @if ($bulkMode)
-                                <th class="px-6 py-3 text-left">
-                                    <input type="checkbox"
-                                           wire:click="selectAllUsers"
-                                           class="rounded border-gray-300">
-                                </th>
-                            @endif
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                 wire:click="sortBy('name')">
                                 <div class="flex items-center space-x-1">
@@ -138,14 +106,6 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach ($users as $user)
                             <tr class="hover:bg-gray-50 {{ $user->is_suspended ? 'bg-red-50' : '' }}">
-                                @if ($bulkMode)
-                                    <td class="px-6 py-4">
-                                        <input type="checkbox"
-                                               wire:click="toggleUserSelection({{ $user->id }})"
-                                               @checked(in_array($user->id, $selectedUsers))
-                                               class="rounded border-gray-300">
-                                    </td>
-                                @endif
                                 <td class="px-6 py-4">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0 h-10 w-10">
@@ -251,12 +211,12 @@
         @else
             <div class="text-center py-12">
                 <i class="fas fa-users text-gray-400 text-4xl mb-4"></i>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">No users found</h3>
-                <p class="text-gray-500">Try adjusting your search criteria or filters.</p>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No se encontraron usuarios</h3>
+                <p class="text-gray-500">Intenta ajustar tus criterios de búsqueda o filtros.</p>
                 @if (!empty($search) || $activityFilter !== 'all' || !empty($dateFrom) || !empty($dateTo))
                     <button wire:click="clearFilters"
                             class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                        Clear All Filters
+                        Limpiar Todos los Filtros
                     </button>
                 @endif
             </div>
@@ -289,7 +249,7 @@
                                         @endif
                                         @if ($selectedUser->is_suspended)
                                             <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                Suspended
+                                                Suspendido
                                             </span>
                                         @endif
                                     </h3>
@@ -309,12 +269,12 @@
                                     <button @click="activeTab = 'overview'"
                                             :class="{ 'border-blue-500 text-blue-600': activeTab === 'overview' }"
                                             class="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                                        Overview
+                                        Resumen
                                     </button>
                                     <button @click="activeTab = 'activity'"
                                             :class="{ 'border-blue-500 text-blue-600': activeTab === 'activity' }"
                                             class="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                                        Activity Timeline
+                                        Línea de Tiempo
                                     </button>
                                 </nav>
                             </div>
@@ -328,60 +288,60 @@
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div class="bg-blue-50 p-4 rounded-lg">
                                     <div class="text-2xl font-bold text-blue-600">{{ $userStats['total_uploads'] ?? 0 }}</div>
-                                    <div class="text-sm text-gray-600">Total Uploads</div>
+                                    <div class="text-sm text-gray-600">Total Subidas</div>
                                 </div>
                                 <div class="bg-green-50 p-4 rounded-lg">
                                     <div class="text-2xl font-bold text-green-600">{{ $userStats['success_rate'] ?? 0 }}%</div>
-                                    <div class="text-sm text-gray-600">Success Rate</div>
+                                    <div class="text-sm text-gray-600">Tasa de Éxito</div>
                                 </div>
                                 <div class="bg-purple-50 p-4 rounded-lg">
                                     <div class="text-2xl font-bold text-purple-600">{{ $userStats['total_size'] ?? '0 B' }}</div>
-                                    <div class="text-sm text-gray-600">Total Storage</div>
+                                    <div class="text-sm text-gray-600">Almacenamiento Total</div>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <h4 class="text-lg font-medium text-gray-900 mb-3">Account Information</h4>
+                                    <h4 class="text-lg font-medium text-gray-900 mb-3">Información de la Cuenta</h4>
                                     <dl class="space-y-2">
                                         <div class="flex justify-between">
-                                            <dt class="text-sm text-gray-500">Registration Date</dt>
+                                            <dt class="text-sm text-gray-500">Fecha de Registro</dt>
                                             <dd class="text-sm text-gray-900">{{ $selectedUser->created_at->format('M j, Y') }}</dd>
                                         </div>
                                         <div class="flex justify-between">
-                                            <dt class="text-sm text-gray-500">Days Active</dt>
-                                            <dd class="text-sm text-gray-900">{{ $userStats['days_since_registration'] ?? 0 }} days</dd>
+                                            <dt class="text-sm text-gray-500">Días Activo</dt>
+                                            <dd class="text-sm text-gray-900">{{ $userStats['days_since_registration'] ?? 0 }} días</dd>
                                         </div>
                                         <div class="flex justify-between">
-                                            <dt class="text-sm text-gray-500">Engagement Rate</dt>
+                                            <dt class="text-sm text-gray-500">Tasa de Compromiso</dt>
                                             <dd class="text-sm text-gray-900">{{ $userStats['engagement_rate'] ?? 0 }}%</dd>
                                         </div>
                                         <div class="flex justify-between">
-                                            <dt class="text-sm text-gray-500">Credits Consumed</dt>
+                                            <dt class="text-sm text-gray-500">Créditos Consumidos</dt>
                                             <dd class="text-sm text-gray-900">{{ $userStats['total_credits'] ?? 0 }}</dd>
                                         </div>
                                     </dl>
                                 </div>
 
                                 <div>
-                                    <h4 class="text-lg font-medium text-gray-900 mb-3">Processing Statistics</h4>
+                                    <h4 class="text-lg font-medium text-gray-900 mb-3">Estadísticas de Procesamiento</h4>
                                     <dl class="space-y-2">
                                         <div class="flex justify-between">
-                                            <dt class="text-sm text-gray-500">Completed Uploads</dt>
+                                            <dt class="text-sm text-gray-500">Subidas Completadas</dt>
                                             <dd class="text-sm text-gray-900">{{ $userStats['completed_uploads'] ?? 0 }}</dd>
                                         </div>
                                         <div class="flex justify-between">
-                                            <dt class="text-sm text-gray-500">Failed Uploads</dt>
+                                            <dt class="text-sm text-gray-500">Subidas Fallidas</dt>
                                             <dd class="text-sm text-gray-900">{{ $userStats['failed_uploads'] ?? 0 }}</dd>
                                         </div>
                                         <div class="flex justify-between">
-                                            <dt class="text-sm text-gray-500">Avg Processing Time</dt>
+                                            <dt class="text-sm text-gray-500">Tiempo Promedio</dt>
                                             <dd class="text-sm text-gray-900">{{ $userStats['avg_processing_time'] ?? '0s' }}</dd>
                                         </div>
                                         <div class="flex justify-between">
-                                            <dt class="text-sm text-gray-500">Last Activity</dt>
+                                            <dt class="text-sm text-gray-500">Última Actividad</dt>
                                             <dd class="text-sm text-gray-900">
-                                                {{ $userStats['last_activity'] ? \Carbon\Carbon::parse($userStats['last_activity'])->diffForHumans() : 'Never' }}
+                                                {{ $userStats['last_activity'] ? \Carbon\Carbon::parse($userStats['last_activity'])->diffForHumans() : 'Nunca' }}
                                             </dd>
                                         </div>
                                     </dl>
@@ -391,7 +351,7 @@
 
                         {{-- Activity Timeline Tab --}}
                         <div x-show="activeTab === 'activity'" class="space-y-4">
-                            <h4 class="text-lg font-medium text-gray-900">Recent Upload Activity</h4>
+                            <h4 class="text-lg font-medium text-gray-900">Actividad Reciente de Subidas</h4>
                             @if (!empty($userActivity))
                                 <div class="space-y-3">
                                     @foreach ($userActivity as $activity)
@@ -423,7 +383,7 @@
                                                 <div class="text-right">
                                                     <div class="text-sm text-gray-900">{{ $activity['size'] }}</div>
                                                     @if ($activity['credits_consumed'])
-                                                        <div class="text-xs text-gray-500">{{ $activity['credits_consumed'] }} credits</div>
+                                                        <div class="text-xs text-gray-500">{{ $activity['credits_consumed'] }} créditos</div>
                                                     @endif
                                                 </div>
                                             </div>
@@ -439,7 +399,7 @@
                             @else
                                 <div class="text-center py-8">
                                     <i class="fas fa-file-upload text-gray-400 text-3xl mb-4"></i>
-                                    <p class="text-gray-500">No upload activity found</p>
+                                    <p class="text-gray-500">No se encontró actividad de subidas</p>
                                 </div>
                             @endif
                         </div>

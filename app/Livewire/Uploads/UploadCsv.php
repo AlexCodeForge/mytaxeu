@@ -526,6 +526,14 @@ class UploadCsv extends Component
 
             $this->uploadProgress = 'Completado!';
 
+            // Dispatch upload-created event for real-time updates
+            $this->dispatch('upload-created', [
+                'uploadId' => $upload->id,
+                'filename' => $upload->original_name,
+                'userId' => $upload->user_id,
+                'status' => $upload->status,
+            ]);
+
             // Record the upload for tracking
             $limitValidator->recordUpload(auth()->user(), $csvLineCount, request()->ip());
 

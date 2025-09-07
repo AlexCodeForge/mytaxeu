@@ -400,5 +400,10 @@
         </div>
     @endif
 
+    {{-- Automatic status monitoring --}}
+    <div wire:poll.5s="checkForStatusUpdates" class="hidden"></div>
+
+    </div>
+
 </div>
 

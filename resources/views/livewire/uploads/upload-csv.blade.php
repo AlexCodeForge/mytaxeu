@@ -3,6 +3,19 @@
 @push('styles')
 <style>
     [x-cloak] { display: none !important; }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .spinner-animate {
+        animation: spin 1s linear infinite;
+    }
 </style>
 @endpush
 
@@ -502,7 +515,7 @@
                                 </div>
                             </div>
 
-                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                                 <h4 class="text-sm font-medium text-yellow-900 mb-3">Costo de Procesamiento:</h4>
                                 <div class="text-sm text-yellow-700 space-y-3">
                                     <div class="flex justify-between items-center">
@@ -552,50 +565,24 @@
                             </button>
                             <button
                                 wire:click="confirmUpload"
-                                x-data="{
-                                    buttonLoading: false,
-                                    init() {
-                                        this.$watch('$wire.processingConfirmation', (value) => {
-                                            if (value) {
-                                                console.log('✅ Livewire processingConfirmation is true, clearing buttonLoading');
-                                                this.buttonLoading = false;
-                                            }
-                                        });
-                                    }
-                                }"
-                                @click="
-                                    console.log('🔴 CONFIRM BUTTON CLICKED!');
-                                    buttonLoading = true;
-                                    console.log('Button loading set to true');
-                                    console.log('Processing confirmation:', $wire.processingConfirmation);
-                                    console.log('showPeriodConfirmation:', $wire.showPeriodConfirmation);
-                                "
-                                class="flex-1 px-4 py-2 text-white rounded-lg transition-colors flex items-center justify-center"
+                                class="flex-1 px-4 py-2 text-white rounded-lg transition-colors flex items-center justify-center min-h-[40px]"
                                 :class="{
-                                    'bg-gray-400 cursor-not-allowed': buttonLoading || $wire.processingConfirmation || {{ $userCredits < ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }},
-                                    'bg-primary hover:bg-blue-700': !buttonLoading && !$wire.processingConfirmation && {{ $userCredits >= ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }}
+                                    'bg-gray-400 cursor-not-allowed': $wire.processingConfirmation || {{ $userCredits < ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }},
+                                    'bg-primary hover:bg-blue-700': !$wire.processingConfirmation && {{ $userCredits >= ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }}
                                 }"
-                                :disabled="buttonLoading || $wire.processingConfirmation || {{ $userCredits < ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }}"
+                                :disabled="$wire.processingConfirmation || {{ $userCredits < ($periodAnalysis['required_credits'] ?? 0) ? 'true' : 'false' }}"
                                 wire:loading.attr="disabled"
                                 wire:target="confirmUpload"
                             >
-                                <!-- Loading Spinner (shows immediately on click OR when Livewire processing) -->
-                                <svg x-show="buttonLoading || $wire.processingConfirmation" x-cloak class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-
-                                <!-- Backup Livewire Loading Spinner -->
-                                <svg wire:loading wire:target="confirmUpload" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                <!-- Loading Spinner -->
+                                <svg wire:loading wire:target="confirmUpload" class="animate-spin spinner-animate h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
 
                                 <!-- Button Text States -->
-                                <span x-show="!buttonLoading && !$wire.processingConfirmation" wire:loading.remove wire:target="confirmUpload">Confirmar y Procesar</span>
-                                <span x-show="buttonLoading && !$wire.processingConfirmation" x-cloak>Confirmando...</span>
-                                <span x-show="$wire.processingConfirmation" x-cloak>Procesando...</span>
-                                <span wire:loading wire:target="confirmUpload">Enviando...</span>
+                                <span wire:loading.remove wire:target="confirmUpload">Confirmar y Procesar</span>
                             </button>
                         </div>
                     </div>
@@ -617,41 +604,6 @@
                     </ul>
                 </div>
 
-                <!-- Submit Button -->
-                <div class="flex justify-end space-x-3">
-                    <button
-                        type="button"
-                        wire:click="cancelUpload"
-                        class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                        x-show="fileSelected"
-                        x-cloak
-                    >
-                        Cancelar
-                    </button>
-
-
-
-                    <button
-                        type="submit"
-                        class="px-6 py-2 text-white rounded-lg transition-colors flex items-center"
-                        :class="{
-                            'bg-gray-400 cursor-not-allowed': !$wire.csvFile || $wire.uploading,
-                            'bg-primary hover:bg-blue-700': $wire.csvFile && !$wire.uploading
-                        }"
-                        :disabled="!$wire.csvFile || $wire.uploading"
-                        wire:loading.attr="disabled"
-                        wire:target="processUpload"
-                    >
-                        <!-- Loading Spinner -->
-                        <svg wire:loading wire:target="processUpload" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-
-                        <span wire:loading.remove wire:target="processUpload">Subir Archivo</span>
-                        <span wire:loading wire:target="processUpload">Procesando...</span>
-                    </button>
-                </div>
             </form>
         @endif
     </div>

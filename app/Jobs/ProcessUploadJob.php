@@ -19,6 +19,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class ProcessUploadJob implements ShouldQueue
@@ -495,11 +496,37 @@ class ProcessUploadJob implements ShouldQueue
     }
 
     /**
-     * Update upload status.
+     * Update upload status and dispatch real-time events.
      */
     private function updateStatus(Upload $upload, string $status): void
     {
+        $oldStatus = $upload->status;
         $upload->update(['status' => $status]);
+
+        // Dispatch event using Livewire's global JavaScript event system
+        // This will reach all components listening for upload-status-changed
+        try {
+            // Write event data to cache for browser polling
+            Cache::put("upload_status_event_{$upload->id}", [
+                'uploadId' => $upload->id,
+                'status' => $status,
+                'userId' => $upload->user_id,
+                'filename' => $upload->original_name,
+                'oldStatus' => $oldStatus,
+                'timestamp' => now()->toISOString(),
+            ], 60); // Keep for 1 minute
+
+            Log::info('ProcessUploadJob: Status change event cached', [
+                'upload_id' => $upload->id,
+                'old_status' => $oldStatus,
+                'new_status' => $status,
+            ]);
+        } catch (\Exception $e) {
+            Log::debug('Failed to cache upload status change event', [
+                'upload_id' => $upload->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         Log::info('ProcessUploadJob: Status updated', [
             'upload_id' => $upload->id,

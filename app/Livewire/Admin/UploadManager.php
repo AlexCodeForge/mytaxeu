@@ -11,8 +11,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Cache;
 
 class UploadManager extends Component
 {
@@ -136,6 +138,70 @@ class UploadManager extends Component
     {
         $this->showDetailsModal = false;
         $this->selectedUpload = null;
+    }
+
+    /**
+     * Listen for upload status updates via events.
+     */
+    #[On('upload-status-changed')]
+    public function onUploadStatusChanged(array $data): void
+    {
+        // Refresh the component to show updated status
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Check for status change events and automatically refresh when needed
+     */
+    public function checkForStatusUpdates(): array
+    {
+        $allUploadIds = $this->getUploadsQuery()->pluck('id');
+        $events = [];
+
+        foreach ($allUploadIds as $uploadId) {
+            $eventData = Cache::get("upload_status_event_{$uploadId}");
+            if ($eventData) {
+                $events[] = $eventData;
+                Cache::forget("upload_status_event_{$uploadId}"); // Remove after reading
+            }
+        }
+
+        // If we found any events, refresh the component
+        if (!empty($events)) {
+            $this->dispatch('$refresh');
+        }
+
+        return $events;
+    }
+
+    /**
+     * Listen for job status updates from the job system.
+     */
+    #[On('echo:admin.jobs,job-status-updated')]
+    public function onJobStatusUpdated(array $data): void
+    {
+        // Refresh the uploads list when job status changes
+        $this->dispatch('$refresh');
+    }
+
+    /**
+     * Listen for new upload creation.
+     */
+    #[On('upload-created')]
+    public function onUploadCreated(array $data): void
+    {
+        // Reset to first page to show new upload
+        $this->resetPage();
+    }
+
+    /**
+     * Check if there are any active uploads that need monitoring.
+     */
+    public function hasActiveUploads(): bool
+    {
+        return $this->getUploadsQuery()
+            ->whereIn('status', [Upload::STATUS_QUEUED, Upload::STATUS_PROCESSING])
+            ->exists();
     }
 
 

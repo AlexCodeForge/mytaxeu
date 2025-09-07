@@ -294,8 +294,8 @@
 @script
 <script>
   Alpine.data('financialDashboard', () => ({
-    chart: null,
-    subscriptionChart: null,
+    revenueChartId: 'financial-revenue-chart',
+    subscriptionChartId: 'financial-subscription-chart',
     chartType: 'line',
 
     init() {
@@ -327,10 +327,18 @@
         this.updateSubscriptionChart();
       });
 
-
       this.$wire.on('show-toast', (event) => {
         this.showToast(event.type || 'info', event.message);
       });
+    },
+
+    destroy() {
+      // Cleanup charts when Alpine component is destroyed
+      if (window.chartManager) {
+        console.log('🗑️ Cleaning up financial dashboard charts on destroy');
+        window.chartManager.destroyChart(this.revenueChartId);
+        window.chartManager.destroyChart(this.subscriptionChartId);
+      }
     },
 
     initializeChart() {
@@ -339,10 +347,15 @@
         return;
       }
 
-      const ctx = this.$refs.revenueChart.getContext('2d');
+      if (!window.chartManager) {
+        console.error('❌ Chart manager not loaded!');
+        return;
+      }
+
+      const canvas = this.$refs.revenueChart;
       const chartData = @js($chartData['revenue_trend'] ?? ['labels' => [], 'data' => []]);
 
-      this.chart = new Chart(ctx, {
+      const chartConfig = {
         type: this.chartType,
         data: {
           labels: chartData.labels || [],
@@ -438,7 +451,10 @@
             easing: 'easeInOutQuart'
           }
         }
-      });
+      };
+
+      // Create chart using chart manager
+      window.chartManager.createChart(this.revenueChartId, canvas, chartConfig);
     },
 
     initializeSubscriptionChart() {
@@ -447,7 +463,12 @@
         return;
       }
 
-      const ctx = this.$refs.subscriptionChart.getContext('2d');
+      if (!window.chartManager) {
+        console.error('❌ Chart manager not loaded!');
+        return;
+      }
+
+      const canvas = this.$refs.subscriptionChart;
       const subscriptionData = @js($subscriptionBreakdown ?? []);
 
       // Check if we have any data or if all values are zero
@@ -520,7 +541,7 @@
         }
       };
 
-      this.subscriptionChart = new Chart(ctx, {
+      const subscriptionChartConfig = {
         type: 'doughnut',
         data: {
           labels: labels,
@@ -570,11 +591,15 @@
           }
         },
         plugins: [emptyDoughnutPlugin]
-      });
+      };
+
+      // Create subscription chart using chart manager
+      window.chartManager.createChart(this.subscriptionChartId, canvas, subscriptionChartConfig);
     },
 
     updateChart() {
-      if (!this.chart) {
+      const chart = window.chartManager.getChart(this.revenueChartId);
+      if (!chart) {
         this.initializeChart();
         return;
       }
@@ -583,14 +608,21 @@
       this.$wire.get('chartData').then(chartData => {
         const trendData = chartData.revenue_trend || {labels: [], data: []};
 
-        this.chart.data.labels = trendData.labels;
-        this.chart.data.datasets[0].data = trendData.data;
-        this.chart.update('active');
+        const newData = {
+          labels: trendData.labels,
+          datasets: [{
+            ...chart.data.datasets[0],
+            data: trendData.data
+          }]
+        };
+
+        window.chartManager.updateChart(this.revenueChartId, newData, 'active');
       });
     },
 
     updateSubscriptionChart() {
-      if (!this.subscriptionChart) {
+      const chart = window.chartManager.getChart(this.subscriptionChartId);
+      if (!chart) {
         this.initializeSubscriptionChart();
         return;
       }
@@ -626,12 +658,17 @@
           statusColors[status] || statusColors.default
         );
 
-        this.subscriptionChart.data.labels = labels;
-        this.subscriptionChart.data.datasets[0].data = data;
-        this.subscriptionChart.data.datasets[0].backgroundColor = backgroundColors;
+        const newData = {
+          labels: labels,
+          datasets: [{
+            ...chart.data.datasets[0],
+            data: data,
+            backgroundColor: backgroundColors
+          }]
+        };
 
         // Update will trigger the empty state plugin if all values are 0
-        this.subscriptionChart.update('active');
+        window.chartManager.updateChart(this.subscriptionChartId, newData, 'active');
       });
     },
 
@@ -640,10 +677,9 @@
 
       this.chartType = type;
 
-      if (this.chart) {
-        this.chart.destroy();
-        this.initializeChart();
-      }
+      // Destroy and recreate chart with new type
+      window.chartManager.destroyChart(this.revenueChartId);
+      this.initializeChart();
     },
 
 

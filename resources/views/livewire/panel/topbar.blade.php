@@ -11,10 +11,7 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <div class="hidden sm:flex items-center gap-2 text-xs text-gray-600">
-                <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                <span>Operativo</span>
-            </div>
+
             @auth
                 <div class="relative">
                     <button class="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-50">
