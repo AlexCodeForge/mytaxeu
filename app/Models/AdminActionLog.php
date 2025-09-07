@@ -4,26 +4,27 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AdminActionLog extends Model
 {
-    public const UPDATED_AT = null;
+    use HasFactory;
 
     protected $fillable = [
         'admin_user_id',
-        'action_type',
+        'action',
         'target_user_id',
-        'target_ip_address',
-        'old_value',
-        'new_value',
-        'notes',
+        'target_upload_id',
+        'details',
+        'metadata',
+        'ip_address',
+        'user_agent',
     ];
 
     protected $casts = [
-        'old_value' => 'array',
-        'new_value' => 'array',
+        'metadata' => 'array',
         'created_at' => 'datetime',
     ];
 
@@ -39,17 +40,18 @@ class AdminActionLog extends Model
 
     public static function logAction(
         int $adminUserId,
-        string $actionType,
+        string $action,
         array $data = []
     ): self {
         return static::create([
             'admin_user_id' => $adminUserId,
-            'action_type' => $actionType,
+            'action' => $action,
             'target_user_id' => $data['target_user_id'] ?? null,
-            'target_ip_address' => $data['target_ip_address'] ?? null,
-            'old_value' => $data['old_value'] ?? null,
-            'new_value' => $data['new_value'] ?? null,
-            'notes' => $data['notes'] ?? null,
+            'target_upload_id' => $data['target_upload_id'] ?? null,
+            'details' => $data['details'] ?? null,
+            'metadata' => $data['metadata'] ?? null,
+            'ip_address' => $data['ip_address'] ?? null,
+            'user_agent' => $data['user_agent'] ?? null,
         ]);
     }
 }

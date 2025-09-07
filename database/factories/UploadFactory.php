@@ -28,10 +28,16 @@ class UploadFactory extends Factory
             'transformed_path' => null,
             'size_bytes' => $this->faker->numberBetween(1000, 10000000),
             'csv_line_count' => $this->faker->numberBetween(10, 1000),
+            'detected_periods' => null,
+            'period_count' => $this->faker->numberBetween(1, 12),
+            'credits_required' => $this->faker->numberBetween(10, 500),
+            'credits_consumed' => 0,
             'rows_count' => $this->faker->numberBetween(10, 1000),
             'status' => $this->faker->randomElement(Upload::STATUSES),
             'failure_reason' => null,
             'processed_at' => null,
+            'notification_sent_at' => null,
+            'notification_type' => $this->faker->randomElement(['success', 'failure', 'processing']),
         ];
     }
 
@@ -44,6 +50,10 @@ class UploadFactory extends Factory
             'status' => Upload::STATUS_COMPLETED,
             'processed_at' => $this->faker->dateTimeBetween('-1 week', 'now'),
             'transformed_path' => 'uploads/1/output/test_' . $this->faker->uuid() . '_transformado.csv',
+            'credits_consumed' => $this->faker->numberBetween(10, 500),
+            'detected_periods' => ['2023', '2024'],
+            'notification_sent_at' => $this->faker->dateTimeBetween('-1 week', 'now'),
+            'notification_type' => 'success',
         ]);
     }
 
@@ -56,6 +66,9 @@ class UploadFactory extends Factory
             'status' => Upload::STATUS_FAILED,
             'failure_reason' => $this->faker->sentence(),
             'processed_at' => $this->faker->dateTimeBetween('-1 week', 'now'),
+            'credits_consumed' => 0,
+            'notification_sent_at' => $this->faker->dateTimeBetween('-1 week', 'now'),
+            'notification_type' => 'failure',
         ]);
     }
 
@@ -66,6 +79,8 @@ class UploadFactory extends Factory
     {
         return $this->state(fn(array $attributes) => [
             'status' => Upload::STATUS_PROCESSING,
+            'credits_consumed' => 0,
+            'notification_type' => 'processing',
         ]);
     }
 }

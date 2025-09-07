@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class IpUploadTracking extends Model
 {
+    use HasFactory;
+
+    protected $table = 'ip_upload_tracking';
+
     protected $fillable = [
         'ip_address',
         'upload_count',
