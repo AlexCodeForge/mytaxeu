@@ -410,8 +410,10 @@ class StreamingCsvTransformer
         $buyerName = trim($transaction['BUYER_NAME'] ?? '');
         $buyerVat = trim($transaction['BUYER_VAT_NUMBER'] ?? '');
 
-        if (empty($buyerName)) $buyerName = 'Sin nombre';
-        if ($buyerName === 'Sin nombre') $buyerVat = '';
+        // Skip transactions with empty buyer names to avoid "Sin nombre" entries
+        if (empty($buyerName)) {
+            return;
+        }
 
         $key = $country . '|' . $buyerName . '|' . $buyerVat;
 

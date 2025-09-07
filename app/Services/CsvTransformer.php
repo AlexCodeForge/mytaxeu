@@ -295,7 +295,8 @@ class CsvTransformer
             $arrivalCountry !== 'GB' &&
             !empty($buyerVat) &&
             $taxResponsibility === 'SELLER' &&
-            $reportingScheme === 'REGULAR') {
+            $reportingScheme === 'REGULAR' &&
+            $vatAmount == 0) {
             $categories[] = 'Ventas Intracomunitarias de bienes - B2B (EUR)';
         }
         elseif ($reportingScheme === 'UNION-OSS') {
@@ -367,7 +368,8 @@ class CsvTransformer
             $arrivalCountry !== 'GB' &&
             !empty($buyerVat) &&
             $taxResponsibility === 'SELLER' &&
-            $reportingScheme === 'REGULAR') {
+            $reportingScheme === 'REGULAR' &&
+            $vatAmount == 0) {
             return 'Ventas Intracomunitarias de bienes - B2B (EUR)';
         }
 
@@ -637,19 +639,13 @@ class CsvTransformer
             $buyerName = trim($transaction['BUYER_NAME'] ?? '');
             $buyerVat = trim($transaction['BUYER_VAT_NUMBER'] ?? ''); // Use full VAT number, not country
 
-            // Use real buyer name or "Sin nombre" if empty
+            // Skip transactions with empty buyer names to avoid "Sin nombre" entries
             if (empty($buyerName)) {
-                $buyerName = 'Sin nombre';
+                continue;
             }
 
-            // Create grouping key: for "Sin nombre" aggregate by country only,
-            // for named buyers aggregate by country + name + VAT
-            if ($buyerName === 'Sin nombre') {
-                $key = $country . '|Sin nombre|';
-                $buyerVat = ''; // Clear VAT for Sin nombre entries
-            } else {
-                $key = $country . '|' . $buyerName . '|' . $buyerVat;
-            }
+            // Create grouping key: aggregate by country + name + VAT
+            $key = $country . '|' . $buyerName . '|' . $buyerVat;
 
             // Calculate base amount from VAT-excluded columns
             $baseAmount = 0;
@@ -662,7 +658,7 @@ class CsvTransformer
                 $grouped[$key] = [
                     'País de origen' => $country,
                     'Nombre del comprador' => $buyerName,
-                    'NIF del comprador' => !empty($buyerVat) ? $buyerVat : '',
+                    'NIF del comprador' => $buyerVat,
                     'Base (€)' => 0,
                     'IVA (€)' => 0, // Always 0 for intracomunitarias B2B
                     'Total (€)' => 0,
