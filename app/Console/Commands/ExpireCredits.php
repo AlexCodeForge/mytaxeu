@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Jobs\ExpireCreditTransaction;
 use App\Models\CreditTransaction;
 use App\Models\User;
 use App\Services\CreditService;
@@ -24,12 +25,13 @@ class ExpireCredits extends Command
      *
      * @var string
      */
-    protected $description = 'Expire credits that are older than the expiration period';
+    protected $description = 'Dispatch queue jobs to expire subscription credits that are 30 days old from subscription start date';
 
     /**
      * Credit expiration period in days.
+     * Credits expire 30 days after subscription start date.
      */
-    private int $expirationDays = 365; // 1 year
+    private int $expirationDays = 30;
 
     /**
      * Execute the console command.
@@ -44,15 +46,19 @@ class ExpireCredits extends Command
             $this->warn('DRY RUN MODE - No credits will actually be expired');
         }
 
-        // Find credits that should be expired
+        // Find subscription-based credits that should be expired
+        // Credits expire 30 days after the subscription start date
         $expirationDate = now()->subDays($this->expirationDays);
 
         $expirableTransactions = CreditTransaction::where('type', 'purchased')
-            ->where('created_at', '<', $expirationDate)
+            ->whereNotNull('subscription_id') // Only subscription-based credits
+            ->whereHas('subscription', function ($query) use ($expirationDate) {
+                $query->where('created_at', '<', $expirationDate);
+            })
             ->whereHas('user', function ($query) {
                 $query->where('credits', '>', 0);
             })
-            ->with('user')
+            ->with(['user', 'subscription'])
             ->get();
 
         if ($expirableTransactions->isEmpty()) {
@@ -60,8 +66,8 @@ class ExpireCredits extends Command
             return 0;
         }
 
+        $jobsDispatched = 0;
         $totalCreditsToExpire = 0;
-        $affectedUsers = 0;
 
         $this->info("Found {$expirableTransactions->count()} transactions to process");
 
@@ -73,54 +79,37 @@ class ExpireCredits extends Command
                 continue;
             }
 
-            $this->line("User: {$user->name} ({$user->email}) - Expiring {$creditsToExpire} credits from transaction {$transaction->id}");
+            $subscriptionDate = $transaction->subscription->created_at->format('Y-m-d');
+            $this->line("User: {$user->name} ({$user->email}) - Processing {$creditsToExpire} credits from subscription {$transaction->subscription->stripe_id} (started: {$subscriptionDate})");
 
             if (!$dryRun) {
-                try {
-                    // Create expiration transaction
-                    $success = CreditTransaction::create([
-                        'user_id' => $user->id,
-                        'type' => 'expired',
-                        'amount' => -$creditsToExpire,
-                        'description' => "Expiración automática de créditos antiguos (transacción #{$transaction->id})",
-                    ]);
+                // Dispatch job to process this credit expiration
+                ExpireCreditTransaction::dispatch($transaction);
+                $jobsDispatched++;
 
-                    if ($success) {
-                        // Reduce user credits
-                        $user->decrement('credits', $creditsToExpire);
-
-                        Log::info('Credits expired', [
-                            'user_id' => $user->id,
-                            'credits_expired' => $creditsToExpire,
-                            'original_transaction_id' => $transaction->id,
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    $this->error("Failed to expire credits for user {$user->id}: " . $e->getMessage());
-                    Log::error('Credit expiration failed', [
-                        'user_id' => $user->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                    continue;
-                }
+                Log::info('Credit expiration job dispatched', [
+                    'transaction_id' => $transaction->id,
+                    'user_id' => $user->id,
+                    'credits_to_expire' => $creditsToExpire,
+                ]);
             }
 
             $totalCreditsToExpire += $creditsToExpire;
-            $affectedUsers++;
         }
 
         if ($dryRun) {
             $this->info("DRY RUN COMPLETE:");
             $this->info("- {$totalCreditsToExpire} credits would be expired");
-            $this->info("- {$affectedUsers} users would be affected");
+            $this->info("- {$expirableTransactions->count()} expiration jobs would be dispatched");
         } else {
-            $this->info("EXPIRATION COMPLETE:");
-            $this->info("- {$totalCreditsToExpire} credits expired");
-            $this->info("- {$affectedUsers} users affected");
+            $this->info("EXPIRATION JOB DISPATCH COMPLETE:");
+            $this->info("- {$jobsDispatched} expiration jobs dispatched to queue");
+            $this->info("- {$totalCreditsToExpire} total credits will be processed");
+            $this->info("- Jobs will be processed by queue workers");
 
-            Log::info('Credit expiration completed', [
-                'total_credits_expired' => $totalCreditsToExpire,
-                'users_affected' => $affectedUsers,
+            Log::info('Credit expiration jobs dispatched', [
+                'jobs_dispatched' => $jobsDispatched,
+                'total_credits_to_expire' => $totalCreditsToExpire,
             ]);
         }
 
