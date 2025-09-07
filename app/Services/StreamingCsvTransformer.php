@@ -312,7 +312,8 @@ class StreamingCsvTransformer
             in_array($departCountry, self::EU_COUNTRIES) &&
             in_array($arrivalCountry, self::EU_COUNTRIES) &&
             $departCountry !== 'GB' && $arrivalCountry !== 'GB' &&
-            $buyerVat !== null && $taxResponsibility === 'SELLER' && $reportingScheme === 'REGULAR') {
+            $buyerVat !== null && $taxResponsibility === 'SELLER' && $reportingScheme === 'REGULAR' &&
+            $vatAmount == 0) {
             $categories[] = 'Ventas Intracomunitarias de bienes - B2B (EUR)';
         }
         elseif ($reportingScheme === 'UNION-OSS') {
