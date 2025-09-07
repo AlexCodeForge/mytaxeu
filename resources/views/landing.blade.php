@@ -34,7 +34,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-4 hidden md:flex">
                     <a href="{{ route('admin.index') }}" class="bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg text-primary font-medium transition-all">
                         <i class="fas fa-cog mr-2"></i>Admin
                     </a>
@@ -59,7 +59,7 @@
                     <a href="#precios" @click="mobileMenuOpen = false" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">Precios</a>
                     <a href="#faq" @click="mobileMenuOpen = false" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">FAQ</a>
                     <div class="border-t border-blue-100 pt-2">
-                        <a href="admin.html" @click="mobileMenuOpen = false" class="block px-3 py-2 text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">
+                        <a href="{{ route('admin.index') }}" @click="mobileMenuOpen = false" class="block px-3 py-2 text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">
                             <i class="fas fa-cog mr-2"></i>Admin
                         </a>
                         <button @click="mobileMenuOpen = false" class="w-full mt-2 bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all">
@@ -300,19 +300,19 @@
                         <ul class="space-y-3 text-left mb-8">
                             <li class="flex items-center">
                                 <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>5 clientes Amazon/mes</span>
+                                <span class="text-gray-800">5 clientes Amazon/mes</span>
                             </li>
                             <li class="flex items-center">
                                 <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>Todo del plan anterior</span>
+                                <span class="text-gray-800">Todo del plan anterior</span>
                             </li>
                             <li class="flex items-center">
                                 <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>Soporte prioritario</span>
+                                <span class="text-gray-800">Soporte prioritario</span>
                             </li>
                             <li class="flex items-center">
                                 <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>Ahorro: €3000/mes</span>
+                                <span class="text-gray-800">Ahorro: €3000/mes</span>
                             </li>
                         </ul>
                         <button class="w-full bg-yellow-400 text-black py-3 rounded-xl font-bold hover:bg-yellow-300 transition-all">
