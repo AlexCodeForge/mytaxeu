@@ -8,7 +8,11 @@
         </div>
     </div>
 
-    <nav class="flex-1 overflow-y-auto mt-6 min-h-0">
+    <nav class="flex-1 overflow-y-auto mt-6 min-h-0"
+         id="sidebar-nav"
+         x-data="sidebarScroll()"
+         x-init="initializeScroll()"
+         @scroll="saveScrollPosition()">
         <div class="px-4 pb-20">
             <!-- User Section -->
             <div class="mb-6">
@@ -19,9 +23,10 @@
                     @foreach ($userLinks as $link)
                         <li>
                             <a href="{{ route($link['route']) }}"
+                               id="nav-{{ $link['route'] }}"
                                wire:navigate.hover
                                wire:current.exact="bg-blue-100 text-blue-800 border-l-4 border-blue-500"
-                               class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50 sidebar-nav-link">
+                               class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50 sidebar-nav-link {{ $this->isActiveRoute($link['route']) ? 'active-nav-item' : '' }}">
                                 <i class="fas {{ $link['icon'] }} mr-3"></i>
                                 <span>{{ $link['label'] }}</span>
                             </a>
@@ -40,9 +45,10 @@
                         @foreach ($adminLinks as $link)
                             <li>
                                 <a href="{{ route($link['route']) }}"
+                                   id="nav-{{ $link['route'] }}"
                                    wire:navigate.hover
                                    wire:current.exact="bg-blue-100 text-blue-800 border-l-4 border-blue-500"
-                                   class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50 sidebar-nav-link">
+                                   class="flex items-center px-4 py-3 text-gray-700 rounded-lg transition-all hover:bg-blue-50 sidebar-nav-link {{ $this->isActiveRoute($link['route']) ? 'active-nav-item' : '' }}">
                                     <i class="fas {{ $link['icon'] }} mr-3"></i>
                                     <span>{{ $link['label'] }}</span>
                                 </a>
@@ -61,5 +67,59 @@
         </a>
     </div>
 </div>
+
+<script>
+function sidebarScroll() {
+    return {
+        scrollPosition: 0,
+
+        initializeScroll() {
+            // Restore scroll position on page load
+            const savedPosition = sessionStorage.getItem('sidebar-scroll-position');
+            if (savedPosition) {
+                this.$el.scrollTop = parseInt(savedPosition);
+            }
+
+            // Auto-scroll to active item if it exists and no saved position
+            if (!savedPosition) {
+                this.scrollToActiveItem();
+            }
+
+            // Listen for Livewire navigation events
+            document.addEventListener('livewire:navigated', () => {
+                this.scrollToActiveItem();
+            });
+        },
+
+        saveScrollPosition() {
+            sessionStorage.setItem('sidebar-scroll-position', this.$el.scrollTop);
+        },
+
+        scrollToActiveItem() {
+            const activeItem = this.$el.querySelector('.active-nav-item');
+            if (activeItem) {
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    const nav = this.$el;
+                    const navRect = nav.getBoundingClientRect();
+                    const itemRect = activeItem.getBoundingClientRect();
+
+                    // Calculate if item is visible
+                    const isVisible = itemRect.top >= navRect.top && itemRect.bottom <= navRect.bottom;
+
+                    if (!isVisible) {
+                        // Scroll to center the active item in the nav area
+                        const scrollTop = activeItem.offsetTop - nav.offsetTop - (nav.clientHeight / 2) + (activeItem.clientHeight / 2);
+                        nav.scrollTo({
+                            top: Math.max(0, scrollTop),
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 100);
+            }
+        }
+    }
+}
+</script>
 
 

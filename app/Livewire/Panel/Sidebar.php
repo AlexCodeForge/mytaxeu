@@ -13,11 +13,13 @@ class Sidebar extends Component
     public array $userLinks = [];
     public array $adminLinks = [];
     public bool $isAdmin = false;
+    public string $currentRoute = '';
 
     public function mount(): void
     {
         $user = Auth::user();
         $this->isAdmin = $user && method_exists($user, 'isAdmin') && $user->isAdmin();
+        $this->currentRoute = request()->route()->getName() ?? '';
 
         $this->userLinks = [
             ['label' => 'Dashboard', 'icon' => 'fa-chart-line', 'route' => 'dashboard'],
@@ -37,6 +39,11 @@ class Sidebar extends Component
             // ['label' => 'Análisis de Créditos', 'icon' => 'fa-coins', 'route' => 'admin.credit.analytics'],
             ['label' => 'Configuración Stripe', 'icon' => 'fa-stripe-s', 'route' => 'admin.stripe.config'],
         ];
+    }
+
+    public function isActiveRoute(string $route): bool
+    {
+        return $this->currentRoute === $route;
     }
 
     public function render()
