@@ -1,6 +1,6 @@
 {{-- Failed Jobs Table --}}
 @if($failedJobs->count() > 0)
-    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
         <table class="min-w-full divide-y divide-gray-300">
             <thead class="bg-red-50">
                 <tr>
@@ -57,8 +57,8 @@
 
     {{-- Pagination --}}
     @if($failedJobs->hasPages())
-        <div class="mt-4">
-            {{ $failedJobs->links() }}
+        <div class="bg-white px-6 py-3 border-t border-gray-200">
+            {{ $failedJobs->links('custom.pagination') }}
         </div>
     @endif
 @else

@@ -27,6 +27,9 @@ class AdminJobMonitor extends Component
     public int $pollingInterval = 10; // Legacy - not used anymore
     public string $selectedView = 'jobs'; // jobs, failed_jobs, stats
 
+    // Pagination
+    public int $perPage = 15;
+
     // Modal properties
     public bool $showLogsModal = false;
     public ?int $selectedJobId = null;
@@ -48,6 +51,7 @@ class AdminJobMonitor extends Component
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
         'selectedView' => ['except' => 'jobs'],
+        'perPage' => ['except' => 15],
     ];
 
     /**
@@ -544,6 +548,11 @@ class AdminJobMonitor extends Component
         $this->resetPage();
     }
 
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
+
     /**
      * Get uploads for admin monitoring (Redis-compatible).
      */
@@ -585,7 +594,7 @@ class AdminJobMonitor extends Component
 
         $query->orderBy('uploads.created_at', 'desc');
 
-        return $query->paginate(20);
+        return $query->paginate($this->perPage);
     }
 
     /**
@@ -627,7 +636,7 @@ class AdminJobMonitor extends Component
 
         $query->orderBy('failed_jobs.failed_at', 'desc');
 
-        return $query->paginate(20);
+        return $query->paginate($this->perPage);
     }
 
     /**
@@ -738,24 +747,24 @@ class AdminJobMonitor extends Component
         $labels = collect();
         $completedData = collect();
         $failedData = collect();
-        
+
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i);
             $dayLabel = $date->format('M j');
-            
+
             $completed = Upload::where('status', Upload::STATUS_COMPLETED)
                 ->whereDate('processed_at', $date)
                 ->count();
-                
+
             $failed = Upload::where('status', Upload::STATUS_FAILED)
                 ->whereDate('processed_at', $date)
                 ->count();
-            
+
             $labels->push($dayLabel);
             $completedData->push($completed);
             $failedData->push($failed);
         }
-        
+
         return [
             'labels' => $labels->toArray(),
             'datasets' => [
