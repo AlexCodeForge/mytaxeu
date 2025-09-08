@@ -1,22 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Notifications;
 
+use App\Models\Upload;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class UploadFailed extends Notification
+class UploadFailed extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public Upload $upload;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct()
+    public function __construct(Upload $upload)
     {
-        //
+        $this->upload = $upload;
+        $this->queue = config('emails.notifications.upload_failed.queue', 'emails');
+        $this->delay = config('emails.notifications.upload_failed.delay', 0);
     }
 
     /**
@@ -26,7 +33,14 @@ class UploadFailed extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        $channels = [];
+
+        if (config('emails.features.user_notifications', true) &&
+            config('emails.notifications.upload_failed.enabled', true)) {
+            $channels[] = 'mail';
+        }
+
+        return $channels;
     }
 
     /**
@@ -34,10 +48,15 @@ class UploadFailed extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $template = config('emails.notifications.upload_failed.template',
+                          'emails.users.upload-failed');
+
         return (new MailMessage)
-            ->line('The introduction to the notification.')
-            ->action('Notification Action', url('/'))
-            ->line('Thank you for using our application!');
+            ->subject('Error en Procesamiento de Archivo - MyTaxEU')
+            ->view($template, [
+                'upload' => $this->upload,
+                'user' => $notifiable,
+            ]);
     }
 
     /**
@@ -48,7 +67,11 @@ class UploadFailed extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            //
+            'upload_id' => $this->upload->id,
+            'filename' => $this->upload->original_name,
+            'status' => $this->upload->status,
+            'failure_reason' => $this->upload->failure_reason,
+            'failed_at' => now(),
         ];
     }
 }

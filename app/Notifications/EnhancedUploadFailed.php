@@ -8,12 +8,15 @@ use App\Models\Upload;
 use App\Models\UploadMetric;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class EnhancedUploadFailed extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, SerializesModels, Dispatchable;
 
     public Upload $upload;
     public UploadMetric $uploadMetric;
@@ -25,6 +28,9 @@ class EnhancedUploadFailed extends Notification implements ShouldQueue
     {
         $this->upload = $upload;
         $this->uploadMetric = $uploadMetric;
+
+        $this->queue = config('emails.notifications.file_processing_failed.queue', 'emails');
+        $this->delay = config('emails.notifications.file_processing_failed.delay', 0);
     }
 
     /**
@@ -34,7 +40,14 @@ class EnhancedUploadFailed extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        $channels = [];
+
+        if (config('emails.features.file_processing_emails', true) &&
+            config('emails.notifications.file_processing_failed.enabled', true)) {
+            $channels[] = 'mail';
+        }
+
+        return $channels;
     }
 
     /**
@@ -42,34 +55,20 @@ class EnhancedUploadFailed extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $durationText = $this->formatDuration($this->uploadMetric->processing_duration_seconds);
-        $errorMessage = $this->uploadMetric->error_message ?? $this->upload->failure_reason ?? 'Error desconocido';
-
-        $summary = "Desafortunadamente, el procesamiento de su archivo **{$this->upload->original_name}** " .
-                  "ha fallado después de **{$durationText}** de procesamiento. " .
-                  "**Error:** {$errorMessage}";
+        $template = config('emails.notifications.file_processing_failed.template',
+                          'emails.users.file-processing-failed');
 
         return (new MailMessage)
-            ->subject('❌ Error en Procesamiento - MyTaxEU')
-            ->greeting('¡Hola ' . $notifiable->name . '!')
-            ->line($summary)
-            ->line('')
-            ->line('**🔍 Detalles del Error:**')
-            ->line('• **Archivo:** ' . $this->upload->original_name)
-            ->line('• **Error:** ' . $errorMessage)
-            ->line('• **Tiempo antes del fallo:** ' . $durationText)
-            ->line('• **Líneas procesadas antes del fallo:** ' . number_format($this->uploadMetric->line_count))
-            ->line('• **Falló el:** ' . ($this->uploadMetric->processing_completed_at ?? $this->upload->processed_at)?->format('d/m/Y H:i'))
-            ->line('')
-            ->line('**🛠️ Posibles Soluciones:**')
-            ->line('• Verifique que su archivo CSV tenga el formato correcto')
-            ->line('• Asegúrese de que contiene la columna ACTIVITY_PERIOD requerida')
-            ->line('• Revise que no exceda el límite de 3 períodos distintos')
-            ->line('• Compruebe que el archivo no esté corrupto')
-            ->line('')
-            ->action('📂 Ver Dashboard', route('dashboard'))
-            ->line('Si el problema persiste, puede contactar con nuestro soporte técnico con el ID del archivo: **' . $this->upload->id . '**')
-            ->line('Lamentamos las molestias y gracias por usar MyTaxEU.');
+            ->subject('⚠️ Error en el Procesamiento - Necesita Atención')
+            ->view($template, [
+                'user' => $notifiable,
+                'upload' => $this->upload,
+                'uploadMetric' => $this->uploadMetric,
+                'durationText' => $this->formatDuration($this->uploadMetric->processing_duration_seconds),
+                'errorMessage' => $this->uploadMetric->error_message ?? $this->upload->failure_reason ?? 'Error desconocido',
+                'unsubscribeToken' => $this->generateUnsubscribeToken($notifiable),
+                'email' => $notifiable->email,
+            ]);
     }
 
     /**
@@ -124,5 +123,29 @@ class EnhancedUploadFailed extends Notification implements ShouldQueue
         }
 
         return $hours . ' horas';
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('EnhancedUploadFailed notification failed', [
+            'upload_id' => $this->upload->id,
+            'upload_metric_id' => $this->uploadMetric->id,
+            'filename' => $this->upload->original_name,
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
+    }
+
+    /**
+     * Generate unsubscribe token for the user
+     */
+    protected function generateUnsubscribeToken(object $notifiable): string
+    {
+        // In a real implementation, this would generate a secure token
+        // For now, return a placeholder
+        return hash('sha256', $notifiable->email . config('app.key') . 'file_notifications');
     }
 }

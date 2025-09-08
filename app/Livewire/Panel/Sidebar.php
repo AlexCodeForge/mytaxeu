@@ -38,12 +38,23 @@ class Sidebar extends Component
             ['label' => 'Monitoreo de Trabajos', 'icon' => 'fa-tasks', 'route' => 'admin.job.monitor'],
             // ['label' => 'Análisis de Créditos', 'icon' => 'fa-coins', 'route' => 'admin.credit.analytics'],
             ['label' => 'Configuración Stripe', 'icon' => 'fa-stripe-s', 'route' => 'admin.stripe.config'],
+            ['label' => 'Configuración de Emails', 'icon' => 'fa-envelope-open-text', 'route' => 'admin.email-settings.index'],
         ];
     }
 
     public function isActiveRoute(string $route): bool
     {
-        return $this->currentRoute === $route;
+        // Exact match
+        if ($this->currentRoute === $route) {
+            return true;
+        }
+
+        // Handle email settings sub-routes
+        if ($route === 'admin.email-settings.index' && str_starts_with($this->currentRoute, 'admin.email-settings.')) {
+            return true;
+        }
+
+        return false;
     }
 
     public function render()

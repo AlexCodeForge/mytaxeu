@@ -8,12 +8,15 @@ use App\Models\Upload;
 use App\Models\UploadMetric;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class EnhancedUploadCompleted extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, SerializesModels, Dispatchable;
 
     public Upload $upload;
     public UploadMetric $uploadMetric;
@@ -25,6 +28,9 @@ class EnhancedUploadCompleted extends Notification implements ShouldQueue
     {
         $this->upload = $upload;
         $this->uploadMetric = $uploadMetric;
+
+        $this->queue = config('emails.notifications.file_processing_completed.queue', 'emails');
+        $this->delay = config('emails.notifications.file_processing_completed.delay', 0);
     }
 
     /**
@@ -34,7 +40,14 @@ class EnhancedUploadCompleted extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        $channels = [];
+
+        if (config('emails.features.file_processing_emails', true) &&
+            config('emails.notifications.file_processing_completed.enabled', true)) {
+            $channels[] = 'mail';
+        }
+
+        return $channels;
     }
 
     /**
@@ -42,40 +55,19 @@ class EnhancedUploadCompleted extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $durationText = $this->formatDuration($this->uploadMetric->processing_duration_seconds);
-        $fileSizeText = $this->uploadMetric->getFormattedSizeAttribute();
+        $template = config('emails.notifications.file_processing_completed.template',
+                          'emails.users.file-processing-completed');
 
-        $summary = "Su archivo **{$this->upload->original_name}** ha sido procesado exitosamente. " .
-                  "**{$this->uploadMetric->line_count} líneas** procesadas en **{$durationText}**, " .
-                  "consumiendo **{$this->uploadMetric->credits_consumed} créditos**. " .
-                  "Tamaño del archivo: **{$fileSizeText}**.";
-
-        $mailMessage = (new MailMessage)
-            ->subject('✅ Procesamiento Completado - MyTaxEU')
-            ->greeting('¡Hola ' . $notifiable->name . '!')
-            ->line($summary)
-            ->line('')
-            ->line('**📊 Resumen del Procesamiento:**')
-            ->line('• **Archivo:** ' . $this->upload->original_name)
-            ->line('• **Líneas procesadas:** ' . number_format($this->uploadMetric->line_count))
-            ->line('• **Tiempo de procesamiento:** ' . $durationText)
-            ->line('• **Créditos consumidos:** ' . $this->uploadMetric->credits_consumed)
-            ->line('• **Tamaño del archivo:** ' . $fileSizeText)
-            ->line('• **Completado el:** ' . ($this->uploadMetric->processing_completed_at ?? $this->upload->processed_at)?->format('d/m/Y H:i'));
-
-        // Add download link if transformed file exists
-        if ($this->upload->hasTransformedFile()) {
-            $downloadUrl = route('download.upload', ['upload' => $this->upload->id]);
-            $mailMessage->action('📥 Descargar Archivo Procesado', $downloadUrl);
-        } else {
-            $mailMessage->action('📂 Ver en Dashboard', route('dashboard'));
-        }
-
-        return $mailMessage
-            ->line('')
-            ->line('Puede revisar todos sus archivos procesados en su **dashboard** o contactarnos si tiene alguna pregunta.')
-            ->line('Acceda a su historial completo de cargas y descargas desde su panel de control.')
-            ->line('Gracias por usar MyTaxEU para sus necesidades fiscales.');
+        return (new MailMessage)
+            ->subject('🎉 ¡Procesamiento Completado con Éxito!')
+            ->view($template, [
+                'user' => $notifiable,
+                'upload' => $this->upload,
+                'uploadMetric' => $this->uploadMetric,
+                'durationText' => $this->formatDuration($this->uploadMetric->processing_duration_seconds),
+                'unsubscribeToken' => $this->generateUnsubscribeToken($notifiable),
+                'email' => $notifiable->email,
+            ]);
     }
 
     /**
@@ -130,5 +122,29 @@ class EnhancedUploadCompleted extends Notification implements ShouldQueue
         }
 
         return $hours . ' horas';
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('EnhancedUploadCompleted notification failed', [
+            'upload_id' => $this->upload->id,
+            'upload_metric_id' => $this->uploadMetric->id,
+            'filename' => $this->upload->original_name,
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
+    }
+
+    /**
+     * Generate unsubscribe token for the user
+     */
+    protected function generateUnsubscribeToken(object $notifiable): string
+    {
+        // In a real implementation, this would generate a secure token
+        // For now, return a placeholder
+        return hash('sha256', $notifiable->email . config('app.key') . 'file_notifications');
     }
 }

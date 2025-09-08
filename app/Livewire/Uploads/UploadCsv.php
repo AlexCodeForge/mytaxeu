@@ -526,6 +526,19 @@ class UploadCsv extends Component
 
             $this->uploadProgress = 'Completado!';
 
+            // Send upload confirmation email
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->sendUploadConfirmationNotification($upload);
+                logger()->info('📧 Upload confirmation email sent', ['upload_id' => $upload->id]);
+            } catch (\Exception $e) {
+                logger()->error('❌ Failed to send upload confirmation email', [
+                    'upload_id' => $upload->id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Don't fail the upload process if email fails
+            }
+
             // Dispatch upload-created event for real-time updates
             $this->dispatch('upload-created', [
                 'uploadId' => $upload->id,

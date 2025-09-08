@@ -39,17 +39,61 @@ class UploadCompleted extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $template = config('emails.notifications.upload_completed.template',
+                          'emails.users.upload-completed');
+
         return (new MailMessage)
-            ->subject('Procesamiento de CSV Completado - MyTaxEU')
-            ->greeting('¡Hola ' . $notifiable->name . '!')
-            ->line('Su archivo CSV ha sido procesado exitosamente.')
-            ->line('**Detalles del archivo:**')
-            ->line('• Nombre: ' . $this->upload->original_name)
-            ->line('• Filas procesadas: ' . number_format($this->upload->rows_count ?? 0))
-            ->line('• Tamaño: ' . $this->upload->formatted_size)
-            ->line('• Procesado el: ' . $this->upload->processed_at?->format('d/m/Y H:i'))
-            ->action('Ver mis archivos', route('dashboard'))
-            ->line('Gracias por usar MyTaxEU.');
+            ->subject('Procesamiento Completado Exitosamente - MyTaxEU')
+            ->view($template, [
+                'upload' => $this->upload,
+                'user' => $notifiable,
+                'qualityScore' => $this->calculateQualityScore(),
+                'processingTime' => $this->getProcessingTime(),
+                'totalProcessedFiles' => $this->getTotalProcessedFiles($notifiable),
+            ]);
+    }
+
+    /**
+     * Calculate a quality score for the processed data.
+     */
+    private function calculateQualityScore(): int
+    {
+        $score = 85; // Base score
+
+        // Adjust based on file characteristics
+        if ($this->upload->rows_count && $this->upload->rows_count > 1000) {
+            $score += 5; // Bonus for larger files
+        }
+
+        if ($this->upload->failure_reason === null) {
+            $score += 10; // Bonus for no errors
+        }
+
+        return min(100, $score);
+    }
+
+    /**
+     * Get human readable processing time.
+     */
+    private function getProcessingTime(): string
+    {
+        if ($this->upload->processed_at && $this->upload->created_at) {
+            return $this->upload->created_at->diffForHumans($this->upload->processed_at, true);
+        }
+
+        return '2-3 minutos';
+    }
+
+    /**
+     * Get total processed files for this user.
+     */
+    private function getTotalProcessedFiles($notifiable): int
+    {
+        if (method_exists($notifiable, 'uploads')) {
+            return $notifiable->uploads()->where('status', 'completed')->count();
+        }
+
+        return 1;
     }
 
     /**

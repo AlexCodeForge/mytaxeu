@@ -157,6 +157,23 @@ class ProcessUploadJob implements ShouldQueue
                 'job_id' => $this->job->getJobId(),
             ]);
 
+            // Send processing started email notification
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->sendProcessingStartedNotification($upload);
+                Log::info('ProcessUploadJob: Processing started email sent', [
+                    'upload_id' => $upload->id,
+                    'user_id' => $upload->user_id,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('ProcessUploadJob: Failed to send processing started email', [
+                    'upload_id' => $upload->id,
+                    'user_id' => $upload->user_id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Don't fail the job if email fails
+            }
+
                         // Verify file exists
             if (! Storage::disk($upload->disk)->exists($upload->path)) {
                 Log::error('Upload file not found in storage', [

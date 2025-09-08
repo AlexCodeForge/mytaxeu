@@ -63,6 +63,9 @@ new class extends Component
                         <x-nav-link :href="route('admin.stripe.config')" :active="request()->routeIs('admin.stripe.config')" wire:navigate>
                             Configuración
                         </x-nav-link>
+                        <x-nav-link :href="route('admin.email-settings.index')" :active="request()->routeIs('admin.email-settings.*')" wire:navigate>
+                            📧 Emails
+                        </x-nav-link>
                     @endcan
                 </div>
             </div>
@@ -148,6 +151,9 @@ new class extends Component
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('admin.stripe.config')" :active="request()->routeIs('admin.stripe.config')" wire:navigate>
                         Configuración
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.email-settings.index')" :active="request()->routeIs('admin.email-settings.*')" wire:navigate>
+                        📧 Emails
                     </x-responsive-nav-link>
                 </div>
             @endcan

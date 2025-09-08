@@ -35,12 +35,17 @@
             </header>
 
             <main class="flex-1 overflow-y-auto p-6">
-                {{ $slot }}
+                @hasSection('content')
+                    @yield('content')
+                @else
+                    {{ $slot }}
+                @endif
             </main>
         </div>
     </div>
 
     @stack('scripts')
+    @livewireScripts
 </body>
 </html>
 

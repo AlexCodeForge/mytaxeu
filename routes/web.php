@@ -52,6 +52,12 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
         Route::get('/uploads', \App\Livewire\Admin\UploadManager::class)->name('uploads');
         Route::get('/job-monitor', \App\Livewire\Pages\Admin\JobMonitor::class)->name('job.monitor');
 
+        // Email Settings routes (Livewire)
+        Route::prefix('email-settings')->name('email-settings.')->group(function () {
+            Route::get('/', \App\Livewire\Admin\EmailSettingsIndex::class)->name('index');
+            Route::get('/{category}/edit', \App\Livewire\Admin\EmailSettingsEdit::class)->name('edit');
+        });
+
         // Export routes
         Route::prefix('exports')->name('exports.')->group(function () {
             Route::post('/uploads', [\App\Http\Controllers\Admin\ExportController::class, 'uploadsExport'])->name('uploads');

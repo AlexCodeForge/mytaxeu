@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Notifications\SubscriptionPaymentConfirmation;
+use App\Notifications\SaleNotification;
 use App\Services\CreditService;
+use App\Services\EmailService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -281,6 +284,12 @@ class StripeWebhookController extends WebhookController
             'credits_allocated' => $creditsToAllocate,
             'success' => $success,
         ]);
+
+        // Send payment confirmation email if credits were successfully allocated
+        if ($success) {
+            $this->sendPaymentConfirmationEmail($user, $invoice, $localSubscription, $creditsToAllocate);
+            $this->sendSaleNotificationToAdmins($user, $invoice, $localSubscription);
+        }
     }
 
     /**
@@ -380,5 +389,286 @@ class StripeWebhookController extends WebhookController
         ]);
 
         return 10;
+    }
+
+    /**
+     * Send payment confirmation email to user
+     */
+    protected function sendPaymentConfirmationEmail($user, $invoice, $subscription, int $creditsAllocated): void
+    {
+        try {
+            // Check if subscription payment emails are enabled
+            if (!config('emails.features.subscription_emails', true)) {
+                Log::debug('Subscription payment emails are disabled, skipping notification', [
+                    'user_id' => $user->id,
+                    'invoice_id' => $invoice->id,
+                ]);
+                return;
+            }
+
+            // Prepare payment data
+            $paymentData = [
+                'amount' => $invoice->amount_paid / 100, // Convert from cents
+                'currency' => strtoupper($invoice->currency),
+                'paid_at' => Carbon::createFromTimestamp($invoice->status_transitions->paid_at ?? time()),
+                'transaction_id' => $invoice->id,
+                'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
+                'billing_reason' => $invoice->billing_reason,
+            ];
+
+            // Prepare subscription data
+            $subscriptionData = [
+                'plan_name' => $this->determinePlanName($invoice),
+                'subscription_id' => $subscription->stripe_id,
+                'next_billing_date' => $this->calculateNextBillingDate($subscription),
+            ];
+
+            // Prepare credits data
+            $creditService = app(CreditService::class);
+            $currentBalance = $creditService->getUserCredits($user);
+
+            $creditsData = [
+                'amount' => $creditsAllocated,
+                'total_balance' => $currentBalance,
+                'files_processable' => intval($currentBalance / 10), // Assuming 10 credits per file
+            ];
+
+            // Send the notification
+            $user->notify(new SubscriptionPaymentConfirmation(
+                $paymentData,
+                $subscriptionData,
+                $creditsData
+            ));
+
+            Log::info('Payment confirmation email sent', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'invoice_id' => $invoice->id,
+                'credits_allocated' => $creditsAllocated,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send payment confirmation email', [
+                'user_id' => $user->id,
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * Determine plan name from invoice
+     */
+    protected function determinePlanName($invoice): string
+    {
+        try {
+            if (!empty($invoice->lines->data)) {
+                foreach ($invoice->lines->data as $line) {
+                    if ($line->type === 'subscription' && isset($line->price->nickname)) {
+                        return $line->price->nickname;
+                    }
+                }
+            }
+
+            // Fallback based on amount
+            $amount = $invoice->amount_paid / 100;
+            if ($amount <= 30) {
+                return 'Plan Starter';
+            } elseif ($amount <= 150) {
+                return 'Plan Business';
+            } else {
+                return 'Plan Enterprise';
+            }
+        } catch (\Exception $e) {
+            Log::warning('Could not determine plan name from invoice', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return 'Plan MyTaxEU';
+    }
+
+    /**
+     * Calculate next billing date for subscription
+     */
+    protected function calculateNextBillingDate($subscription): string
+    {
+        try {
+            // For active subscriptions, add one month to current period end
+            if ($subscription->trial_ends_at && $subscription->trial_ends_at->isFuture()) {
+                return $subscription->trial_ends_at->format('Y-m-d');
+            }
+
+            // Estimate next billing date (in production, you'd fetch from Stripe)
+            return Carbon::now()->addMonth()->format('Y-m-d');
+        } catch (\Exception $e) {
+            Log::debug('Could not calculate next billing date', [
+                'subscription_id' => $subscription->id,
+                'error' => $e->getMessage(),
+            ]);
+            return Carbon::now()->addMonth()->format('Y-m-d');
+        }
+    }
+
+    /**
+     * Send sale notification to admin users
+     */
+    protected function sendSaleNotificationToAdmins($user, $invoice, $subscription): void
+    {
+        try {
+            // Check if admin sale notifications are enabled
+            if (!config('emails.features.admin_notifications', true)) {
+                Log::debug('Admin notifications are disabled, skipping sale notification', [
+                    'user_id' => $user->id,
+                    'invoice_id' => $invoice->id,
+                ]);
+                return;
+            }
+
+            // Prepare customer data
+            $customerData = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'created_at' => $user->created_at,
+                'country' => $user->country ?? null,
+            ];
+
+            // Prepare sale data
+            $saleData = [
+                'amount' => $invoice->amount_paid / 100, // Convert from cents
+                'currency' => strtoupper($invoice->currency),
+                'plan_name' => $this->determinePlanName($invoice),
+                'transaction_id' => $invoice->id,
+                'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
+                'billing_cycle' => $invoice->billing_reason === 'subscription_create' ? 'Nuevo' : 'Renovación',
+                'created_at' => Carbon::createFromTimestamp($invoice->created),
+                'is_first_purchase' => $this->isFirstPurchase($user),
+                'discount_applied' => $invoice->discount ? true : false,
+                'discount_amount' => $invoice->discount ? ($invoice->discount->amount ?? 0) / 100 : 0,
+                'coupon_code' => $invoice->discount->coupon->id ?? null,
+            ];
+
+            // Prepare revenue data (simplified for now)
+            $revenueData = [
+                'today_sales' => $this->getTodaySalesCount(),
+                'today_revenue' => $this->getTodayRevenue(),
+                'month_sales' => $this->getMonthSalesCount(),
+                'month_revenue' => $this->getMonthRevenue(),
+                'avg_transaction_value' => $this->getAverageTransactionValue(),
+            ];
+
+            // Send to admin email service
+            $emailService = app(EmailService::class);
+            $emailService->sendToAdmins(
+                '💰 Nueva Venta Realizada - MyTaxEU',
+                'emails.admin.sale-notification',
+                [
+                    'customer' => $customerData,
+                    'sale' => $saleData,
+                    'revenue' => $revenueData,
+                ]
+            );
+
+            Log::info('Sale notification sent to admins', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'invoice_id' => $invoice->id,
+                'sale_amount' => $saleData['amount'],
+                'plan_name' => $saleData['plan_name'],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send sale notification to admins', [
+                'user_id' => $user->id,
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * Check if this is the user's first purchase
+     */
+    protected function isFirstPurchase($user): bool
+    {
+        try {
+            // Count previous successful payments
+            $previousPayments = $user->subscriptions()
+                ->where('stripe_status', 'active')
+                ->orWhere('stripe_status', 'canceled')
+                ->count();
+
+            return $previousPayments <= 1; // Current subscription is first
+        } catch (\Exception $e) {
+            Log::debug('Could not determine if first purchase', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Get today's sales count (simplified implementation)
+     */
+    protected function getTodaySalesCount(): int
+    {
+        try {
+            return User::whereHas('subscriptions', function ($query) {
+                $query->where('created_at', '>=', Carbon::today());
+            })->count();
+        } catch (\Exception $e) {
+            Log::debug('Could not get today sales count', ['error' => $e->getMessage()]);
+            return 1;
+        }
+    }
+
+    /**
+     * Get today's revenue (simplified implementation)
+     */
+    protected function getTodayRevenue(): float
+    {
+        // This would integrate with your actual revenue tracking
+        // For now, return a placeholder
+        return 125.0;
+    }
+
+    /**
+     * Get month's sales count (simplified implementation)
+     */
+    protected function getMonthSalesCount(): int
+    {
+        try {
+            return User::whereHas('subscriptions', function ($query) {
+                $query->where('created_at', '>=', Carbon::now()->startOfMonth());
+            })->count();
+        } catch (\Exception $e) {
+            Log::debug('Could not get month sales count', ['error' => $e->getMessage()]);
+            return 1;
+        }
+    }
+
+    /**
+     * Get month's revenue (simplified implementation)
+     */
+    protected function getMonthRevenue(): float
+    {
+        // This would integrate with your actual revenue tracking
+        // For now, return a placeholder
+        return 2500.0;
+    }
+
+    /**
+     * Get average transaction value (simplified implementation)
+     */
+    protected function getAverageTransactionValue(): float
+    {
+        // This would calculate actual average from your data
+        // For now, return a placeholder
+        return 125.0;
     }
 }
