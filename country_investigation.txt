@@ -1,0 +1,1280 @@
+Reading CSV file for country investigation...
+Memory-efficient CSV reading completed
+Read 20000 transactions
+
+=== All Jurisdictions Found ===
+- CZECH REPUBLIC
+- FRANCE
+- GERMANY
+- ITALY
+- POLAND
+- SPAIN
+- UNITED KINGDOM
+
+=== POLAND Analysis ===
+Found 148 POLAND transactions
+  Jurisdiction: POLAND, Base: 45.59, IVA: 10.48
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 45.59, IVA: 10.48
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 14.24, IVA: 0
+    Sale: PL -> AT
+  Jurisdiction: POLAND, Base: 45.59, IVA: 10.48
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 45.59, IVA: 10.48
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 61.93, IVA: 14.24
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.34, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.96, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 6.69, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 6.69, IVA: 0
+    Sale: PL -> AT
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 0.61, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 0.61, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 0.61, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 15.92, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 66.9, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 10.74, IVA: 0
+    Sale: PL -> ES
+  Jurisdiction: POLAND, Base: 11.93, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 17.33, IVA: 0
+    Sale: PL -> IE
+  Jurisdiction: POLAND, Base: 1.04, IVA: 0
+    Sale: PL -> CZ
+  Jurisdiction: POLAND, Base: 17.35, IVA: 0
+    Sale: PL -> PT
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.45, IVA: 0.1
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 6.88, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 34.42, IVA: 0
+    Sale: PL -> IT
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.38, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 1.02, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.38, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.75, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.54, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.88, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.74, IVA: 0.17
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 7.6, IVA: 0
+    Sale: PL -> DE
+  Jurisdiction: POLAND, Base: 20.63, IVA: 4.74
+    Sale: PL -> PL
+  Jurisdiction: POLAND, Base: 0.87, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.53, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.53, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.53, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.78, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.4, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.53, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.89, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.63, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.34, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.87, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.78, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.47, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 0.53, IVA: 0
+    Sale: PL -> RO
+  Jurisdiction: POLAND, Base: 32.22, IVA: 0
+    Sale: PL -> NL
+POLAND Totals:
+  Total Base: 584.38
+  Total IVA: 66.57
+  Zero IVA transactions: 86
+  Zero IVA base: 293.97
+
+=== UNITED KINGDOM Analysis ===
+Found 478 UK transactions
+  Jurisdiction: UNITED KINGDOM, Base: 9.94, IVA: 2
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 5.79, IVA: 1.16
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 5.79, IVA: 1.16
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 28.24, IVA: 5.64
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 28.24, IVA: 5.66
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 28.24, IVA: 5.66
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 11.16, IVA: 2.24
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 15.82, IVA: 3.16
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 5.79, IVA: 1.16
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 15.82, IVA: 3.16
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 8.04, IVA: 1.6
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 15.82, IVA: 3.16
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.82
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 28.24, IVA: 5.66
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 9.2, IVA: 0
+    Sale: GB -> GR
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 28.24, IVA: 5.66
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 28.24, IVA: 5.66
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 0
+    Sale: GB -> JE
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 9.37, IVA: 1.87
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 13.7, IVA: 2.74
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 10.65, IVA: 0
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 14.12, IVA: 2.83
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+  Jurisdiction: UNITED KINGDOM, Base: 7.91, IVA: 1.58
+    Sale: GB -> GB
+UK Totals:
+  Total Base: 5272.17
+  Total IVA: 1035.84
+  Zero IVA transactions: 11
+  Zero IVA base: 97.25

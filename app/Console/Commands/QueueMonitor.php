@@ -143,7 +143,7 @@ class QueueMonitor extends Command
                     return [
                         'ID' => $upload->id,
                         'User' => $upload->user->name ?? 'Unknown',
-                        'File' => str_limit($upload->original_name, 30),
+                        'File' => \Illuminate\Support\Str::limit($upload->original_name, 30),
                         'Status' => $this->getUploadStatusDisplay($upload->status),
                         'Age' => $upload->created_at->diffForHumans(),
                     ];

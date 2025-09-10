@@ -342,7 +342,7 @@ class NotificationService
     private function estimateCreditsUsed(int $rows): int
     {
         // Basic estimation: 1 credit per 10 rows, minimum 1 credit
-        return max(1, ceil($rows / 10));
+        return (int) max(1, ceil($rows / 10));
     }
 
     /**
@@ -352,7 +352,7 @@ class NotificationService
     {
         try {
             $creditService = app(CreditService::class);
-            return $creditService->getUserCredits($user);
+            return $creditService->getCreditBalance($user);
         } catch (\Exception $e) {
             Log::warning('Could not fetch user remaining credits', [
                 'user_id' => $user->id,

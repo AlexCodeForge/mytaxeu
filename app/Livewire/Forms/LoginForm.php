@@ -57,7 +57,7 @@ class LoginForm extends Form
         throw ValidationException::withMessages([
             'form.email' => trans('auth.throttle', [
                 'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
+                'minutes' => (int) ceil($seconds / 60),
             ]),
         ]);
     }
