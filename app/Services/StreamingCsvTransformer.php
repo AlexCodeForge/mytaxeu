@@ -61,7 +61,7 @@ class StreamingCsvTransformer
     ];
 
     private const EXCHANGE_RATES = [
-        'PLN' => 0.23, 'EUR' => 1.0, 'SEK' => 0.087,
+        'PLN' => 0.319033, 'EUR' => 1.0, 'SEK' => 0.087, 'GBP' => 1.169827,
     ];
 
     private const OSS_VAT_RATES = [
@@ -95,6 +95,9 @@ class StreamingCsvTransformer
 
         // Process CSV in streaming mode
         $this->processFileStreaming($inputPath);
+
+        // Apply UK marketplace allocation logic (4.7% to Czech Republic and Poland)
+        $this->applyUkMarketplaceAllocation();
 
         // Validate activity periods
         $this->validateActivityPeriods();
@@ -191,6 +194,7 @@ class StreamingCsvTransformer
         // Calculate totals
         $this->calculateTotals($transaction);
 
+
         // Classify transaction (can belong to multiple categories)
         $categories = $this->classifyTransaction($transaction);
 
@@ -239,6 +243,8 @@ class StreamingCsvTransformer
         $jurisdiction = $transaction['TAXABLE_JURISDICTION'] ?? '';
         $orderId = $transaction['ORDER_ID'] ?? 'NO_ID';
 
+        // Store original currency before conversion
+        $transaction['ORIGINAL_CURRENCY'] = $currency;
 
         if ($currency !== 'EUR' && isset(self::EXCHANGE_RATES[$currency])) {
             $rate = self::EXCHANGE_RATES[$currency];
@@ -294,9 +300,14 @@ class StreamingCsvTransformer
 
         $categories = [];
 
-        // PYTHON EXACT LOGIC: B2C/B2B is standalone IF (can combine with anything)
-        if (in_array($reportingScheme, ['REGULAR', 'UK_VOEC-DOMESTIC']) && $taxResponsibility === 'SELLER') {
+        // POWER BI LOGIC: REGULAR scheme + SELLER, plus UK MARKETPLACE for allocation
+        if ($reportingScheme === 'REGULAR' && $taxResponsibility === 'SELLER') {
             $categories[] = 'Ventas locales al consumidor final - B2C y B2B (EUR)';
+        }
+
+        // UK MARKETPLACE allocation: UK_VOEC-DOMESTIC + MARKETPLACE gets allocated to other countries
+        if ($reportingScheme === 'UK_VOEC-DOMESTIC' && $taxResponsibility === 'MARKETPLACE') {
+            $categories[] = 'UK_MARKETPLACE_ALLOCATION';
         }
 
         // PYTHON EXACT LOGIC: SIN IVA is standalone IF (can combine with B2C/B2B)
@@ -367,6 +378,9 @@ class StreamingCsvTransformer
             case 'Exportaciones (EUR)':
                 $this->aggregateExportaciones($transaction);
                 break;
+            case 'UK_MARKETPLACE_ALLOCATION':
+                $this->aggregateUkMarketplaceAllocation($transaction);
+                break;
         }
     }
 
@@ -375,33 +389,105 @@ class StreamingCsvTransformer
         $jurisdiction = $transaction['TAXABLE_JURISDICTION'] ?? '';
         if (empty($jurisdiction)) return;
 
+        // Skip foreign currency transactions (Power BI excludes these)
+        // EXCEPTION: Poland accepts both PLN and EUR transactions
+        $originalCurrency = $transaction['ORIGINAL_CURRENCY'] ?? $transaction['TRANSACTION_CURRENCY_CODE'] ?? 'EUR';
 
-        // Python logic: Calculate "Calculated Base" using VAT rate division, but keep original IVA
+        if ($jurisdiction === 'POLAND') {
+            // Poland special: Allow both PLN and EUR
+            if (!in_array($originalCurrency, ['PLN', 'EUR'])) {
+                return;
+            }
+        } else {
+            // Other countries: Strict local currency only
+            $localCurrencies = [
+                'ITALY' => 'EUR',
+                'SPAIN' => 'EUR',
+                'FRANCE' => 'EUR',
+                'GERMANY' => 'EUR',
+                'CZECH REPUBLIC' => 'EUR',
+                'UNITED KINGDOM' => 'GBP'
+            ];
+
+            if (isset($localCurrencies[$jurisdiction]) && $originalCurrency !== $localCurrencies[$jurisdiction]) {
+                return;
+            }
+        }
+
+        // Get transaction amounts
         $vatRate = (float)($transaction['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0);
         $ivaAmount = (float)($transaction['IVA (€)'] ?? 0);
         $baseAmount = (float)($transaction['Base (€)'] ?? 0);
 
-        // Python line 226-229: IVA / VAT_RATE if IVA > 0, else Base
-        // Handle division by zero case properly
-        if ($ivaAmount > 0 && $vatRate > 0) {
-            $calculatedBase = $ivaAmount / $vatRate;  // Python uses direct division
-        } else {
-            $calculatedBase = $baseAmount;
-        }
-
         if (!isset($this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction])) {
+            // Determine the currency for this jurisdiction
+            $localCurrencies = [
+                'ITALY' => 'EUR',
+                'SPAIN' => 'EUR',
+                'FRANCE' => 'EUR',
+                'GERMANY' => 'EUR',
+                'CZECH REPUBLIC' => 'EUR',
+                'UNITED KINGDOM' => 'GBP',
+                'POLAND' => 'PLN'
+            ];
+            $jurisdictionCurrency = $localCurrencies[$jurisdiction] ?? 'EUR';
+
             $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction] = [
                 'TAXABLE_JURISDICTION' => $jurisdiction,
                 'Calculated Base (€)' => 0,
+                'No IVA (€)' => 0,  // NEW COLUMN for transactions without VAT
                 'IVA (€)' => 0,
                 'Total (€)' => 0,
+                'Currency' => $jurisdictionCurrency,
             ];
         }
 
+        // POWER BI LOGIC: Different logic per country based on analysis
+        if ($jurisdiction === 'POLAND') {
+            // POLAND SPECIAL: 23% VAT → Calc Base (using 0.319 rate), 0% VAT → No IVA
+            if (abs($vatRate - 0.23) < 0.001) {
+                $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $baseAmount;
+            } elseif (abs($vatRate - 0.0) < 0.001) {
+                $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['No IVA (€)'] += $baseAmount;
+            }
+        } elseif ($jurisdiction === 'UNITED KINGDOM') {
+            // UK SPECIAL: Exclude 0% VAT entirely, only 20% VAT goes to Calc Base
+            if (abs($vatRate - 0.20) < 0.001) {
+                $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $baseAmount;
+            }
+            // 0% VAT is excluded entirely for UK (not added to No IVA)
+        } else {
+            // STANDARD LOGIC: Standard VAT rate → Calc Base, 0% VAT → No IVA
+            $standardVatRates = [
+                'ITALY' => 0.22, 'SPAIN' => 0.21, 'FRANCE' => 0.20, 'GERMANY' => 0.19, 'CZECH REPUBLIC' => 0.21
+            ];
 
-        $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $calculatedBase;
+            $standardRate = $standardVatRates[$jurisdiction] ?? 0.22;
+
+            if (abs($vatRate - $standardRate) < 0.001) {
+                $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $baseAmount;
+            } elseif (abs($vatRate - 0.0) < 0.001) {
+                $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['No IVA (€)'] += $baseAmount;
+            }
+        }
+
+        // Always add IVA and Total (unchanged logic)
         $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['IVA (€)'] += $ivaAmount;
         $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Total (€)'] += (float)($transaction['Total (€)'] ?? 0);
+    }
+
+    private function aggregateUkMarketplaceAllocation(array $transaction): void
+    {
+        // UK MARKETPLACE allocation: Collect UK_VOEC-DOMESTIC + MARKETPLACE amounts
+        $baseAmount = (float)($transaction['Base (€)'] ?? 0);
+
+        if (!isset($this->categoryAggregates['UK_MARKETPLACE_POOL'])) {
+            $this->categoryAggregates['UK_MARKETPLACE_POOL'] = [
+                'total_amount' => 0
+            ];
+        }
+
+        $this->categoryAggregates['UK_MARKETPLACE_POOL']['total_amount'] += $baseAmount;
     }
 
     private function aggregateIntracomunitarias(array $transaction): void
@@ -776,6 +862,27 @@ class StreamingCsvTransformer
             $columnNumber = intval($columnNumber / 26);
         }
         return $letter;
+    }
+
+    private function applyUkMarketplaceAllocation(): void
+    {
+        // Apply 4.7% of UK MARKETPLACE pool to Czech Republic and Poland "No IVA"
+        if (!isset($this->categoryAggregates['UK_MARKETPLACE_POOL'])) {
+            return;
+        }
+
+        $ukMarketplaceTotal = $this->categoryAggregates['UK_MARKETPLACE_POOL']['total_amount'];
+        $allocationAmount = $ukMarketplaceTotal * 0.047; // 4.7% allocation
+
+        // REPLACE (not add) No IVA for Czech Republic and Poland with allocation
+        $targetCountries = ['CZECH REPUBLIC', 'POLAND'];
+
+        foreach ($targetCountries as $country) {
+            if (isset($this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$country])) {
+                // REPLACE No IVA with allocation amount (Power BI logic)
+                $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$country]['No IVA (€)'] = $allocationAmount;
+            }
+        }
     }
 
     private function log(string $message, array $context = []): void

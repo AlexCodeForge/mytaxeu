@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Upload;
-use App\Services\CsvTransformer;
+use App\Services\StreamingCsvTransformer;
 use DomainException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -43,7 +43,7 @@ class RunCsvTransform implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(CsvTransformer $transformer): void
+    public function handle(StreamingCsvTransformer $transformer): void
     {
         $upload = Upload::find($this->uploadId);
 

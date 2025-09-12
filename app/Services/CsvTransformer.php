@@ -90,6 +90,7 @@ class CsvTransformer
         'PLN' => 0.23,
         'EUR' => 1.0,
         'SEK' => 0.087,
+        'GBP' => 1.17,
     ];
 
     // OSS VAT rates for each EU country from Python script
