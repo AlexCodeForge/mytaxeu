@@ -191,15 +191,13 @@ class UploadCsv extends Component
                     'period_count' => $this->periodAnalysis['period_count'],
                     'required_credits' => $this->periodAnalysis['required_credits'],
                     'user_credits' => $this->userCredits,
+                    'showPeriodConfirmation' => $this->showPeriodConfirmation,
+                    'processingConfirmation' => $this->processingConfirmation,
+                    'uploadSuccess' => $this->uploadSuccess,
                 ]);
 
-                // Dispatch event to frontend to show confirmation
-                $this->dispatch('show-period-confirmation', [
-                    'periods' => $this->periodAnalysis['periods'],
-                    'periodCount' => $this->periodAnalysis['period_count'],
-                    'requiredCredits' => $this->periodAnalysis['required_credits'],
-                    'userCredits' => $this->userCredits,
-                ]);
+                // Modal is controlled by Alpine.js x-show="$wire.showPeriodConfirmation"
+                // No event dispatch needed
 
                 // Also dispatch a generic info message
                 $periodsText = implode(', ', $this->periodAnalysis['periods']);

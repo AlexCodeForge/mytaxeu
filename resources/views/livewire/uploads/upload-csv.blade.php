@@ -133,21 +133,8 @@
             window.dispatchEvent(new CustomEvent('file-cleared'));
         });
 
-        Livewire.on('show-period-confirmation', (event) => {
-            console.log('Period confirmation event received:', event);
-            // Show the period confirmation modal
-            const modal = document.getElementById('period-confirmation-modal');
-            if (modal) {
-                modal.style.display = 'flex';
-                modal.classList.remove('hidden');
-                console.log('Modal shown');
-            } else {
-                console.error('Modal not found');
-                // Fallback: show an alert with the information
-                const periodsText = event.periods ? event.periods.join(', ') : 'N/A';
-                alert(`Períodos detectados: ${event.periodCount} (${periodsText})\nCréditos requeridos: ${event.requiredCredits}\nTus créditos actuales: ${event.userCredits}`);
-            }
-        });
+        // Modal is now controlled purely by Alpine.js x-show directive
+        // No manual JavaScript control needed
     });
 </script>
 @endpush
@@ -485,6 +472,12 @@
                      x-show="$wire.showPeriodConfirmation && !$wire.processingConfirmation && !$wire.uploadSuccess"
                      x-transition.opacity
                      @click.self="console.log('🔴 Modal backdrop clicked')"
+                     x-effect="console.log('🔍 Modal visibility state:', {
+                         showPeriodConfirmation: $wire.showPeriodConfirmation,
+                         processingConfirmation: $wire.processingConfirmation,
+                         uploadSuccess: $wire.uploadSuccess,
+                         shouldShow: $wire.showPeriodConfirmation && !$wire.processingConfirmation && !$wire.uploadSuccess
+                     })"
                 >
                     <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
                         <div class="flex items-center justify-between mb-4">
