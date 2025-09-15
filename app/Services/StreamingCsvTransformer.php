@@ -188,6 +188,9 @@ class StreamingCsvTransformer
 
     private function processTransaction(array $transaction): void
     {
+        // Normalize country codes (MC -> FR) before any processing
+        $this->normalizeCountryCodes($transaction);
+
         // Convert numeric columns
         $this->convertNumericColumns($transaction);
 
@@ -281,6 +284,23 @@ class StreamingCsvTransformer
             $transaction['Total (€)'] += $transaction[$column] ?? 0;
         }
 
+    }
+
+    private function normalizeCountryCodes(array &$transaction): void
+    {
+        // Convert MC (Monaco) to FR (France) for all international operations
+        $countryFields = [
+            'SALE_DEPART_COUNTRY',
+            'SALE_ARRIVAL_COUNTRY',
+            'DEPARTURE_COUNTRY',
+            'ARRIVAL_COUNTRY'
+        ];
+
+        foreach ($countryFields as $field) {
+            if (isset($transaction[$field]) && $transaction[$field] === 'MC') {
+                $transaction[$field] = 'FR';
+            }
+        }
     }
 
     private function classifyTransaction(array $row): array
@@ -435,8 +455,8 @@ class StreamingCsvTransformer
             $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction] = [
                 'TAXABLE_JURISDICTION' => $jurisdiction,
                 'Calculated Base (€)' => 0,
-                'No IVA (€)' => 0,  // NEW COLUMN for transactions without VAT
                 'IVA (€)' => 0,
+                'No IVA (€)' => 0,  // NEW COLUMN for transactions without VAT
                 'Total (€)' => 0,
                 'Currency' => $jurisdictionCurrency,
             ];
@@ -739,6 +759,11 @@ class StreamingCsvTransformer
             // Extract destination country from "País de destino / Tipo de IVA repercutido" field
             $destination = $row['País de destino / Tipo de IVA repercutido'] ?? '';
             $country = explode(' - ', $destination)[0] ?? '';
+
+            // Skip GB from OSS breakdown
+            if ($country === 'GB') {
+                continue;
+            }
 
             if (!isset($countryTotals[$country])) {
                 $countryTotals[$country] = ['Base (€)' => 0, 'IVA (€)' => 0, 'Total (€)' => 0];
