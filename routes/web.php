@@ -55,7 +55,6 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
         // Email Settings routes (Livewire)
         Route::prefix('email-settings')->name('email-settings.')->group(function () {
             Route::get('/', \App\Livewire\Admin\EmailSettingsIndex::class)->name('index');
-            Route::get('/{category}/edit', \App\Livewire\Admin\EmailSettingsEdit::class)->name('edit');
         });
 
         // Export routes

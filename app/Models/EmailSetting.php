@@ -119,8 +119,7 @@ class EmailSetting extends Model
     protected static function getAllGroupedDirect(): array
     {
         try {
-            $settings = self::where('is_active', true)
-                ->orderBy('category')
+            $settings = self::orderBy('category')
                 ->orderBy('sort_order')
                 ->orderBy('label')
                 ->get();

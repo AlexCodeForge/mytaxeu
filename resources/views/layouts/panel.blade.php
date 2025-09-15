@@ -22,7 +22,8 @@
         <div class="lg:hidden" x-cloak>
             <div class="fixed inset-0 z-40" x-show="mobileOpen" @keydown.escape.window="mobileOpen=false">
                 <div class="fixed inset-0 bg-black/40" @click="mobileOpen=false"></div>
-                <aside class="fixed inset-y-0 left-0 w-72 bg-white shadow-xl" x-show="mobileOpen" x-transition>
+                <aside class="fixed inset-y-0 left-0 w-72 bg-white shadow-xl mobile-sidebar"
+                       :class="{ 'open': mobileOpen }">
                     <livewire:panel.sidebar />
                 </aside>
             </div>

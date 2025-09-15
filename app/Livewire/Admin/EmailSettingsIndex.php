@@ -30,7 +30,9 @@ class EmailSettingsIndex extends Component
         'upload_queued',
         'upload_received',
         'admin_sale',
-        'weekly_report'
+        'weekly_report',
+        'daily_report',
+        'monthly_report'
     ];
     public bool $isLoading = false;
     public array $testResults = [];
@@ -44,6 +46,21 @@ class EmailSettingsIndex extends Component
     public function loadSettings()
     {
         $this->settingsByCategory = EmailSetting::getAllGrouped();
+    }
+
+    public function getEmailToggles()
+    {
+        // Get only the email enable/disable settings (not queues, templates, or general config)
+        $allSettings = EmailSetting::where('key', 'like', '%_enabled')
+            ->whereIn('category', ['features', 'user_notifications', 'admin_notifications'])
+            ->orderBy('category')
+            ->orderBy('sort_order')
+            ->orderBy('label')
+            ->get();
+
+        return $allSettings->map(function ($setting) {
+            return $setting->toArray();
+        })->toArray();
     }
 
     public function openTestModal()
@@ -78,7 +95,9 @@ class EmailSettingsIndex extends Component
             'upload_queued',
             'upload_received',
             'admin_sale',
-            'weekly_report'
+            'weekly_report',
+            'daily_report',
+            'monthly_report'
         ];
     }
 
@@ -180,41 +199,34 @@ class EmailSettingsIndex extends Component
         \Log::info('Email test completed', ['results' => $this->testResults]);
     }
 
-    public function refreshSettings()
+    public function toggleSetting(string $key)
     {
-        $this->loadSettings();
-        session()->flash('success', 'Configuraciones actualizadas exitosamente.');
+        try {
+            $setting = EmailSetting::where('key', $key)->first();
+
+            if (!$setting) {
+                session()->flash('error', 'Configuración no encontrada.');
+                return;
+            }
+
+            $setting->is_active = !$setting->is_active;
+            $setting->save();
+
+            // Clear cache to ensure fresh data
+            EmailSetting::clearCache();
+
+            $status = $setting->is_active ? 'activada' : 'desactivada';
+            session()->flash('success', "Configuración '{$setting->label}' {$status} exitosamente.");
+
+        } catch (\Exception $e) {
+            \Log::error('Error toggling email setting', [
+                'key' => $key,
+                'error' => $e->getMessage()
+            ]);
+            session()->flash('error', 'Error al cambiar la configuración. Inténtalo de nuevo.');
+        }
     }
 
-    public function resetAllSettings()
-    {
-        EmailSetting::query()->update(['is_active' => true]);
-        EmailSetting::clearCache();
-        $this->loadSettings();
-        session()->flash('success', 'Todas las configuraciones han sido restablecidas.');
-    }
-
-    public function getStats()
-    {
-        return [
-            'total_settings' => EmailSetting::count(),
-            'active_settings' => EmailSetting::where('is_active', true)->count(),
-            'categories_count' => EmailSetting::distinct('category')->count(),
-            'last_updated' => EmailSetting::latest('updated_at')->first()?->updated_at?->format('d/m/Y H:i'),
-        ];
-    }
-
-    protected function getCategoryLabels(): array
-    {
-        return [
-            'general' => 'Configuración General',
-            'features' => 'Activar/Desactivar Funciones',
-            'user_notifications' => 'Notificaciones de Usuario',
-            'admin_notifications' => 'Notificaciones Administrativas',
-            'schedules' => 'Horarios y Programación',
-            'queues' => 'Configuración de Colas',
-        ];
-    }
 
     // Test email methods
     private function sendSubscriptionConfirmationTest(string $email): void
@@ -476,12 +488,43 @@ class EmailSettingsIndex extends Component
 
     private function sendDailyReportTest(string $email): void
     {
-        // Stub - implement if needed
+        $reportData = [
+            'jobs' => [
+                'completed_jobs' => 87,
+                'failed_jobs' => 3,
+                'success_rate' => 96.7,
+                'total_processing_time' => '2h 34m'
+            ],
+            'uploads' => [
+                'total_uploads' => 45,
+                'successful_uploads' => 42,
+                'failed_uploads' => 3
+            ],
+            'date' => now()->format('d/m/Y')
+        ];
+
+        $notification = new \App\Notifications\DailyJobStatusReport($reportData);
+        \Illuminate\Support\Facades\Notification::route('mail', $email)->notifyNow($notification);
     }
 
     private function sendMonthlyReportTest(string $email): void
     {
-        // Stub - implement if needed
+        $reportData = [
+            'sales' => [
+                'total_sales' => 156,
+                'total_revenue' => 4673.44,
+                'average_transaction_value' => 29.95,
+                'returning_customers' => 45
+            ],
+            'customers' => [
+                'new_users' => 32,
+                'total_active_users' => 287
+            ],
+            'month' => now()->format('F Y')
+        ];
+
+        $notification = new \App\Notifications\MonthlySalesReport($reportData);
+        \Illuminate\Support\Facades\Notification::route('mail', $email)->notifyNow($notification);
     }
 
     public function getEmailTypeLabels(): array
@@ -504,9 +547,8 @@ class EmailSettingsIndex extends Component
     public function render()
     {
         return view('livewire.admin.email-settings-index', [
-            'categories' => $this->getCategoryLabels(),
-            'stats' => $this->getStats(),
             'emailTypeLabels' => $this->getEmailTypeLabels(),
+            'emailToggles' => $this->getEmailToggles(),
         ]);
     }
 }

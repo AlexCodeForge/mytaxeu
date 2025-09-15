@@ -141,15 +141,25 @@ class EmailSettingsSeeder extends Seeder
                 'description' => 'Email enviado al iniciar el procesamiento',
                 'template' => 'emails.users.file-processing-started',
             ],
-            'file_processing_completed' => [
-                'label' => 'Procesamiento Completado',
-                'description' => 'Email enviado al completar el procesamiento',
-                'template' => 'emails.users.file-processing-completed',
+            'upload_completed' => [
+                'label' => 'Carga Completada',
+                'description' => 'Email enviado al completar la carga de un archivo',
+                'template' => 'emails.users.upload-completed',
             ],
-            'file_processing_failed' => [
-                'label' => 'Procesamiento Fallido',
-                'description' => 'Email enviado cuando falla el procesamiento',
-                'template' => 'emails.users.file-processing-failed',
+            'upload_failed' => [
+                'label' => 'Carga Fallida',
+                'description' => 'Email enviado cuando falla la carga',
+                'template' => 'emails.users.upload-failed',
+            ],
+            'upload_queued' => [
+                'label' => 'Archivo en Cola',
+                'description' => 'Email enviado cuando el archivo se pone en cola',
+                'template' => 'emails.users.upload-queued',
+            ],
+            'upload_received' => [
+                'label' => 'Archivo Recibido',
+                'description' => 'Email enviado cuando se recibe el archivo',
+                'template' => 'emails.users.upload-received',
             ],
         ];
 

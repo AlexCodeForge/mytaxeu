@@ -1,29 +1,16 @@
-<div class="p-6">
+<div class="p-6 bg-white min-h-screen">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">Configuración de Emails</h1>
             <p class="text-gray-600 mt-1">Gestiona todas las configuraciones del sistema de emails</p>
         </div>
-        <div class="flex space-x-3">
-            <button
-                wire:click="refreshSettings"
-                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-                <i class="fas fa-sync-alt mr-2"></i>Actualizar
-            </button>
+        <div>
             <button
                 wire:click="openTestModal"
                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
                 <i class="fas fa-paper-plane mr-2"></i>Probar Emails
-            </button>
-            <button
-                wire:click="resetAllSettings"
-                wire:confirm="¿Estás seguro de que quieres restablecer todas las configuraciones?"
-                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-                <i class="fas fa-undo mr-2"></i>Restablecer Todo
             </button>
         </div>
     </div>
@@ -41,112 +28,43 @@
         </div>
     @endif
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-cog text-blue-600 text-2xl"></i>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">Total Configuraciones</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $stats['total_settings'] }}</p>
-                </div>
-            </div>
+    <!-- Email Settings List -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 max-w-4xl">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Configuración de Emails</h3>
+            <p class="text-sm text-gray-500">Activa o desactiva cada tipo de email ({{ count($emailToggles) }} emails configurados)</p>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-check-circle text-green-600 text-2xl"></i>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">Activas</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $stats['active_settings'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-folder text-purple-600 text-2xl"></i>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">Categorías</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $stats['categories_count'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-clock text-orange-600 text-2xl"></i>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-500">Última Actualización</p>
-                    <p class="text-sm font-bold text-gray-900">{{ $stats['last_updated'] ?? 'N/A' }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Categories Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        @foreach ($settingsByCategory as $category => $settings)
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900">
-                                {{ $categories[$category] ?? ucfirst($category) }}
-                            </h3>
-                            <p class="text-sm text-gray-500">{{ count($settings) }} configuraciones</p>
+        <div class="px-6 py-4">
+            <div class="space-y-3">
+                @foreach ($emailToggles as $setting)
+                    <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                        <div class="flex-1 pr-4">
+                            <p class="text-base font-medium text-gray-900">{{ $setting['label'] }}</p>
+                            @if ($setting['description'])
+                                <p class="text-sm text-gray-500 mt-1">{{ $setting['description'] }}</p>
+                            @endif
                         </div>
-                        <div class="flex space-x-2">
+                        <div class="flex-shrink-0">
+                            <!-- Simple Toggle Switch -->
                             <button
-                                wire:click="$dispatch('open-category-test', { category: '{{ $category }}' })"
-                                class="text-sm bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full hover:bg-yellow-200 transition-colors"
+                                type="button"
+                                wire:click="toggleSetting('{{ $setting['key'] }}')"
+                                wire:loading.attr="disabled"
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {{ $setting['is_active'] ? 'bg-blue-600' : 'bg-gray-200' }}"
                             >
-                                <i class="fas fa-flask mr-1"></i>Probar
+                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition {{ $setting['is_active'] ? 'translate-x-6' : 'translate-x-1' }}"></span>
                             </button>
-                            <a
-                                href="{{ route('admin.email-settings.edit', $category) }}"
-                                wire:navigate
-                                class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors"
-                            >
-                                <i class="fas fa-edit mr-1"></i>Editar
-                            </a>
                         </div>
                     </div>
-                </div>
-
-                <div class="px-6 py-4">
-                    <div class="space-y-3">
-                        @foreach ($settings as $setting)
-                            <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                                <div class="flex-1">
-                                    <p class="text-sm font-medium text-gray-900">{{ $setting['label'] }}</p>
-                                    @if ($setting['description'])
-                                        <p class="text-xs text-gray-500">{{ $setting['description'] }}</p>
-                                    @endif
-                                </div>
-                                <div class="ml-4">
-                                    <span class="text-sm {{ $setting['is_active'] ? 'text-green-600' : 'text-red-600' }}">
-                                        {{ $setting['display_value'] }}
-                                    </span>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
+                @endforeach
             </div>
-        @endforeach
+        </div>
     </div>
 
     <!-- Email Test Modal -->
     @if ($showTestModal)
+        @teleport('body')
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeTestModal">
             <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 xl:w-1/2 shadow-lg rounded-md bg-white" wire:click.stop>
                 <!-- Modal Header -->
@@ -319,5 +237,6 @@
                 </div>
             </div>
         </div>
+        @endteleport
     @endif
 </div>
