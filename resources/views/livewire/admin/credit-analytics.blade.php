@@ -369,7 +369,7 @@
 
             <!-- Pagination -->
             <div class="mt-6">
-                {{ $this->usersWithCredits->links() }}
+                {{ $this->usersWithCredits->links('custom.pagination') }}
             </div>
         </div>
     </div>

@@ -1,9 +1,14 @@
 <div class="px-4 lg:px-6 py-3">
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-            <button class="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-gray-50"
-                    @click="mobileOpen = true">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+            <button class="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-gray-50 transition-colors duration-200"
+                    @click="mobileOpen = true"
+                    :class="{ 'bg-blue-50': mobileOpen }">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     viewBox="0 0 24 24"
+                     fill="currentColor"
+                     class="w-6 h-6 transition-transform duration-200"
+                     :class="{ 'rotate-90': mobileOpen }">
                     <path fill-rule="evenodd" d="M3.75 5.25a.75.75 0 0 1 .75-.75h15a.75.75 0 0 1 0 1.5H4.5a.75.75 0 0 1-.75-.75Zm0 6a.75.75 0 0 1 .75-.75h15a.75.75 0 0 1 0 1.5H4.5a.75.75 0 0 1-.75-.75Zm0 6a.75.75 0 0 1 .75-.75h15a.75.75 0 0 1 0 1.5H4.5a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
                 </svg>
             </button>

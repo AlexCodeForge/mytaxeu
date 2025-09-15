@@ -151,7 +151,7 @@
 
                 <!-- Pagination -->
                 <div class="bg-white px-6 py-3 border-t border-gray-200">
-                    {{ $metrics->links() }}
+                    {{ $metrics->links('custom.pagination') }}
                 </div>
             @else
                 <!-- Empty State -->

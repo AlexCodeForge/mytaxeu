@@ -1,10 +1,19 @@
 <div class="h-full max-h-screen flex flex-col glass-white shadow-2xl overflow-hidden">
     <div class="p-6 border-b border-blue-200 flex-shrink-0">
-        <div class="flex items-center">
-            <div class="text-2xl font-bold text-primary">MyTaxEU</div>
-            @if (Auth::user()->isAdmin())
-            <div class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Admin</div>
-            @endif
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="text-2xl font-bold text-primary">MyTaxEU</div>
+                @if (Auth::user()->isAdmin())
+                <div class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Admin</div>
+                @endif
+            </div>
+            <!-- Mobile close button -->
+            <button class="lg:hidden inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100 transition-colors duration-200"
+                    @click="mobileOpen = false">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
     </div>
 

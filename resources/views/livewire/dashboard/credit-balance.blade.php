@@ -179,7 +179,7 @@
 
                     <!-- Pagination -->
                     <div class="mt-6">
-                        {{ $this->recentTransactions->links() }}
+                        {{ $this->recentTransactions->links('custom.pagination') }}
                     </div>
                 @else
                     <div class="text-center py-8">

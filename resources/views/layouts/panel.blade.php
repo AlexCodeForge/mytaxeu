@@ -20,10 +20,35 @@
 
         <!-- Off-canvas for mobile -->
         <div class="lg:hidden" x-cloak>
-            <div class="fixed inset-0 z-40" x-show="mobileOpen" @keydown.escape.window="mobileOpen=false">
-                <div class="fixed inset-0 bg-black/40" @click="mobileOpen=false"></div>
-                <aside class="fixed inset-y-0 left-0 w-72 bg-white shadow-xl mobile-sidebar"
-                       :class="{ 'open': mobileOpen }">
+            <div class="fixed inset-0 z-40"
+                 x-show="mobileOpen"
+                 x-transition:enter="transition-opacity ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition-opacity ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 @keydown.escape.window="mobileOpen=false">
+                <!-- Backdrop overlay with smooth fade -->
+                <div class="fixed inset-0 bg-black/40 backdrop-blur-sm"
+                     @click="mobileOpen=false"
+                     x-transition:enter="transition-opacity ease-out duration-300"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition-opacity ease-in duration-200"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0">
+                </div>
+
+                <!-- Mobile sidebar with smooth slide animation -->
+                <aside class="fixed inset-y-0 left-0 w-72 bg-white shadow-xl"
+                       x-show="mobileOpen"
+                       x-transition:enter="transition-transform ease-out duration-300"
+                       x-transition:enter-start="transform -translate-x-full"
+                       x-transition:enter-end="transform translate-x-0"
+                       x-transition:leave="transition-transform ease-in duration-250"
+                       x-transition:leave-start="transform translate-x-0"
+                       x-transition:leave-end="transform -translate-x-full">
                     <livewire:panel.sidebar />
                 </aside>
             </div>

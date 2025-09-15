@@ -66,12 +66,26 @@ body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,
   font-weight: 600;
 }
 
-/* Mobile sidebar slide animation */
-.mobile-sidebar {
-  transform: translateX(-100%);
-  transition: transform 0.3s ease-in-out;
+/* Enhanced mobile sidebar animations */
+/* Using Alpine.js transitions instead of CSS classes for better performance */
+
+/* Smooth transform utilities for mobile optimization */
+.will-change-transform {
+  will-change: transform;
 }
 
-.mobile-sidebar.open {
-  transform: translateX(0);
+/* Hardware acceleration for smoother animations on mobile */
+.transform-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Additional easing functions for smoother animations */
+.transition-smooth {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-bounce {
+  transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }

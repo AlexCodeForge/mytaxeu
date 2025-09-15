@@ -71,8 +71,8 @@
                 <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
                     Buscar usuarios
                 </label>
-                <input 
-                    type="text" 
+                <input
+                    type="text"
                     id="search"
                     wire:model.live.debounce.300ms="search"
                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
@@ -83,7 +83,7 @@
                 <label for="perPage" class="block text-sm font-medium text-gray-700 mb-2">
                     Por página
                 </label>
-                <select 
+                <select
                     id="perPage"
                     wire:model.live="perPage"
                     class="rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
@@ -189,14 +189,14 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex justify-end space-x-2">
-                                    <button 
+                                    <button
                                         wire:click="openLimitModal({{ $user->id }})"
                                         class="text-indigo-600 hover:text-indigo-900 text-sm"
                                     >
                                         Editar Límite
                                     </button>
                                     @if($user->uploadLimits->first())
-                                        <button 
+                                        <button
                                             wire:click="resetUserLimit({{ $user->id }})"
                                             class="text-red-600 hover:text-red-900 text-sm"
                                             onclick="return confirm('¿Estás seguro de restablecer el límite a 100 líneas?')"
@@ -220,7 +220,7 @@
 
         <!-- Pagination -->
         <div class="px-6 py-4">
-            {{ $users->links() }}
+            {{ $users->links('custom.pagination') }}
         </div>
     </div>
 
@@ -261,7 +261,7 @@
                     <h3 class="text-lg font-medium text-gray-900">
                         Configurar Límite para {{ $selectedUser->name }}
                     </h3>
-                    <button 
+                    <button
                         wire:click="closeLimitModal"
                         class="text-gray-400 hover:text-gray-600"
                     >
@@ -276,16 +276,16 @@
                         <label for="newLimit" class="block text-sm font-medium text-gray-700 mb-1">
                             Límite de líneas CSV
                         </label>
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             id="newLimit"
                             wire:model="newLimit"
                             min="1"
                             max="10000"
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
                         >
-                        @error('newLimit') 
-                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p> 
+                        @error('newLimit')
+                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -293,14 +293,14 @@
                         <label for="expirationDate" class="block text-sm font-medium text-gray-700 mb-1">
                             Fecha de expiración (opcional)
                         </label>
-                        <input 
-                            type="date" 
+                        <input
+                            type="date"
                             id="expirationDate"
                             wire:model="expirationDate"
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
                         >
-                        @error('expirationDate') 
-                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p> 
+                        @error('expirationDate')
+                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -308,27 +308,27 @@
                         <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">
                             Notas (opcional)
                         </label>
-                        <textarea 
+                        <textarea
                             id="notes"
                             wire:model="notes"
                             rows="3"
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
                             placeholder="Razón para el cambio de límite..."
                         ></textarea>
-                        @error('notes') 
-                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p> 
+                        @error('notes')
+                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div class="flex justify-end space-x-3 pt-4">
-                        <button 
+                        <button
                             type="button"
                             wire:click="closeLimitModal"
                             class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
                         >
                             Cancelar
                         </button>
-                        <button 
+                        <button
                             type="submit"
                             class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-blue-700 rounded-md"
                         >

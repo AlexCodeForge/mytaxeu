@@ -150,7 +150,7 @@
         <!-- Pagination -->
         @if($users->hasPages())
             <div class="mt-6 border-t border-gray-200 pt-4">
-                {{ $users->links() }}
+                {{ $users->links('custom.pagination') }}
             </div>
         @endif
 
