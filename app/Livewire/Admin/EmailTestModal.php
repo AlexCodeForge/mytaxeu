@@ -19,7 +19,7 @@ class EmailTestModal extends Component
     public string $category = '';
 
     #[Validate('required|email')]
-    public string $testEmail = 'axldeth@gmail.com';
+    public string $testEmail = '';
 
     public array $selectedEmailTypes = [
         'subscription_confirmation',

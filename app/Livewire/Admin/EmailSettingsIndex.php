@@ -20,7 +20,7 @@ class EmailSettingsIndex extends Component
 {
     public array $settingsByCategory = [];
     public bool $showTestModal = false;
-    public string $testEmail = 'axldeth@gmail.com';
+    public string $testEmail = '';
     public array $selectedEmailTypes = [
         'subscription_confirmation',
         'file_upload',
