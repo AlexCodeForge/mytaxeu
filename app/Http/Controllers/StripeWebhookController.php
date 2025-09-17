@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Notifications\SubscriptionPaymentConfirmation;
 use App\Notifications\SaleNotification;
 use App\Services\CreditService;
+use App\Services\DiscountCodeUsageService;
 use App\Services\EmailService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -146,6 +148,9 @@ class StripeWebhookController extends WebhookController
                 'local_subscription_id' => $localSubscription->id,
             ]);
         }
+
+        // Handle discount code usage if present
+        $this->handleDiscountCodeUsage($subscription, $user);
 
         // Allocate initial credits based on subscription
         $creditService = app(CreditService::class);
@@ -670,5 +675,88 @@ class StripeWebhookController extends WebhookController
         // This would calculate actual average from your data
         // For now, return a placeholder
         return 125.0;
+    }
+
+    /**
+     * Handle discount code usage when a subscription is created.
+     */
+    protected function handleDiscountCodeUsage($subscription, User $user): void
+    {
+        try {
+            // Check if there's a discount on the subscription
+            if (empty($subscription->discount)) {
+                return;
+            }
+
+            $discount = $subscription->discount;
+            $coupon = $discount->coupon;
+
+            if (!$coupon) {
+                return;
+            }
+
+            // Try to find our local discount code by Stripe coupon ID
+            $discountCode = \App\Models\DiscountCode::where('stripe_coupon_id', $coupon->id)->first();
+
+            if (!$discountCode) {
+                Log::warning('Discount code not found for Stripe coupon', [
+                    'stripe_coupon_id' => $coupon->id,
+                    'subscription_id' => $subscription->id,
+                ]);
+                return;
+            }
+
+            // Get subscription plan info
+            $priceId = $subscription->items->data[0]->price->id ?? null;
+            $amount = ($subscription->items->data[0]->price->unit_amount ?? 0) / 100; // Convert from cents
+
+            // Try to find the subscription plan
+            $plan = SubscriptionPlan::where('stripe_monthly_price_id', $priceId)->first();
+
+            if (!$plan) {
+                Log::warning('Subscription plan not found for price ID', [
+                    'price_id' => $priceId,
+                    'subscription_id' => $subscription->id,
+                ]);
+                return;
+            }
+
+            // Calculate discount amount
+            $discountAmount = 0;
+            if ($coupon->percent_off) {
+                $discountAmount = $amount * ($coupon->percent_off / 100);
+            } elseif ($coupon->amount_off) {
+                $discountAmount = ($coupon->amount_off / 100); // Convert from cents
+            }
+
+            // Record the usage
+            $usageService = app(DiscountCodeUsageService::class);
+            $usage = $usageService->recordUsage(
+                $discountCode->code,
+                $user,
+                $plan,
+                $amount,
+                $discountAmount,
+                $subscription->id,
+                $coupon->id
+            );
+
+            if ($usage) {
+                Log::info('Discount code usage recorded from webhook', [
+                    'usage_id' => $usage->id,
+                    'code' => $discountCode->code,
+                    'user_id' => $user->id,
+                    'subscription_id' => $subscription->id,
+                    'discount_amount' => $discountAmount,
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error handling discount code usage from webhook', [
+                'error' => $e->getMessage(),
+                'subscription_id' => $subscription->id ?? null,
+                'user_id' => $user->id,
+            ]);
+        }
     }
 }

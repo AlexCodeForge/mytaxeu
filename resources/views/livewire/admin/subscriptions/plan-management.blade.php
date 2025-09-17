@@ -8,7 +8,15 @@
                     Administra los planes de suscripción, precios y características
                 </p>
             </div>
-            <div class="mt-4 flex md:ml-4 md:mt-0">
+            <div class="mt-4 flex space-x-3 md:ml-4 md:mt-0">
+                <button wire:click="syncWithStripe"
+                        wire:loading.attr="disabled"
+                        wire:target="syncWithStripe"
+                        class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:opacity-50">
+                    <i class="fas fa-sync-alt mr-2" wire:loading.class="animate-spin" wire:target="syncWithStripe"></i>
+                    <span wire:loading.remove wire:target="syncWithStripe">Sincronizar con Stripe</span>
+                    <span wire:loading wire:target="syncWithStripe">Sincronizando...</span>
+                </button>
                 <button wire:click="openCreateModal"
                         class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
                     <i class="fas fa-plus mr-2"></i>

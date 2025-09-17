@@ -5,11 +5,17 @@ declare(strict_types=1);
 namespace App\Livewire\Admin\Subscriptions;
 
 use App\Models\SubscriptionPlan;
+use App\Services\StripeConfigurationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Stripe\Price;
+use Stripe\Product;
+use Stripe\Stripe;
 
 class PlanManagement extends Component
 {
@@ -20,6 +26,7 @@ class PlanManagement extends Component
     public bool $showCreateModal = false;
     public bool $showEditModal = false;
     public ?SubscriptionPlan $editingPlan = null;
+    public bool $syncing = false;
 
     // Form fields
     public string $name = '';
@@ -247,6 +254,181 @@ class PlanManagement extends Component
     {
         if (empty($this->slug)) {
             $this->slug = \Str::slug($this->name);
+        }
+    }
+
+    /**
+     * Sync subscription plans with Stripe
+     */
+    public function syncWithStripe(): void
+    {
+        $this->authorize('create', SubscriptionPlan::class);
+        $this->syncing = true;
+
+        try {
+            // Check if Stripe is configured
+            $stripeService = app(StripeConfigurationService::class);
+            if (!$stripeService->isConfigured()) {
+                session()->flash('error', 'Stripe no está configurado. Configure Stripe primero.');
+                return;
+            }
+
+            $stripeConfig = $stripeService->getConfig();
+            Stripe::setApiKey($stripeConfig['secret_key']);
+
+            $syncedCount = 0;
+            $updatedCount = 0;
+
+            DB::transaction(function () use (&$syncedCount, &$updatedCount) {
+                // Get all local plans
+                $localPlans = SubscriptionPlan::all();
+
+                foreach ($localPlans as $plan) {
+                    if (!$plan->monthly_price || $plan->monthly_price <= 0) {
+                        continue; // Skip free plans
+                    }
+
+                    try {
+                        // Create or update Stripe product
+                        $stripeProduct = $this->createOrUpdateStripeProduct($plan);
+
+                        // Create or update Stripe price for monthly billing
+                        $stripePrice = $this->createOrUpdateStripePrice($plan, $stripeProduct);
+
+                        // Update local plan with Stripe IDs
+                        $wasAlreadySynced = !empty($plan->stripe_monthly_price_id);
+                        $updated = $plan->update([
+                            'stripe_monthly_price_id' => $stripePrice->id,
+                        ]);
+
+                        if ($updated) {
+                            $wasAlreadySynced ? $updatedCount++ : $syncedCount++;
+                        }
+
+                        Log::info('Plan synced with Stripe', [
+                            'plan_id' => $plan->id,
+                            'plan_name' => $plan->name,
+                            'stripe_product_id' => $stripeProduct->id,
+                            'stripe_price_id' => $stripePrice->id,
+                        ]);
+
+                    } catch (\Exception $e) {
+                        Log::error('Error syncing plan with Stripe', [
+                            'plan_id' => $plan->id,
+                            'plan_name' => $plan->name,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // Continue with other plans
+                    }
+                }
+            });
+
+            $message = "Sincronización completada: {$syncedCount} planes nuevos, {$updatedCount} planes actualizados";
+            session()->flash('message', $message);
+
+            Log::info('Stripe plans sync completed', [
+                'synced_count' => $syncedCount,
+                'updated_count' => $updatedCount,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error during Stripe sync', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            session()->flash('error', 'Error durante la sincronización: ' . $e->getMessage());
+        } finally {
+            $this->syncing = false;
+        }
+    }
+
+    /**
+     * Create or update a Stripe product for a plan
+     */
+    private function createOrUpdateStripeProduct(SubscriptionPlan $plan): Product
+    {
+        try {
+            // Try to find existing product by metadata
+            $products = Product::all(['limit' => 100]);
+            $existingProduct = null;
+
+            foreach ($products->data as $product) {
+                if (isset($product->metadata['plan_slug']) && $product->metadata['plan_slug'] === $plan->slug) {
+                    $existingProduct = $product;
+                    break;
+                }
+            }
+
+            if ($existingProduct) {
+                // Update existing product
+                $existingProduct->name = $plan->name;
+                $existingProduct->description = $plan->description ?? '';
+                $existingProduct->metadata = [
+                    'plan_id' => (string) $plan->id,
+                    'plan_slug' => $plan->slug,
+                ];
+                $existingProduct->save();
+                return $existingProduct;
+            } else {
+                // Create new product
+                return Product::create([
+                    'name' => $plan->name,
+                    'description' => $plan->description ?? '',
+                    'metadata' => [
+                        'plan_id' => (string) $plan->id,
+                        'plan_slug' => $plan->slug,
+                    ],
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error creating/updating Stripe product', [
+                'plan_id' => $plan->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Create or update a Stripe price for a plan
+     */
+    private function createOrUpdateStripePrice(SubscriptionPlan $plan, Product $stripeProduct): Price
+    {
+        try {
+            // Check if we already have a price ID and if it's still valid
+            if ($plan->stripe_monthly_price_id) {
+                try {
+                    $existingPrice = Price::retrieve($plan->stripe_monthly_price_id);
+
+                    // Check if price amount matches
+                    $expectedAmount = (int) ($plan->monthly_price * 100); // Convert to cents
+                    if ($existingPrice->unit_amount === $expectedAmount && $existingPrice->active) {
+                        return $existingPrice; // Price is still valid
+                    }
+                } catch (\Exception $e) {
+                    // Price doesn't exist anymore, create a new one
+                }
+            }
+
+            // Create new price
+            return Price::create([
+                'product' => $stripeProduct->id,
+                'unit_amount' => (int) ($plan->monthly_price * 100), // Convert to cents
+                'currency' => 'eur',
+                'recurring' => [
+                    'interval' => 'month',
+                ],
+                'metadata' => [
+                    'plan_id' => (string) $plan->id,
+                    'plan_slug' => $plan->slug,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error creating/updating Stripe price', [
+                'plan_id' => $plan->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
     }
 }

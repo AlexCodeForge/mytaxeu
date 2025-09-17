@@ -116,6 +116,114 @@
         </div>
     @endif
 
+    <!-- Discount Code Section -->
+    @if(!$currentSubscription)
+        <div class="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl mb-8">
+            <div class="px-4 py-6 sm:p-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900">
+                        <i class="fas fa-tag mr-2 text-indigo-600"></i>
+                        Código de Descuento
+                    </h3>
+                    @if(!$showDiscountField)
+                        <button wire:click="toggleDiscountField"
+                                class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                            ¿Tienes un código de descuento?
+                        </button>
+                    @endif
+                </div>
+
+                @if($showDiscountField)
+                    <div class="space-y-4">
+                        <div class="flex gap-3">
+                            <div class="flex-1">
+                                <input wire:model="discountCode"
+                                       type="text"
+                                       placeholder="Ingresa tu código de descuento"
+                                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('discountCode') border-red-300 @enderror">
+                                @error('discountCode')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <button wire:click="applyDiscountCode"
+                                    wire:loading.attr="disabled"
+                                    wire:target="applyDiscountCode"
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+                                <span wire:loading.remove wire:target="applyDiscountCode">Aplicar</span>
+                                <span wire:loading wire:target="applyDiscountCode">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Validando...
+                                </span>
+                            </button>
+                        </div>
+
+                        <button wire:click="toggleDiscountField"
+                                class="text-sm text-gray-500 hover:text-gray-700">
+                            Cancelar
+                        </button>
+                    </div>
+                @endif
+
+                <!-- Applied Discount -->
+                @if($appliedDiscount && $appliedDiscount['valid'])
+                    <div class="mt-4 rounded-md bg-green-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-check-circle text-green-400"></i>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <h4 class="text-sm font-medium text-green-800">
+                                    ¡Código aplicado exitosamente!
+                                </h4>
+                                <div class="mt-2 text-sm text-green-700">
+                                    <p><strong>{{ $appliedDiscount['code'] }}</strong> - {{ $appliedDiscount['name'] }}</p>
+                                    <p>Descuento: <strong>{{ $appliedDiscount['type'] === 'percentage' ? $appliedDiscount['value'] . '%' : '€' . number_format($appliedDiscount['value'], 2) }}</strong></p>
+                                    @if(isset($appliedDiscount['discount_amount']))
+                                        <p>Ahorras: <strong>€{{ number_format($appliedDiscount['discount_amount'], 2) }}</strong></p>
+                                    @else
+                                        <p>El descuento se aplicará al seleccionar un plan compatible</p>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="ml-3">
+                                <button wire:click="removeDiscountCode"
+                                        class="text-green-600 hover:text-green-800">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Discount Messages -->
+                @if (session()->has('discount_success'))
+                    <div class="mt-4 rounded-md bg-green-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-check-circle text-green-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-green-700">{{ session('discount_success') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                @if (session()->has('discount_error'))
+                    <div class="mt-4 rounded-md bg-red-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-red-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700">{{ session('discount_error') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
+
     <!-- Available Plans -->
     <div class="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl">
         <div class="px-4 py-6 sm:p-8">
@@ -125,7 +233,18 @@
                 @else
                     Planes Disponibles
                 @endif
+                <span class="text-sm text-gray-500">({{ count($availablePlans) }} planes encontrados)</span>
             </h3>
+
+            @if(empty($availablePlans))
+                <div class="text-center py-8">
+                    <div class="text-gray-500">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                        <p class="text-lg font-medium">No se encontraron planes activos</p>
+                        <p class="text-sm">Por favor, contacta al administrador para activar los planes de suscripción.</p>
+                    </div>
+                </div>
+            @endif
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 @foreach($availablePlans as $plan)
@@ -150,10 +269,33 @@
 
                         <div class="flex-1">
                             <h3 class="text-xl font-semibold text-gray-900">{{ $plan['name'] }}</h3>
-                            <p class="mt-4 flex items-baseline text-gray-900">
-                                <span class="text-5xl font-bold tracking-tight">€{{ number_format($plan['price'], 0) }}</span>
-                                <span class="ml-1 text-xl font-semibold">/mes</span>
-                            </p>
+                            <div class="mt-4">
+                                @php
+                                    $discountInfo = $this->calculateDiscountForPlan($plan['id']);
+                                @endphp
+                                @if($discountInfo['applicable'])
+                                    <!-- Discounted Price -->
+                                    <div class="flex items-baseline text-gray-900">
+                                        <span class="text-5xl font-bold tracking-tight text-green-600">€{{ number_format($discountInfo['final_amount'], 0) }}</span>
+                                        <span class="ml-1 text-xl font-semibold text-green-600">/mes</span>
+                                    </div>
+                                    <div class="flex items-center mt-2">
+                                        <span class="text-lg text-gray-500 line-through">€{{ number_format($plan['price'], 0) }}</span>
+                                        <span class="ml-2 inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                            -{{ $appliedDiscount['type'] === 'percentage' ? $appliedDiscount['value'] . '%' : '€' . number_format($discountInfo['discount_amount'], 2) }}
+                                        </span>
+                                    </div>
+                                @else
+                                    <!-- Regular Price -->
+                                    <div class="flex items-baseline text-gray-900">
+                                        <span class="text-5xl font-bold tracking-tight">€{{ number_format($plan['price'], 0) }}</span>
+                                        <span class="ml-1 text-xl font-semibold">/mes</span>
+                                        @if($appliedDiscount && $appliedDiscount['valid'] && !$discountInfo['applicable'])
+                                            <span class="ml-2 text-xs text-gray-500">(código no aplicable)</span>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
                             <p class="mt-6 text-gray-500">{{ $plan['description'] }}</p>
 
                             <!-- Features -->

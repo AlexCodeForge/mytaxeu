@@ -60,6 +60,7 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
         // Subscription Plans Management
         Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
             Route::get('/plans', \App\Livewire\Admin\Subscriptions\PlanManagement::class)->name('plans');
+            Route::get('/discount-codes', \App\Livewire\Admin\Subscriptions\DiscountCodeManagement::class)->name('discount-codes');
         });
 
         // Export routes

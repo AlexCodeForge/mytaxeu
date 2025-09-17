@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Livewire\Billing;
 
 use App\Models\AdminSetting;
+use App\Models\DiscountCode;
+use App\Models\DiscountCodeUsage;
 use App\Models\SubscriptionPlan;
 use App\Services\CreditService;
 use App\Services\StripeConfigurationService;
+use App\Services\StripeDiscountService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Stripe\Checkout\Session;
 use Stripe\Exception\ApiErrorException;
@@ -24,7 +29,13 @@ class SubscriptionManager extends Component
     public bool $willRenew = true;
     public ?string $currentPlanId = null;
 
-    protected array $plans = [];
+    // Discount code properties
+    public string $discountCode = '';
+    public ?array $appliedDiscount = null;
+    public bool $showDiscountField = false;
+    public bool $discountLoading = false;
+
+    public array $plans = [];
 
     public function mount(): void
     {
@@ -38,6 +49,11 @@ class SubscriptionManager extends Component
     protected function loadPlans(): void
     {
         $plans = SubscriptionPlan::getActivePlans();
+
+        Log::info('Loading plans in SubscriptionManager', [
+            'plans_count' => $plans->count(),
+            'plan_slugs' => $plans->pluck('slug')->toArray()
+        ]);
 
         $this->plans = $plans->map(function ($plan) {
             return [
@@ -55,6 +71,20 @@ class SubscriptionManager extends Component
         })->toArray();
 
         $this->availablePlans = $this->plans;
+
+        Log::info('Plans loaded in SubscriptionManager', [
+            'transformed_plans_count' => count($this->plans),
+            'plan_ids' => collect($this->plans)->pluck('id')->toArray()
+        ]);
+    }
+
+    /**
+     * Reload plans from database - useful for debugging
+     */
+    public function reloadPlans(): void
+    {
+        $this->loadPlans();
+        session()->flash('message', 'Planes recargados. Total: ' . count($this->plans));
     }
 
     public function loadCurrentSubscription(): void
@@ -146,10 +176,28 @@ class SubscriptionManager extends Component
         $this->loading = true;
 
         try {
+            // Safety check: Reload plans if empty
+            if (empty($this->plans)) {
+                Log::warning('Plans array was empty in subscribe method, reloading...');
+                $this->loadPlans();
+            }
+
             $plan = collect($this->plans)->firstWhere('id', $planId);
 
             if (!$plan) {
-                session()->flash('error', 'Plan no encontrado.');
+                // Debug: Let's see what plans are available and what planId was requested
+                $availablePlanIds = collect($this->plans)->pluck('id')->toArray();
+                Log::error('Plan not found', [
+                    'requested_plan_id' => $planId,
+                    'available_plan_ids' => $availablePlanIds,
+                    'total_plans' => count($this->plans)
+                ]);
+
+                if (empty($availablePlanIds)) {
+                    session()->flash('error', 'No hay planes disponibles. Por favor, contacta al administrador.');
+                } else {
+                    session()->flash('error', 'Plan no encontrado. Plan solicitado: ' . $planId . '. Planes disponibles: ' . implode(', ', $availablePlanIds));
+                }
                 return;
             }
 
@@ -179,9 +227,8 @@ class SubscriptionManager extends Component
                 ]);
             }
 
-            // For demo purposes, we'll create a checkout session with a test product
-            // In production, you would use the actual Stripe price IDs from your products
-            $checkoutSession = Session::create([
+            // Prepare checkout session data
+            $sessionData = [
                 'customer' => $user->stripe_id,
                 'payment_method_types' => ['card'],
                 'line_items' => [
@@ -211,7 +258,36 @@ class SubscriptionManager extends Component
                     'user_id' => $user->id,
                     'plan_id' => $planId,
                 ],
-            ]);
+            ];
+
+            // Apply discount if available and compatible with plan
+            if ($this->appliedDiscount && $this->appliedDiscount['valid']) {
+                $discountCodeModel = DiscountCode::find($this->appliedDiscount['discount_code_id']);
+                $selectedPlan = SubscriptionPlan::where('slug', $planId)->first();
+
+                if ($discountCodeModel && $selectedPlan && $discountCodeModel->canBeAppliedToPlan($selectedPlan)) {
+                    // Calculate discount for this specific plan
+                    $originalAmount = (float) $selectedPlan->monthly_price;
+                    $discountAmount = $discountCodeModel->calculateDiscount($originalAmount);
+
+                    // Update applied discount with plan-specific calculations
+                    $this->appliedDiscount['plan_id'] = $planId;
+                    $this->appliedDiscount['original_amount'] = $originalAmount;
+                    $this->appliedDiscount['discount_amount'] = $discountAmount;
+                    $this->appliedDiscount['final_amount'] = max(0, $originalAmount - $discountAmount);
+
+                    $stripeDiscountService = app(StripeDiscountService::class);
+                    $sessionData = $stripeDiscountService->applyCouponToCheckoutSession(
+                        $sessionData,
+                        $this->discountCode
+                    );
+
+                    // Add discount code to metadata
+                    $sessionData['metadata']['discount_code'] = $this->discountCode;
+                }
+            }
+
+            $checkoutSession = Session::create($sessionData);
 
             // Redirect to Stripe Checkout
             $this->redirect($checkoutSession->url);
@@ -333,8 +409,143 @@ class SubscriptionManager extends Component
         return $this->isCurrentPlan($planId) || $this->loading;
     }
 
+    public function toggleDiscountField(): void
+    {
+        $this->showDiscountField = !$this->showDiscountField;
+
+        if (!$this->showDiscountField) {
+            $this->clearDiscountCode();
+        }
+    }
+
+    public function applyDiscountCode(): void
+    {
+        $this->discountLoading = true;
+
+        try {
+            $this->validate([
+                'discountCode' => ['required', 'string', 'min:3'],
+            ], [
+                'discountCode.required' => 'Ingresa un código de descuento',
+                'discountCode.min' => 'El código debe tener al menos 3 caracteres',
+            ]);
+
+            $discountCode = DiscountCode::byCode($this->discountCode)->first();
+
+            if (!$discountCode) {
+                session()->flash('discount_error', 'Código de descuento no encontrado');
+                return;
+            }
+
+            if (!$discountCode->isValid()) {
+                session()->flash('discount_error', 'Este código de descuento ha expirado o no está disponible');
+                return;
+            }
+
+            $user = auth()->user();
+
+            if (!$discountCode->canBeUsedByUser($user)) {
+                if ($discountCode->usages()->where('user_id', $user->id)->exists()) {
+                    session()->flash('discount_error', 'Ya has usado este código de descuento');
+                } else {
+                    session()->flash('discount_error', 'Este código de descuento no es válido');
+                }
+                return;
+            }
+
+            // Store the validated discount code for later use
+            $this->appliedDiscount = [
+                'code' => $discountCode->code,
+                'name' => $discountCode->name,
+                'type' => $discountCode->type,
+                'value' => (float) $discountCode->value,
+                'discount_code_id' => $discountCode->id,
+                'is_global' => $discountCode->is_global,
+                'valid' => true,
+            ];
+
+            session()->flash('discount_success', "¡Código válido! Se aplicará automáticamente cuando selecciones un plan compatible.");
+
+        } catch (\Exception $e) {
+            session()->flash('discount_error', 'Error al validar el código: ' . $e->getMessage());
+        } finally {
+            $this->discountLoading = false;
+        }
+    }
+
+    public function removeDiscountCode(): void
+    {
+        $this->clearDiscountCode();
+        session()->flash('discount_success', 'Código de descuento removido');
+    }
+
+    private function clearDiscountCode(): void
+    {
+        $this->discountCode = '';
+        $this->appliedDiscount = null;
+        $this->resetValidation('discountCode');
+    }
+
+    /**
+     * Calculate discount for a specific plan if applicable
+     */
+    public function calculateDiscountForPlan(string $planId): array
+    {
+        if (!$this->appliedDiscount || !$this->appliedDiscount['valid']) {
+            return [
+                'applicable' => false,
+                'original_amount' => 0,
+                'discount_amount' => 0,
+                'final_amount' => 0,
+            ];
+        }
+
+        // Safety check: Reload plans if empty
+        if (empty($this->plans)) {
+            $this->loadPlans();
+        }
+
+        $discountCodeModel = DiscountCode::find($this->appliedDiscount['discount_code_id']);
+        $plan = collect($this->plans)->firstWhere('id', $planId);
+
+        if (!$discountCodeModel || !$plan) {
+            return [
+                'applicable' => false,
+                'original_amount' => 0,
+                'discount_amount' => 0,
+                'final_amount' => 0,
+            ];
+        }
+
+        // Check if code is global or plan-specific
+        if (!$discountCodeModel->is_global) {
+            $subscriptionPlan = SubscriptionPlan::where('slug', $planId)->first();
+            if (!$subscriptionPlan || !$discountCodeModel->canBeAppliedToPlan($subscriptionPlan)) {
+                return [
+                    'applicable' => false,
+                    'original_amount' => $plan['price'],
+                    'discount_amount' => 0,
+                    'final_amount' => $plan['price'],
+                ];
+            }
+        }
+
+        $originalAmount = (float) $plan['price'];
+        $discountAmount = $discountCodeModel->calculateDiscount($originalAmount);
+        $finalAmount = max(0, $originalAmount - $discountAmount);
+
+        return [
+            'applicable' => true,
+            'original_amount' => $originalAmount,
+            'discount_amount' => $discountAmount,
+            'final_amount' => $finalAmount,
+        ];
+    }
+
     public function render()
     {
-        return view('livewire.billing.subscription-manager')->layout('layouts.panel');
+        return view('livewire.billing.subscription-manager', [
+            'appliedDiscount' => $this->appliedDiscount,
+        ])->layout('layouts.panel');
     }
 }
