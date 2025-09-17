@@ -132,7 +132,7 @@
                     <div class="relative rounded-2xl border p-8 shadow-sm flex flex-col
                         @if($this->isCurrentPlan($plan['id']))
                             border-green-500 ring-2 ring-green-500 bg-green-50/30
-                        @elseif($plan['id'] === 'professional')
+                        @elseif($plan['is_featured'])
                             border-indigo-600 ring-2 ring-indigo-600
                         @else
                             border-gray-200
@@ -142,7 +142,7 @@
                             <div class="absolute -top-5 left-0 right-0 mx-auto w-32 rounded-full bg-green-600 px-3 py-2 text-sm font-medium text-white text-center">
                                 Plan Actual
                             </div>
-                        @elseif($plan['id'] === 'professional')
+                        @elseif($plan['is_featured'])
                             <div class="absolute -top-5 left-0 right-0 mx-auto w-32 rounded-full bg-indigo-600 px-3 py-2 text-sm font-medium text-white text-center">
                                 Recomendado
                             </div>

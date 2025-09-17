@@ -249,110 +249,12 @@
         </div>
     </section>
 
-    <!-- Pricing Section -->
-    <section id="precios" class="py-20 bg-white">
+    @livewire('landing.pricing-section')
+
+    <!-- Pricing Additional Info -->
+    <section class="py-12 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl lg:text-5xl font-black text-gray-900 mb-6">
-                    Invierte <span class="text-primary">€25/mes</span>, Ahorra <span class="text-green-600">€600/mes</span>
-                </h2>
-                <p class="text-xl text-gray-600">
-                    ROI del 2400% desde el primer mes. Literalmente imposible de perder.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                <!-- Individual Plan -->
-                <div class="glass-dark p-8 rounded-3xl relative">
-                    <div class="text-center">
-                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Plan Starter</h3>
-                        <div class="text-4xl font-black text-primary mb-2">€25</div>
-                        <div class="text-gray-600 mb-6">+ IVA /mes</div>
-                        <ul class="space-y-3 text-left mb-8">
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>1 cliente Amazon/mes</span>
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>Informes automáticos</span>
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>Soporte por email</span>
-                            </li>
-                        </ul>
-                        <button class="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all">
-                            Empezar Gratis
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Business Plan (Highlighted) -->
-                <div class="bg-white p-8 rounded-3xl relative border-4 border-yellow-400 transform scale-105 shadow-2xl">
-                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                        <span class="bg-yellow-400 text-black px-4 py-2 rounded-full font-bold text-sm">MÁS POPULAR</span>
-                    </div>
-                    <div class="text-center">
-                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Plan Business</h3>
-                        <div class="text-4xl font-black text-primary mb-2">€125</div>
-                        <div class="text-gray-600 mb-6">+ IVA /mes</div>
-                        <ul class="space-y-3 text-left mb-8">
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span class="text-gray-800">5 clientes Amazon/mes</span>
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span class="text-gray-800">Todo del plan anterior</span>
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span class="text-gray-800">Soporte prioritario</span>
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span class="text-gray-800">Ahorro: €3000/mes</span>
-                            </li>
-                        </ul>
-                        <button class="w-full bg-yellow-400 text-black py-3 rounded-xl font-bold hover:bg-yellow-300 transition-all">
-                            EMPEZAR AHORA
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Enterprise Plan -->
-                <div class="glass-dark p-8 rounded-3xl relative">
-                    <div class="text-center">
-                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Plan Enterprise</h3>
-                        <div class="text-4xl font-black text-primary mb-2">€500</div>
-                        <div class="text-gray-600 mb-6">+ IVA /mes</div>
-                        <ul class="space-y-3 text-left mb-8">
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>20 clientes Amazon/mes</span>
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>Todo de planes anteriores</span>
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>Soporte dedicado</span>
-                            </li>
-                            <li class="flex items-center">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
-                                <span>Ahorro: €12000/mes</span>
-                            </li>
-                        </ul>
-                        <button class="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all">
-                            Contactar
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="text-center mt-12">
+            <div class="text-center">
                 <p class="text-lg text-gray-600 mb-4">
                     <i class="fas fa-clock text-primary mr-2"></i>
                     <strong>Oferta limitada:</strong> 7 días de prueba gratuita + setup sin coste

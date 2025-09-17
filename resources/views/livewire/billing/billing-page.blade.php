@@ -66,7 +66,7 @@
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-semibold text-gray-900">
-                            {{ $planName }}
+                            {{ $currentPlanName }}
                         </h2>
                         <button
                             wire:click="refreshSubscriptionStatus"
@@ -145,7 +145,12 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                             @foreach($availablePlans as $plan)
-                                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 relative">
+                                    @if($plan['is_featured'])
+                                        <div class="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 text-xs font-semibold px-2 py-1 rounded-full">
+                                            Recomendado
+                                        </div>
+                                    @endif
                                     <h3 class="font-semibold text-lg mb-1">{{ $plan['name'] }}</h3>
                                     <p class="text-blue-100 text-sm mb-2">{{ $plan['description'] }}</p>
                                     <div class="flex items-baseline mb-3">

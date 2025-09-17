@@ -30,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
             return $user->isAdmin();
         });
 
+        // Register model observers
+        \App\Models\SubscriptionPlan::observe(\App\Observers\SubscriptionPlanObserver::class);
+
         // Configure rate limiters
         $this->configureRateLimiters();
 

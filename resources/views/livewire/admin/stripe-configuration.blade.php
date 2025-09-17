@@ -248,7 +248,8 @@
         </div>
     </form>
 
-    <!-- Price IDs Configuration -->
+    <!-- Price IDs Configuration - COMMENTED OUT (no longer needed) -->
+    {{--
     <div class="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl">
         <div class="px-4 py-6 sm:p-8">
             <div class="md:flex md:items-center md:justify-between mb-6">
@@ -386,6 +387,7 @@
             </div>
         </div>
     </div>
+    --}}
 
     <!-- Webhook Configuration Guide -->
     <div class="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl">

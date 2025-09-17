@@ -488,6 +488,7 @@ class EmailSettingsIndex extends Component
 
     private function sendDailyReportTest(string $email): void
     {
+        $reportDate = now()->format('Y-m-d');
         $reportData = [
             'jobs' => [
                 'completed_jobs' => 87,
@@ -499,16 +500,16 @@ class EmailSettingsIndex extends Component
                 'total_uploads' => 45,
                 'successful_uploads' => 42,
                 'failed_uploads' => 3
-            ],
-            'date' => now()->format('d/m/Y')
+            ]
         ];
 
-        $notification = new \App\Notifications\DailyJobStatusReport($reportData);
+        $notification = new \App\Notifications\DailyJobStatusReport($reportData, $reportDate);
         \Illuminate\Support\Facades\Notification::route('mail', $email)->notifyNow($notification);
     }
 
     private function sendMonthlyReportTest(string $email): void
     {
+        $monthPeriod = now()->format('F Y');
         $reportData = [
             'sales' => [
                 'total_sales' => 156,
@@ -519,11 +520,10 @@ class EmailSettingsIndex extends Component
             'customers' => [
                 'new_users' => 32,
                 'total_active_users' => 287
-            ],
-            'month' => now()->format('F Y')
+            ]
         ];
 
-        $notification = new \App\Notifications\MonthlySalesReport($reportData);
+        $notification = new \App\Notifications\MonthlySalesReport($reportData, $monthPeriod);
         \Illuminate\Support\Facades\Notification::route('mail', $email)->notifyNow($notification);
     }
 

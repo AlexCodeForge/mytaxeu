@@ -22,21 +22,21 @@ class StripeConfiguration extends Component
     public bool $saving = false;
     public bool $testing = false;
 
-    // Price IDs configuration
-    public string $basicPriceId = '';
-    public string $professionalPriceId = '';
-    public string $enterprisePriceId = '';
-    public array $priceIdsStatus = [];
-    public bool $savingPrices = false;
+    // Price IDs configuration - COMMENTED OUT (no longer needed)
+    // public string $basicPriceId = '';
+    // public string $professionalPriceId = '';
+    // public string $enterprisePriceId = '';
+    // public array $priceIdsStatus = [];
+    // public bool $savingPrices = false;
 
     protected array $rules = [
         'publicKey' => 'required|string|starts_with:pk_',
         'secretKey' => 'required|string|starts_with:sk_',
         'webhookSecret' => 'nullable|string|starts_with:whsec_',
         'testMode' => 'boolean',
-        'basicPriceId' => 'nullable|string|starts_with:price_',
-        'professionalPriceId' => 'nullable|string|starts_with:price_',
-        'enterprisePriceId' => 'nullable|string|starts_with:price_',
+        // 'basicPriceId' => 'nullable|string|starts_with:price_',
+        // 'professionalPriceId' => 'nullable|string|starts_with:price_',
+        // 'enterprisePriceId' => 'nullable|string|starts_with:price_',
     ];
 
     protected array $messages = [
@@ -45,9 +45,9 @@ class StripeConfiguration extends Component
         'secretKey.required' => 'La clave secreta de Stripe es obligatoria.',
         'secretKey.starts_with' => 'La clave secreta debe comenzar con "sk_".',
         'webhookSecret.starts_with' => 'El secreto del webhook debe comenzar con "whsec_".',
-        'basicPriceId.starts_with' => 'El ID de precio básico debe comenzar con "price_".',
-        'professionalPriceId.starts_with' => 'El ID de precio profesional debe comenzar con "price_".',
-        'enterprisePriceId.starts_with' => 'El ID de precio empresarial debe comenzar con "price_".',
+        // 'basicPriceId.starts_with' => 'El ID de precio básico debe comenzar con "price_".',
+        // 'professionalPriceId.starts_with' => 'El ID de precio profesional debe comenzar con "price_".',
+        // 'enterprisePriceId.starts_with' => 'El ID de precio empresarial debe comenzar con "price_".'
     ];
 
     public function mount(): void
@@ -66,12 +66,12 @@ class StripeConfiguration extends Component
         $this->secretKey = '';
         $this->webhookSecret = '';
 
-        // Load price IDs configuration
-        $priceIds = $service->getPriceIds();
-        $this->priceIdsStatus = $service->getPriceIdsStatus();
-        $this->basicPriceId = $priceIds['basic'];
-        $this->professionalPriceId = $priceIds['professional'];
-        $this->enterprisePriceId = $priceIds['enterprise'];
+        // Load price IDs configuration - COMMENTED OUT (no longer needed)
+        // $priceIds = $service->getPriceIds();
+        // $this->priceIdsStatus = $service->getPriceIdsStatus();
+        // $this->basicPriceId = $priceIds['basic'];
+        // $this->professionalPriceId = $priceIds['professional'];
+        // $this->enterprisePriceId = $priceIds['enterprise'];
     }
 
     public function saveConfiguration(): void
@@ -174,79 +174,82 @@ class StripeConfiguration extends Component
         $this->showWebhookSecret = !$this->showWebhookSecret;
     }
 
-    public function savePriceIds(): void
-    {
-        $this->authorize('create', \App\Models\AdminSetting::class);
+    // COMMENTED OUT - savePriceIds method no longer needed
+    // public function savePriceIds(): void
+    // {
+    //     $this->authorize('create', \App\Models\AdminSetting::class);
 
-        $this->savingPrices = true;
-        $this->resetErrorBag();
+    //     $this->savingPrices = true;
+    //     $this->resetErrorBag();
 
-        try {
-            // Validate price IDs
-            $this->validate([
-                'basicPriceId' => 'nullable|string|starts_with:price_',
-                'professionalPriceId' => 'nullable|string|starts_with:price_',
-                'enterprisePriceId' => 'nullable|string|starts_with:price_',
-            ]);
+    //     try {
+    //         // Validate price IDs
+    //         $this->validate([
+    //             'basicPriceId' => 'nullable|string|starts_with:price_',
+    //             'professionalPriceId' => 'nullable|string|starts_with:price_',
+    //             'enterprisePriceId' => 'nullable|string|starts_with:price_',
+    //         ]);
 
-            $service = app(StripeConfigurationService::class);
-            
-            $priceIds = [
-                'basic' => $this->basicPriceId,
-                'professional' => $this->professionalPriceId,
-                'enterprise' => $this->enterprisePriceId,
-            ];
+    //         $service = app(StripeConfigurationService::class);
 
-            if ($service->setPriceIds($priceIds)) {
-                $this->priceIdsStatus = $service->getPriceIdsStatus();
-                session()->flash('message', 'IDs de precios guardados exitosamente.');
-            } else {
-                $this->addError('general', 'Error al guardar los IDs de precios.');
-            }
+    //         $priceIds = [
+    //             'basic' => $this->basicPriceId,
+    //             'professional' => $this->professionalPriceId,
+    //             'enterprise' => $this->enterprisePriceId,
+    //         ];
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Validation errors are automatically handled by Livewire
-        } catch (\Exception $e) {
-            $this->addError('general', 'Error inesperado: ' . $e->getMessage());
-        } finally {
-            $this->savingPrices = false;
-        }
-    }
+    //         if ($service->setPriceIds($priceIds)) {
+    //             $this->priceIdsStatus = $service->getPriceIdsStatus();
+    //             session()->flash('message', 'IDs de precios guardados exitosamente.');
+    //         } else {
+    //             $this->addError('general', 'Error al guardar los IDs de precios.');
+    //         }
 
-    public function clearPriceIds(): void
-    {
-        $this->authorize('delete', \App\Models\AdminSetting::class);
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+    //         // Validation errors are automatically handled by Livewire
+    //     } catch (\Exception $e) {
+    //         $this->addError('general', 'Error inesperado: ' . $e->getMessage());
+    //     } finally {
+    //         $this->savingPrices = false;
+    //     }
+    // }
 
-        try {
-            $service = app(StripeConfigurationService::class);
-            
-            if ($service->clearPriceIds()) {
-                $this->basicPriceId = '';
-                $this->professionalPriceId = '';
-                $this->enterprisePriceId = '';
-                $this->priceIdsStatus = $service->getPriceIdsStatus();
+    // COMMENTED OUT - clearPriceIds method no longer needed
+    // public function clearPriceIds(): void
+    // {
+    //     $this->authorize('delete', \App\Models\AdminSetting::class);
 
-                session()->flash('message', 'IDs de precios eliminados exitosamente.');
-            } else {
-                $this->addError('general', 'Error al eliminar los IDs de precios.');
-            }
+    //     try {
+    //         $service = app(StripeConfigurationService::class);
 
-        } catch (\Exception $e) {
-            $this->addError('general', 'Error inesperado: ' . $e->getMessage());
-        }
-    }
+    //         if ($service->clearPriceIds()) {
+    //             $this->basicPriceId = '';
+    //             $this->professionalPriceId = '';
+    //             $this->enterprisePriceId = '';
+    //             $this->priceIdsStatus = $service->getPriceIdsStatus();
 
-    public function loadCurrentPriceIds(): void
-    {
-        $service = app(StripeConfigurationService::class);
-        
-        // Set the current price IDs from our Stripe setup
-        $this->basicPriceId = 'price_1S1couBBlYDJOOlgpefIx2gu';
-        $this->professionalPriceId = 'price_1S1covBBlYDJOOlguPu91kOL';
-        $this->enterprisePriceId = 'price_1S1cowBBlYDJOOlgDacMEp1a';
+    //             session()->flash('message', 'IDs de precios eliminados exitosamente.');
+    //         } else {
+    //             $this->addError('general', 'Error al eliminar los IDs de precios.');
+    //         }
 
-        session()->flash('message', 'IDs de precios cargados desde la configuración actual.');
-    }
+    //     } catch (\Exception $e) {
+    //         $this->addError('general', 'Error inesperado: ' . $e->getMessage());
+    //     }
+    // }
+
+    // COMMENTED OUT - loadCurrentPriceIds method no longer needed
+    // public function loadCurrentPriceIds(): void
+    // {
+    //     $service = app(StripeConfigurationService::class);
+
+    //     // Set the current price IDs from our Stripe setup
+    //     $this->basicPriceId = 'price_1S1couBBlYDJOOlgpefIx2gu';
+    //     $this->professionalPriceId = 'price_1S1covBBlYDJOOlguPu91kOL';
+    //     $this->enterprisePriceId = 'price_1S1cowBBlYDJOOlgDacMEp1a';
+
+    //     session()->flash('message', 'IDs de precios cargados desde la configuración actual.');
+    // }
 
     public function getWebhookUrlProperty(): string
     {

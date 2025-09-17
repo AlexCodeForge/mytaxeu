@@ -14,6 +14,8 @@ use App\Models\Upload;
 use App\Models\UploadMetric;
 use App\Models\User;
 use App\Models\UserUploadLimit;
+use Database\Seeders\EmailSettingsSeeder;
+use Database\Seeders\SubscriptionPlansSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +26,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call([
+            SubscriptionPlansSeeder::class,
+            EmailSettingsSeeder::class,
+        ]);
+
         $this->command->info('🌱 Starting comprehensive testing data seed...');
 
         DB::transaction(function () {
@@ -145,6 +152,8 @@ class DatabaseSeeder extends Seeder
             User::factory()->admin()->create([
                 'name' => 'Super Admin',
                 'email' => 'super@admin.com',
+                'is_admin' => true,
+                'password' => 'password',
                 'credits' => 75000,
                 'total_lines_processed' => 150000,
             ]),
@@ -579,4 +588,5 @@ class DatabaseSeeder extends Seeder
         $this->command->line('• Technical Admin: tech@admin.com (password: password)');
         $this->command->line('• Regular users: Check users table for test accounts');
     }
+
 }

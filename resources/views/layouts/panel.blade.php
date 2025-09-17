@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" class="h-full scroll-smooth" x-data="{ mobileOpen: false }">
+<html lang="es" class="h-full scroll-smooth">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,6 +10,24 @@
     @livewireStyles
     @livewireScriptConfig
     @stack('head')
+
+    <!-- Alpine.js Global Store for Mobile Navigation -->
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('mobile', {
+                open: false,
+                toggle() {
+                    this.open = !this.open;
+                },
+                close() {
+                    this.open = false;
+                },
+                show() {
+                    this.open = true;
+                }
+            });
+        });
+    </script>
 </head>
 <body class="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-100 text-gray-900 antialiased">
     <div class="flex h-screen">
@@ -21,17 +39,17 @@
         <!-- Off-canvas for mobile -->
         <div class="lg:hidden" x-cloak>
             <div class="fixed inset-0 z-40"
-                 x-show="mobileOpen"
+                 x-show="$store.mobile.open"
                  x-transition:enter="transition-opacity ease-out duration-300"
                  x-transition:enter-start="opacity-0"
                  x-transition:enter-end="opacity-100"
                  x-transition:leave="transition-opacity ease-in duration-200"
                  x-transition:leave-start="opacity-100"
                  x-transition:leave-end="opacity-0"
-                 @keydown.escape.window="mobileOpen=false">
+                 @keydown.escape.window="$store.mobile.close()">
                 <!-- Backdrop overlay with smooth fade -->
                 <div class="fixed inset-0 bg-black/40 backdrop-blur-sm"
-                     @click="mobileOpen=false"
+                     @click="$store.mobile.close()"
                      x-transition:enter="transition-opacity ease-out duration-300"
                      x-transition:enter-start="opacity-0"
                      x-transition:enter-end="opacity-100"
@@ -42,7 +60,7 @@
 
                 <!-- Mobile sidebar with smooth slide animation -->
                 <aside class="fixed inset-y-0 left-0 w-72 bg-white shadow-xl"
-                       x-show="mobileOpen"
+                       x-show="$store.mobile.open"
                        x-transition:enter="transition-transform ease-out duration-300"
                        x-transition:enter-start="transform -translate-x-full"
                        x-transition:enter-end="transform translate-x-0"

@@ -57,6 +57,11 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
             Route::get('/', \App\Livewire\Admin\EmailSettingsIndex::class)->name('index');
         });
 
+        // Subscription Plans Management
+        Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
+            Route::get('/plans', \App\Livewire\Admin\Subscriptions\PlanManagement::class)->name('plans');
+        });
+
         // Export routes
         Route::prefix('exports')->name('exports.')->group(function () {
             Route::post('/uploads', [\App\Http\Controllers\Admin\ExportController::class, 'uploadsExport'])->name('uploads');

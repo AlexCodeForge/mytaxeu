@@ -4,81 +4,58 @@ declare(strict_types=1);
 
 namespace App\Livewire\Billing;
 
+use App\Models\SubscriptionPlan;
 use App\Services\StripePortalService;
 use Illuminate\View\View;
 use Laravel\Cashier\Subscription;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Carbon\Carbon;
 
 class BillingPage extends Component
 {
-
     public bool $hasActiveSubscription = false;
     public ?array $subscriptionDetails = null;
     public int $currentCredits = 0;
     public ?int $trialDaysRemaining = null;
     public bool $loading = false;
     public string $subscriptionStatus = 'none';
+    public string $currentPlanName = 'Plan Gratuito';
+    public string $statusMessage = '';
+    public ?string $nextBillingDate = null;
+    public array $planFeatures = [];
+    public bool $showManageButton = false;
+    public bool $showUpgradeCta = true;
 
-    // Plan configuration matching existing SubscriptionManager
-    protected array $availablePlans = [
-        [
-            'id' => 'basic',
-            'name' => 'Plan Básico',
-            'description' => 'Ideal para consultorías pequeñas',
-            'credits' => 10,
-            'price' => 29.00,
-            'currency' => 'EUR',
-            'interval' => 'month',
-            'features' => [
-                '10 créditos mensuales',
-                'Procesamiento de archivos CSV',
-                'Notificaciones por email',
-                'Soporte por email'
-            ],
-            'stripe_price_id' => 'price_1S1couBBlYDJOOlgpefIx2gu',
-        ],
-        [
-            'id' => 'professional',
-            'name' => 'Plan Profesional',
-            'description' => 'Para consultorías medianas',
-            'credits' => 25,
-            'price' => 59.00,
-            'currency' => 'EUR',
-            'interval' => 'month',
-            'features' => [
-                '25 créditos mensuales',
-                'Procesamiento de archivos CSV',
-                'Notificaciones por email',
-                'Soporte prioritario',
-                'Historial de transacciones extendido'
-            ],
-            'stripe_price_id' => 'price_1S1covBBlYDJOOlguPu91kOL',
-        ],
-        [
-            'id' => 'enterprise',
-            'name' => 'Plan Empresarial',
-            'description' => 'Para consultorías grandes',
-            'credits' => 50,
-            'price' => 99.00,
-            'currency' => 'EUR',
-            'interval' => 'month',
-            'features' => [
-                '50 créditos mensuales',
-                'Procesamiento de archivos CSV',
-                'Notificaciones por email',
-                'Soporte prioritario 24/7',
-                'Historial completo de transacciones',
-                'API de integración',
-                'Gestor de cuenta dedicado'
-            ],
-            'stripe_price_id' => 'price_1S1coxBBlYDJOOlgTQZNPZyL',
-        ],
-    ];
+    protected array $availablePlans = [];
 
     public function mount(): void
     {
+        $this->loadPlans();
         $this->loadSubscriptionData();
+    }
+
+    /**
+     * Load subscription plans from database
+     */
+    protected function loadPlans(): void
+    {
+        $plans = SubscriptionPlan::getActivePlans();
+
+        $this->availablePlans = $plans->map(function ($plan) {
+            return [
+                'id' => $plan->slug,
+                'name' => $plan->name,
+                'description' => $plan->description ?? '',
+                'credits' => $plan->max_alerts_per_month,
+                'price' => $plan->monthly_price ?? 0,
+                'currency' => 'EUR',
+                'interval' => 'month',
+                'features' => $plan->features ?? [],
+                'stripe_price_id' => $plan->stripe_monthly_price_id,
+                'is_featured' => $plan->is_featured,
+            ];
+        })->toArray();
     }
 
     public function loadSubscriptionData(): void
@@ -106,6 +83,27 @@ class BillingPage extends Component
             $this->subscriptionStatus = $subscription->stripe_status;
             $this->hasActiveSubscription = in_array($subscription->stripe_status, ['active', 'trialing']);
 
+            // Get current plan from database
+            $currentPlan = SubscriptionPlan::where('slug', $subscription->type)->first();
+            if ($currentPlan) {
+                $this->currentPlanName = $currentPlan->name;
+                $this->planFeatures = $currentPlan->features ?? [];
+            } else {
+                // Fallback for plans not in database
+                $this->currentPlanName = $this->getCurrentPlanName($subscription->type);
+                $this->planFeatures = ['Funciones del plan suscrito'];
+            }
+
+            // Set status message and UI flags
+            $this->statusMessage = $this->getStatusMessage($subscription->stripe_status);
+            $this->showManageButton = in_array($subscription->stripe_status, ['active', 'trialing', 'past_due']);
+            $this->showUpgradeCta = false; // Hide upgrade CTA if user has subscription
+
+            // Calculate next billing date
+            if ($subscription->ends_at && !$subscription->ends_at->isPast()) {
+                $this->nextBillingDate = $subscription->ends_at->format('d/m/Y');
+            }
+
             // Calculate trial days remaining
             if ($subscription->trial_ends_at && $subscription->stripe_status === 'trialing') {
                 $this->trialDaysRemaining = Carbon::parse($subscription->trial_ends_at)->diffInDays(now(), false);
@@ -116,6 +114,12 @@ class BillingPage extends Component
             $this->subscriptionDetails = null;
             $this->subscriptionStatus = 'none';
             $this->trialDaysRemaining = null;
+            $this->currentPlanName = 'Plan Gratuito';
+            $this->statusMessage = 'Sin suscripción activa';
+            $this->nextBillingDate = null;
+            $this->planFeatures = ['Acceso básico', 'Funciones limitadas'];
+            $this->showManageButton = false;
+            $this->showUpgradeCta = true;
         }
     }
 
@@ -130,144 +134,61 @@ class BillingPage extends Component
         $this->loading = true;
 
         try {
-            $portalService = app(StripePortalService::class);
             $user = auth()->user();
 
-            $session = $portalService->createPortalSession($user, url('/billing?portal_return=true'));
+            if (!$user->hasStripeId()) {
+                $user->createAsStripeCustomer();
+            }
 
-            $this->redirect($session->url);
+            $portalSession = $user->billingPortalSession(route('billing'));
+            $this->redirect($portalSession->url);
         } catch (\Exception $e) {
             $this->loading = false;
             session()->flash('error', 'Error al acceder al portal de facturación: ' . $e->getMessage());
         }
     }
 
-    public function getCurrentPlanName(): string
+    public function getCurrentCredits(): void
     {
-        if (!$this->subscriptionDetails) {
-            return 'Plan Gratuito';
-        }
-
-        $stripePriceId = $this->subscriptionDetails['stripe_price'];
-
-        foreach ($this->availablePlans as $plan) {
-            if ($plan['stripe_price_id'] === $stripePriceId) {
-                return $plan['name'];
-            }
-        }
-
-        // Fallback based on price ID patterns
-        if (str_contains($stripePriceId, 'basic')) {
-            return 'Plan Básico';
-        } elseif (str_contains($stripePriceId, 'professional')) {
-            return 'Plan Profesional';
-        } elseif (str_contains($stripePriceId, 'enterprise')) {
-            return 'Plan Empresarial';
-        }
-
-        return 'Plan Personalizado';
+        $user = auth()->user();
+        $this->currentCredits = $user->credits ?? 0;
     }
 
-    public function getCurrentPlanFeatures(): array
+    /**
+     * Get the current plan name from the subscription type (slug)
+     */
+    protected function getCurrentPlanName(string $planSlug): string
     {
-        if (!$this->subscriptionDetails) {
-            return [
-                'Hasta 100 líneas CSV gratuitas',
-                'Procesamiento básico de archivos',
-                'Notificaciones por email limitadas'
-            ];
-        }
-
-        $stripePriceId = $this->subscriptionDetails['stripe_price'];
-
-        foreach ($this->availablePlans as $plan) {
-            if ($plan['stripe_price_id'] === $stripePriceId) {
-                return $plan['features'];
-            }
-        }
-
-        return ['Funciones del plan personalizado'];
+        $planMap = [
+            'basic' => 'Plan Básico',
+            'professional' => 'Plan Profesional',
+            'enterprise' => 'Plan Empresarial',
+        ];
+        return $planMap[$planSlug] ?? 'Plan Desconocido';
     }
 
-    public function getAvailablePlans(): array
+    /**
+     * Get status message based on subscription status
+     */
+    protected function getStatusMessage(string $status): string
     {
-        return $this->availablePlans;
+        return match ($status) {
+            'active' => 'Activa',
+            'trialing' => 'En período de prueba',
+            'past_due' => 'Pago pendiente',
+            'canceled' => 'Cancelada',
+            'incomplete' => 'Incompleta',
+            'incomplete_expired' => 'Expirada',
+            'unpaid' => 'Sin pagar',
+            default => 'Inactiva',
+        };
     }
 
-    public function getSubscriptionStatusMessage(): string
-    {
-        switch ($this->subscriptionStatus) {
-            case 'active':
-                return 'Estado: Activo';
-            case 'trialing':
-                if ($this->trialDaysRemaining !== null) {
-                    return "Período de Prueba - {$this->trialDaysRemaining} días restantes";
-                }
-                return 'Período de Prueba';
-            case 'canceled':
-                if ($this->subscriptionDetails && $this->subscriptionDetails['ends_at']) {
-                    $endsAt = Carbon::parse($this->subscriptionDetails['ends_at'])->format('d/m/Y');
-                    return "Suscripción Cancelada - Termina el {$endsAt}";
-                }
-                return 'Suscripción Cancelada';
-            case 'past_due':
-                return 'Pago Atrasado - Actualizar método de pago';
-            case 'incomplete':
-                return 'Pago Incompleto - Acción requerida';
-            case 'incomplete_expired':
-                return 'Pago Expirado - Renovar suscripción';
-            case 'unpaid':
-                return 'Sin Pagar - Actualizar pago';
-            default:
-                return 'Sin suscripción activa';
-        }
-    }
-
-    public function getNextBillingDate(): ?string
-    {
-        if (!$this->hasActiveSubscription || !$this->subscriptionDetails) {
-            return null;
-        }
-
-        // If trialing, next billing is when trial ends
-        if ($this->subscriptionStatus === 'trialing' && $this->subscriptionDetails['trial_ends_at']) {
-            return Carbon::parse($this->subscriptionDetails['trial_ends_at'])->format('d/m/Y');
-        }
-
-        // For active subscriptions, estimate next billing (usually monthly)
-        if ($this->subscriptionStatus === 'active') {
-            return Carbon::parse($this->subscriptionDetails['created_at'])
-                ->addMonth()
-                ->format('d/m/Y');
-        }
-
-        return null;
-    }
-
-    public function shouldShowUpgradeCta(): bool
-    {
-        return !$this->hasActiveSubscription || $this->subscriptionStatus === 'canceled';
-    }
-
-    public function shouldShowManageButton(): bool
-    {
-        return $this->hasActiveSubscription ||
-               in_array($this->subscriptionStatus, ['canceled', 'past_due', 'incomplete']);
-    }
-
+    #[Layout('layouts.panel')]
     public function render(): View
     {
         return view('livewire.billing.billing-page', [
-            'hasActiveSubscription' => $this->hasActiveSubscription,
-            'subscriptionDetails' => $this->subscriptionDetails,
-            'currentCredits' => $this->currentCredits,
-            'planName' => $this->getCurrentPlanName(),
-            'planFeatures' => $this->getCurrentPlanFeatures(),
-            'statusMessage' => $this->getSubscriptionStatusMessage(),
-            'nextBillingDate' => $this->getNextBillingDate(),
-            'availablePlans' => $this->getAvailablePlans(),
-            'showUpgradeCta' => $this->shouldShowUpgradeCta(),
-            'showManageButton' => $this->shouldShowManageButton(),
-        ])->layout('layouts.panel');
+            'availablePlans' => $this->availablePlans,
+        ]);
     }
 }

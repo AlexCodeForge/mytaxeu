@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Billing;
 
 use App\Models\AdminSetting;
+use App\Models\SubscriptionPlan;
 use App\Services\CreditService;
 use App\Services\StripeConfigurationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -23,64 +24,36 @@ class SubscriptionManager extends Component
     public bool $willRenew = true;
     public ?string $currentPlanId = null;
 
-    // Hardcoded plan configuration (in a real app, this would come from database/config)
-    protected array $plans = [
-        [
-            'id' => 'basic',
-            'name' => 'Plan Básico',
-            'description' => 'Ideal para consultorías pequeñas',
-            'credits' => 10,
-            'price' => 29.00,
-            'currency' => 'EUR',
-            'interval' => 'month',
-            'features' => [
-                '10 créditos mensuales',
-                'Procesamiento de archivos CSV',
-                'Notificaciones por email',
-                'Soporte por email'
-            ],
-            'stripe_price_id' => 'price_1S1couBBlYDJOOlgpefIx2gu', // Real Stripe price ID
-        ],
-        [
-            'id' => 'professional',
-            'name' => 'Plan Profesional',
-            'description' => 'Para consultorías medianas',
-            'credits' => 25,
-            'price' => 59.00,
-            'currency' => 'EUR',
-            'interval' => 'month',
-            'features' => [
-                '25 créditos mensuales',
-                'Procesamiento de archivos CSV',
-                'Notificaciones por email',
-                'Soporte prioritario',
-                'Historial de transacciones extendido'
-            ],
-            'stripe_price_id' => 'price_1S1covBBlYDJOOlguPu91kOL', // Real Stripe price ID
-        ],
-        [
-            'id' => 'enterprise',
-            'name' => 'Plan Empresarial',
-            'description' => 'Para grandes consultorías',
-            'credits' => 50,
-            'price' => 99.00,
-            'currency' => 'EUR',
-            'interval' => 'month',
-            'features' => [
-                '50 créditos mensuales',
-                'Procesamiento de archivos CSV',
-                'Notificaciones por email',
-                'Soporte prioritario 24/7',
-                'Análisis y reportes avanzados',
-                'Gestión de múltiples usuarios'
-            ],
-            'stripe_price_id' => 'price_1S1cowBBlYDJOOlgDacMEp1a', // Real Stripe price ID
-        ],
-    ];
+    protected array $plans = [];
 
     public function mount(): void
     {
+        $this->loadPlans();
         $this->loadCurrentSubscription();
+    }
+
+    /**
+     * Load subscription plans from database
+     */
+    protected function loadPlans(): void
+    {
+        $plans = SubscriptionPlan::getActivePlans();
+
+        $this->plans = $plans->map(function ($plan) {
+            return [
+                'id' => $plan->slug,
+                'name' => $plan->name,
+                'description' => $plan->description ?? '',
+                'credits' => $plan->max_alerts_per_month,
+                'price' => $plan->monthly_price ?? 0,
+                'currency' => 'EUR',
+                'interval' => 'month',
+                'features' => $plan->features ?? [],
+                'stripe_price_id' => $plan->stripe_monthly_price_id,
+                'is_featured' => $plan->is_featured,
+            ];
+        })->toArray();
+
         $this->availablePlans = $this->plans;
     }
 
