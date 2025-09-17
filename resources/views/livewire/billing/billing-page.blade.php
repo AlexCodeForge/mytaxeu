@@ -58,6 +58,74 @@
         </div>
     @endif
 
+    <!-- Current Subscription Status (from SubscriptionManager) -->
+    @if($currentSubscription)
+        <div class="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl mb-8">
+            <div class="px-4 py-6 sm:p-8">
+                <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">
+                    Suscripción Actual
+                </h3>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xl font-semibold text-gray-900">{{ $currentSubscription['name'] }}</p>
+                        <p class="text-sm text-gray-500">
+                            Estado:
+                            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium
+                                @if($currentSubscription['status'] === 'active') bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20
+                                @elseif($currentSubscription['status'] === 'canceled') bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20
+                                @else bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20 @endif">
+                                {{ ucfirst($currentSubscription['status']) }}
+                            </span>
+                        </p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            @if($currentSubscription['cancel_at_period_end'])
+                                Se cancelará el {{ \Carbon\Carbon::createFromTimestamp($currentSubscription['current_period_end'])->format('d/m/Y') }}
+                            @else
+                                Próxima renovación: {{ \Carbon\Carbon::createFromTimestamp($currentSubscription['current_period_end'])->format('d/m/Y') }}
+                            @endif
+                        </p>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button wire:click="viewBillingPortal"
+                                class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                            <svg class="-ml-0.5 mr-1.5 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4.25 2A2.25 2.25 0 002 4.25v11.5A2.25 2.25 0 004.25 18h11.5A2.25 2.25 0 0018 15.75V4.25A2.25 2.25 0 0015.75 2H4.25zm4.03 6.28a.75.75 0 00-1.06-1.06L6 8.44l-1.22-1.22a.75.75 0 00-1.06 1.06L5.44 10l-1.72 1.72a.75.75 0 101.06 1.06L6 11.56l1.22 1.22a.75.75 0 001.06-1.06L6.56 10l1.72-1.72z" clip-rule="evenodd" />
+                            </svg>
+                            Portal de Facturación
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Renewal Preference -->
+                @if($currentSubscription['status'] === 'active')
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-900">Renovación Automática</h4>
+                                <p class="text-sm text-gray-500">
+                                    @if($willRenew)
+                                        Tu suscripción se renovará automáticamente cada mes.
+                                    @else
+                                        Tu suscripción se cancelará al final del período actual.
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="flex items-center">
+                                <input wire:model.live="willRenew"
+                                       wire:change="updateRenewalPreference"
+                                       type="checkbox"
+                                       class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600">
+                                <label class="ml-2 text-sm text-gray-600">Renovar automáticamente</label>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Current Plan & Credits -->
         <div class="lg:col-span-2">
@@ -115,24 +183,6 @@
                         </ul>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        @if($showManageButton)
-                            <button
-                                wire:click="redirectToPortal"
-                                wire:loading.attr="disabled"
-                                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                                <span wire:loading.remove>Gestionar Plan</span>
-                                <span wire:loading class="flex items-center">
-                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Cargando...
-                                </span>
-                            </button>
-                        @endif
-                    </div>
                 </div>
             </div>
 
@@ -192,18 +242,18 @@
 
                     <div class="text-center">
                         <div class="text-4xl font-bold text-blue-600 mb-2">
-                            {{ $currentCredits }}
+                            {{ $this->currentCredits }}
                         </div>
                         <p class="text-sm text-gray-600">
                             créditos restantes
                         </p>
                     </div>
 
-                    @if($currentCredits <= 5)
+                    @if($this->currentCredits <= 5)
                         <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                             <p class="text-sm text-yellow-700">
                                 <strong>Atención:</strong> Te quedan pocos créditos.
-                                @if(!$hasActiveSubscription)
+                                @if(!$currentSubscription)
                                     Considera actualizar tu plan.
                                 @endif
                             </p>
@@ -212,40 +262,6 @@
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="bg-white overflow-hidden shadow-lg rounded-lg">
-                <div class="p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
-
-                    <div class="space-y-3">
-                        @if($hasActiveSubscription)
-                            <a href="#"
-                               class="w-full flex items-center justify-between p-3 text-sm text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100">
-                                <span>Ver historial de pagos</span>
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                </svg>
-                            </a>
-
-                            <a href="#"
-                               class="w-full flex items-center justify-between p-3 text-sm text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100">
-                                <span>Descargar facturas</span>
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                </svg>
-                            </a>
-                        @endif
-
-                        <a href="{{ route('dashboard') }}"
-                           class="w-full flex items-center justify-between p-3 text-sm text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100">
-                            <span>Volver al panel</span>
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                        </a>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>

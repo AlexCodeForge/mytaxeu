@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
             'check.upload.limits' => \App\Http\Middleware\CheckUploadLimits::class,
         ]);
+
+        // Exclude Stripe webhooks from CSRF protection
+        $middleware->validateCsrfTokens(except: [
+            'stripe/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -11,6 +11,7 @@ use Laravel\Cashier\Subscription;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class BillingPage extends Component
 {
@@ -27,12 +28,20 @@ class BillingPage extends Component
     public bool $showManageButton = false;
     public bool $showUpgradeCta = true;
 
+    // New properties from SubscriptionManager
+    public ?array $currentSubscription = null;
+    public array $plans = [];
+    public ?string $currentPlanId = null;
+    public bool $willRenew = true;
+
     protected array $availablePlans = [];
 
     public function mount(): void
     {
         $this->loadPlans();
-        $this->loadSubscriptionData();
+        $this->loadCurrentSubscription(); // Load this FIRST to get Stripe data
+        $this->loadSubscriptionData();    // Then use the Stripe data here
+        $this->getCurrentCredits();
     }
 
     /**
@@ -42,6 +51,7 @@ class BillingPage extends Component
     {
         $plans = SubscriptionPlan::getActivePlans();
 
+        // Load both formats for compatibility
         $this->availablePlans = $plans->map(function ($plan) {
             return [
                 'id' => $plan->slug,
@@ -56,6 +66,9 @@ class BillingPage extends Component
                 'is_featured' => $plan->is_featured,
             ];
         })->toArray();
+
+        // Also load in SubscriptionManager format
+        $this->plans = $this->availablePlans;
     }
 
     public function loadSubscriptionData(): void
@@ -83,15 +96,28 @@ class BillingPage extends Component
             $this->subscriptionStatus = $subscription->stripe_status;
             $this->hasActiveSubscription = in_array($subscription->stripe_status, ['active', 'trialing']);
 
-            // Get current plan from database
-            $currentPlan = SubscriptionPlan::where('slug', $subscription->type)->first();
-            if ($currentPlan) {
-                $this->currentPlanName = $currentPlan->name;
-                $this->planFeatures = $currentPlan->features ?? [];
+            // Use the same plan detection logic as SubscriptionManager
+            if ($this->currentSubscription && $this->currentPlanId) {
+                $this->currentPlanName = $this->currentSubscription['name'];
+
+                // Get plan features from our plans data
+                $currentPlan = collect($this->plans)->firstWhere('id', $this->currentPlanId);
+                if ($currentPlan) {
+                    $this->planFeatures = $currentPlan['features'] ?? ['Funciones del plan suscrito'];
+                } else {
+                    $this->planFeatures = ['Funciones del plan suscrito'];
+                }
             } else {
-                // Fallback for plans not in database
-                $this->currentPlanName = $this->getCurrentPlanName($subscription->type);
+                // Fallback for when Stripe plan detection fails
+                $this->currentPlanName = 'Plan Desconocido';
                 $this->planFeatures = ['Funciones del plan suscrito'];
+
+                Log::warning('🚨 BillingPage: Could not detect plan from Stripe data', [
+                    'user_id' => auth()->id(),
+                    'subscription_type' => $subscription->type,
+                    'current_subscription_exists' => !!$this->currentSubscription,
+                    'current_plan_id' => $this->currentPlanId,
+                ]);
             }
 
             // Set status message and UI flags
@@ -160,10 +186,19 @@ class BillingPage extends Component
     protected function getCurrentPlanName(string $planSlug): string
     {
         $planMap = [
-            'basic' => 'Plan Básico',
-            'professional' => 'Plan Profesional',
-            'enterprise' => 'Plan Empresarial',
+            'free' => 'Plan Gratuito',
+            'starter' => 'Plan Starter',
+            'business' => 'Plan Business',
+            'professional' => 'Plan Profesional', // Keep for backward compatibility
+            'enterprise' => 'Plan Enterprise', // Fixed: now matches SubscriptionManager
         ];
+
+        Log::info('🏷️ BillingPage getPlanName called', [
+            'plan_slug' => $planSlug,
+            'mapped_name' => $planMap[$planSlug] ?? 'Plan Desconocido',
+            'available_plans' => array_keys($planMap),
+        ]);
+
         return $planMap[$planSlug] ?? 'Plan Desconocido';
     }
 
@@ -182,6 +217,220 @@ class BillingPage extends Component
             'unpaid' => 'Sin pagar',
             default => 'Inactiva',
         };
+    }
+
+    /**
+     * Load current subscription details (from SubscriptionManager)
+     */
+    public function loadCurrentSubscription(): void
+    {
+        $user = auth()->user();
+
+        Log::info('🔍 LoadCurrentSubscription called in BillingPage', [
+            'user_id' => $user->id,
+            'user_subscribed' => $user->subscribed(),
+            'total_plans_loaded' => count($this->plans),
+        ]);
+
+        if ($user->subscribed()) {
+            $subscription = $user->subscription();
+            $stripeSubscription = $subscription->asStripeSubscription();
+
+            Log::info('📋 Subscription details', [
+                'subscription_id' => $subscription->stripe_id,
+                'subscription_status' => $subscription->stripe_status,
+                'subscription_type' => $subscription->type,
+                'stripe_subscription_status' => $stripeSubscription->status,
+            ]);
+
+            // Determine current plan ID by matching Stripe price ID or credits
+            $this->currentPlanId = $this->getCurrentPlanId($stripeSubscription);
+
+            Log::info('🎯 Plan detection result', [
+                'detected_plan_id' => $this->currentPlanId,
+            ]);
+
+            $currentPlan = collect($this->plans)->firstWhere('id', $this->currentPlanId);
+
+            Log::info('📦 Current plan lookup', [
+                'current_plan_id' => $this->currentPlanId,
+                'current_plan_found' => $currentPlan ? 'YES' : 'NO',
+                'current_plan_name' => $currentPlan['name'] ?? 'NOT_FOUND',
+                'fallback_name' => $subscription->type ?? 'Suscripción Activa',
+            ]);
+
+            $this->currentSubscription = [
+                'name' => $currentPlan['name'] ?? $subscription->type ?? 'Suscripción Activa',
+                'status' => $subscription->stripe_status,
+                'current_period_end' => $stripeSubscription->current_period_end,
+                'cancel_at_period_end' => $stripeSubscription->cancel_at_period_end ?? false,
+                'stripe_id' => $subscription->stripe_id,
+                'plan_id' => $this->currentPlanId,
+            ];
+
+            $this->willRenew = !$this->currentSubscription['cancel_at_period_end'];
+
+            Log::info('✅ Final subscription data', [
+                'subscription_name' => $this->currentSubscription['name'],
+                'subscription_plan_id' => $this->currentSubscription['plan_id'],
+                'subscription_status' => $this->currentSubscription['status'],
+            ]);
+        } else {
+            $this->currentSubscription = null;
+            $this->currentPlanId = null;
+            Log::info('❌ User not subscribed');
+        }
+    }
+
+    /**
+     * Determine which plan the user currently has based on their Stripe subscription.
+     */
+    protected function getCurrentPlanId($stripeSubscription): ?string
+    {
+        Log::info('🔬 Starting plan detection', [
+            'subscription_id' => $stripeSubscription->id,
+            'items_count' => count($stripeSubscription->items->data ?? []),
+        ]);
+
+        if (empty($stripeSubscription->items->data)) {
+            Log::warning('❌ No subscription items found');
+            return null;
+        }
+
+        $subscriptionItem = $stripeSubscription->items->data[0];
+        $priceId = $subscriptionItem->price->id;
+        $amount = $subscriptionItem->price->unit_amount; // Amount in cents
+
+        Log::info('💰 Subscription item details', [
+            'price_id' => $priceId,
+            'amount_cents' => $amount,
+            'amount_eur' => $amount / 100,
+            'product_id' => $subscriptionItem->price->product,
+        ]);
+
+        Log::info('📊 Available plans for matching', [
+            'plans_count' => count($this->plans),
+            'plans_details' => collect($this->plans)->map(function($plan) {
+                return [
+                    'id' => $plan['id'],
+                    'name' => $plan['name'],
+                    'price' => $plan['price'],
+                    'price_cents' => (int)($plan['price'] * 100),
+                    'stripe_price_id' => $plan['stripe_price_id'] ?? 'NULL',
+                ];
+            })->toArray(),
+        ]);
+
+        // First, try to match by Stripe price ID (if we have real Stripe price IDs)
+        Log::info('🔍 Step 1: Checking Stripe price ID matches');
+        foreach ($this->plans as $plan) {
+            if (isset($plan['stripe_price_id']) && $plan['stripe_price_id'] === $priceId) {
+                Log::info('✅ Found plan by Stripe price ID match', [
+                    'matched_plan' => $plan['id'],
+                    'plan_name' => $plan['name'],
+                    'stripe_price_id' => $plan['stripe_price_id'],
+                ]);
+                return $plan['id'];
+            }
+        }
+        Log::info('❌ No Stripe price ID matches found');
+
+        // Fallback: match by price amount (convert our price to cents)
+        Log::info('🔍 Step 2: Checking price amount matches');
+        foreach ($this->plans as $plan) {
+            $planCents = (int)($plan['price'] * 100);
+            Log::debug('Comparing plan price', [
+                'plan_id' => $plan['id'],
+                'plan_price_eur' => $plan['price'],
+                'plan_price_cents' => $planCents,
+                'subscription_amount_cents' => $amount,
+                'match' => $planCents === $amount ? 'YES' : 'NO',
+            ]);
+
+            if ($planCents === $amount) {
+                Log::info('✅ Found plan by price amount match', [
+                    'matched_plan' => $plan['id'],
+                    'plan_name' => $plan['name'],
+                    'plan_price' => $plan['price'],
+                    'amount_cents' => $amount,
+                ]);
+                return $plan['id'];
+            }
+        }
+        Log::info('❌ No price amount matches found');
+
+        return null; // Couldn't determine plan
+    }
+
+    /**
+     * Update renewal preference (from SubscriptionManager)
+     */
+    public function updateRenewalPreference(): void
+    {
+        $this->loading = true;
+
+        try {
+            $user = auth()->user();
+
+            if (!$user->subscribed()) {
+                session()->flash('error', 'No tienes una suscripción activa.');
+                return;
+            }
+
+            $subscription = $user->subscription();
+
+            if ($this->willRenew) {
+                // Resume subscription
+                $subscription->resume();
+                session()->flash('info', 'Tu suscripción se renovará automáticamente.');
+            } else {
+                // Cancel at period end
+                $subscription->cancelAt($subscription->asStripeSubscription()->current_period_end);
+                session()->flash('info', 'Tu suscripción se cancelará al final del período actual.');
+            }
+
+            $this->loadCurrentSubscription();
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error al actualizar preferencias: ' . $e->getMessage());
+        } finally {
+            $this->loading = false;
+        }
+    }
+
+    /**
+     * View billing portal (enhanced from existing redirectToPortal)
+     */
+    public function viewBillingPortal(): void
+    {
+        $this->loading = true;
+
+        try {
+            $user = auth()->user();
+
+            if (!$user->hasStripeId()) {
+                $user->createAsStripeCustomer([
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ]);
+            }
+
+            $this->redirect($user->billingPortalUrl(route('billing')));
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error al acceder al portal de facturación: ' . $e->getMessage());
+        } finally {
+            $this->loading = false;
+        }
+    }
+
+    /**
+     * Get current credits property for the view
+     */
+    public function getCurrentCreditsProperty(): int
+    {
+        $user = auth()->user();
+        return $user->credits ?? 0;
     }
 
     #[Layout('layouts.panel')]

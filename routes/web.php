@@ -12,6 +12,9 @@ Route::get('/', [LandingPageController::class, 'index'])->name('landing');
 Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handleWebhook'])
     ->name('stripe.webhook');
 
+// Thank You Page (after successful payment) - No authentication required for redirect from Stripe
+Route::get('thank-you', [\App\Http\Controllers\ThankYouController::class, 'show'])->name('thank-you');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
     Route::get('uploads', \App\Livewire\Uploads\Index::class)->name('uploads.index');

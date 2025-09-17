@@ -54,7 +54,7 @@ class StripeWebhookController extends WebhookController
         }
 
         // Fire the webhook received event
-        WebhookReceived::dispatch($event);
+        WebhookReceived::dispatch($event->toArray());
 
         // Handle the event
         try {
@@ -178,13 +178,74 @@ class StripeWebhookController extends WebhookController
     {
         $subscription = $event->data->object;
 
-        Log::info('Subscription updated', [
+        Log::info('🔄 Subscription updated', [
             'subscription_id' => $subscription->id,
             'status' => $subscription->status,
+            'customer_id' => $subscription->customer,
         ]);
 
-        // Handle plan changes, status updates, etc.
-        // Additional logic can be added here for handling plan upgrades/downgrades
+        // Find the user by Stripe customer ID
+        $user = User::where('stripe_id', $subscription->customer)->first();
+        if (!$user) {
+            Log::warning('❌ User not found for subscription update', [
+                'customer_id' => $subscription->customer,
+                'subscription_id' => $subscription->id,
+            ]);
+            return;
+        }
+
+        // Find the local subscription
+        $localSubscription = $user->subscriptions()
+            ->where('stripe_id', $subscription->id)
+            ->first();
+
+        if (!$localSubscription) {
+            Log::warning('❌ Local subscription not found for update', [
+                'user_id' => $user->id,
+                'stripe_subscription_id' => $subscription->id,
+            ]);
+            return;
+        }
+
+        // Track what changed
+        $previousStatus = $localSubscription->stripe_status;
+        $newStatus = $subscription->status;
+
+        // Update the subscription status and other relevant fields
+        $localSubscription->stripe_status = $newStatus;
+        $localSubscription->quantity = $subscription->quantity ?? 1;
+
+        // Update period information
+        if (isset($subscription->current_period_start)) {
+            $localSubscription->trial_ends_at = $subscription->current_period_start
+                ? Carbon::createFromTimestamp($subscription->current_period_start)
+                : null;
+        }
+
+        if (isset($subscription->current_period_end)) {
+            $localSubscription->ends_at = $subscription->cancel_at_period_end && $subscription->current_period_end
+                ? Carbon::createFromTimestamp($subscription->current_period_end)
+                : null;
+        }
+
+        $localSubscription->save();
+
+        Log::info('✅ Local subscription status updated', [
+            'user_id' => $user->id,
+            'subscription_id' => $subscription->id,
+            'previous_status' => $previousStatus,
+            'new_status' => $newStatus,
+            'status_changed' => $previousStatus !== $newStatus,
+        ]);
+
+        // If subscription became active from incomplete, log special success message
+        if ($previousStatus === 'incomplete' && $newStatus === 'active') {
+            Log::info('🎉 Subscription activated successfully', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'subscription_id' => $subscription->id,
+            ]);
+        }
     }
 
     /**

@@ -91,14 +91,38 @@ class SubscriptionManager extends Component
     {
         $user = auth()->user();
 
+        Log::info('🔍 LoadCurrentSubscription called', [
+            'user_id' => $user->id,
+            'user_subscribed' => $user->subscribed(),
+            'total_plans_loaded' => count($this->plans),
+        ]);
+
         if ($user->subscribed()) {
             $subscription = $user->subscription();
             $stripeSubscription = $subscription->asStripeSubscription();
 
+            Log::info('📋 Subscription details', [
+                'subscription_id' => $subscription->stripe_id,
+                'subscription_status' => $subscription->stripe_status,
+                'subscription_type' => $subscription->type,
+                'stripe_subscription_status' => $stripeSubscription->status,
+            ]);
+
             // Determine current plan ID by matching Stripe price ID or credits
             $this->currentPlanId = $this->getCurrentPlanId($stripeSubscription);
 
+            Log::info('🎯 Plan detection result', [
+                'detected_plan_id' => $this->currentPlanId,
+            ]);
+
             $currentPlan = collect($this->plans)->firstWhere('id', $this->currentPlanId);
+
+            Log::info('📦 Current plan lookup', [
+                'current_plan_id' => $this->currentPlanId,
+                'current_plan_found' => $currentPlan ? 'YES' : 'NO',
+                'current_plan_name' => $currentPlan['name'] ?? 'NOT_FOUND',
+                'fallback_name' => $subscription->type ?? 'Suscripción Activa',
+            ]);
 
             $this->currentSubscription = [
                 'name' => $currentPlan['name'] ?? $subscription->type ?? 'Suscripción Activa',
@@ -110,9 +134,16 @@ class SubscriptionManager extends Component
             ];
 
             $this->willRenew = !$this->currentSubscription['cancel_at_period_end'];
+
+            Log::info('✅ Final subscription data', [
+                'subscription_name' => $this->currentSubscription['name'],
+                'subscription_plan_id' => $this->currentSubscription['plan_id'],
+                'subscription_status' => $this->currentSubscription['status'],
+            ]);
         } else {
             $this->currentSubscription = null;
             $this->currentPlanId = null;
+            Log::info('❌ User not subscribed');
         }
     }
 
@@ -121,7 +152,13 @@ class SubscriptionManager extends Component
      */
     protected function getCurrentPlanId($stripeSubscription): ?string
     {
+        Log::info('🔬 Starting plan detection', [
+            'subscription_id' => $stripeSubscription->id,
+            'items_count' => count($stripeSubscription->items->data ?? []),
+        ]);
+
         if (empty($stripeSubscription->items->data)) {
+            Log::warning('❌ No subscription items found');
             return null;
         }
 
@@ -129,44 +166,124 @@ class SubscriptionManager extends Component
         $priceId = $subscriptionItem->price->id;
         $amount = $subscriptionItem->price->unit_amount; // Amount in cents
 
+        Log::info('💰 Subscription item details', [
+            'price_id' => $priceId,
+            'amount_cents' => $amount,
+            'amount_eur' => $amount / 100,
+            'product_id' => $subscriptionItem->price->product,
+        ]);
+
+        Log::info('📊 Available plans for matching', [
+            'plans_count' => count($this->plans),
+            'plans_details' => collect($this->plans)->map(function($plan) {
+                return [
+                    'id' => $plan['id'],
+                    'name' => $plan['name'],
+                    'price' => $plan['price'],
+                    'price_cents' => (int)($plan['price'] * 100),
+                    'stripe_price_id' => $plan['stripe_price_id'] ?? 'NULL',
+                ];
+            })->toArray(),
+        ]);
+
         // First, try to match by Stripe price ID (if we have real Stripe price IDs)
+        Log::info('🔍 Step 1: Checking Stripe price ID matches');
         foreach ($this->plans as $plan) {
             if (isset($plan['stripe_price_id']) && $plan['stripe_price_id'] === $priceId) {
+                Log::info('✅ Found plan by Stripe price ID match', [
+                    'matched_plan' => $plan['id'],
+                    'plan_name' => $plan['name'],
+                    'stripe_price_id' => $plan['stripe_price_id'],
+                ]);
                 return $plan['id'];
             }
         }
+        Log::info('❌ No Stripe price ID matches found');
 
         // Fallback: match by price amount (convert our price to cents)
+        Log::info('🔍 Step 2: Checking price amount matches');
         foreach ($this->plans as $plan) {
-            if ((int)($plan['price'] * 100) === $amount) {
+            $planCents = (int)($plan['price'] * 100);
+            Log::debug('Comparing plan price', [
+                'plan_id' => $plan['id'],
+                'plan_price_eur' => $plan['price'],
+                'plan_price_cents' => $planCents,
+                'subscription_amount_cents' => $amount,
+                'match' => $planCents === $amount ? 'YES' : 'NO',
+            ]);
+
+            if ($planCents === $amount) {
+                Log::info('✅ Found plan by price amount match', [
+                    'matched_plan' => $plan['id'],
+                    'plan_name' => $plan['name'],
+                    'plan_price' => $plan['price'],
+                    'amount_cents' => $amount,
+                ]);
                 return $plan['id'];
             }
         }
+        Log::info('❌ No price amount matches found');
 
         // Fallback: try to get plan_id from product metadata
+        Log::info('🔍 Step 3: Checking product metadata for plan_id');
         try {
             $product = \Stripe\Product::retrieve($subscriptionItem->price->product);
+            Log::info('📦 Product metadata retrieved', [
+                'product_id' => $product->id,
+                'metadata' => $product->metadata->toArray(),
+            ]);
+
             if (isset($product->metadata['plan_id'])) {
+                Log::info('✅ Found plan by product metadata plan_id', [
+                    'matched_plan' => $product->metadata['plan_id'],
+                ]);
                 return $product->metadata['plan_id'];
             }
         } catch (\Exception $e) {
-            // Silently continue if we can't retrieve product metadata
+            Log::warning('❌ Failed to retrieve product metadata', [
+                'error' => $e->getMessage(),
+                'product_id' => $subscriptionItem->price->product,
+            ]);
         }
 
         // Default fallback based on credit amount if available in metadata
+        Log::info('🔍 Step 4: Checking product metadata for credits');
         try {
             $product = \Stripe\Product::retrieve($subscriptionItem->price->product);
             if (isset($product->metadata['credits'])) {
                 $credits = (int) $product->metadata['credits'];
+                Log::info('🪙 Product has credits metadata', [
+                    'credits' => $credits,
+                ]);
+
                 foreach ($this->plans as $plan) {
                     if ($plan['credits'] === $credits) {
+                        Log::info('✅ Found plan by credits match', [
+                            'matched_plan' => $plan['id'],
+                            'plan_name' => $plan['name'],
+                            'credits' => $credits,
+                        ]);
                         return $plan['id'];
                     }
                 }
+                Log::info('❌ No plans match the credits amount', ['credits' => $credits]);
+            } else {
+                Log::info('❌ No credits metadata found in product');
             }
         } catch (\Exception $e) {
-            // Silently continue if we can't retrieve product metadata
+            Log::warning('❌ Failed to retrieve product metadata for credits', [
+                'error' => $e->getMessage(),
+                'product_id' => $subscriptionItem->price->product,
+            ]);
         }
+
+        Log::error('🚨 Plan detection FAILED - no matches found', [
+            'subscription_id' => $stripeSubscription->id,
+            'price_id' => $priceId,
+            'amount_cents' => $amount,
+            'amount_eur' => $amount / 100,
+            'product_id' => $subscriptionItem->price->product,
+        ]);
 
         return null; // Couldn't determine plan
     }
@@ -252,7 +369,7 @@ class SubscriptionManager extends Component
                     ],
                 ],
                 'mode' => 'subscription',
-                'success_url' => route('dashboard') . '?session_id={CHECKOUT_SESSION_ID}',
+                'success_url' => route('thank-you') . '?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => route('billing.subscriptions'),
                 'metadata' => [
                     'user_id' => $user->id,
