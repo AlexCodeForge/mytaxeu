@@ -162,7 +162,7 @@
                     <div class="text-red-500 text-4xl mb-4">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Multas Costosas</h3>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Errores Fiscales</h3>
                     <p class="text-gray-600">Una declaración incorrecta puede costarte hasta el 150% del importe no declarado. ¿Puedes permitírtelo?</p>
                 </div>
 
