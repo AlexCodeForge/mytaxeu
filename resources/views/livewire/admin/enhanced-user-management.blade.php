@@ -188,8 +188,7 @@
                                                     <i class="fas fa-user-check"></i>
                                                 </button>
                                             @else
-                                                <button wire:click="suspendUser({{ $user->id }})"
-                                                        wire:confirm="¿Estás seguro de que quieres suspender este usuario?"
+                                                <button wire:click="openSuspensionModal({{ $user->id }})"
                                                         class="text-red-600 hover:text-red-900"
                                                         title="Suspender Usuario">
                                                     <i class="fas fa-user-times"></i>
@@ -419,8 +418,7 @@
                                             Activar Usuario
                                         </button>
                                     @else
-                                        <button wire:click="suspendUser({{ $selectedUser->id }})"
-                                                wire:confirm="¿Estás seguro de que quieres suspender este usuario?"
+                                        <button wire:click="openSuspensionModal({{ $selectedUser->id }})"
                                                 class="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors">
                                             <i class="fas fa-user-times mr-1"></i>
                                             Suspender Usuario
@@ -541,6 +539,89 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- Suspension Confirmation Modal --}}
+    @if($showSuspensionModal && $userToSuspend)
+        @php
+            $userToSuspendData = \App\Models\User::find($userToSuspend);
+        @endphp
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" wire:click="closeSuspensionModal">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transform transition-all" wire:click.stop>
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-exclamation-triangle text-red-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Suspender Usuario</h3>
+                            <p class="text-sm text-gray-600">{{ $userToSuspendData?->name }} ({{ $userToSuspendData?->email }})</p>
+                        </div>
+                    </div>
+                    <button wire:click="closeSuspensionModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                {{-- Modal Body --}}
+                <div class="p-6">
+                    <div class="mb-6">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exclamation-triangle text-red-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-medium text-red-800">Confirmar Suspensión</h4>
+                                    <div class="mt-2 text-sm text-red-700">
+                                        <p>Estás a punto de suspender este usuario. Una vez suspendido:</p>
+                                        <ul class="list-disc list-inside mt-2 space-y-1">
+                                            <li>No podrá acceder al sistema</li>
+                                            <li>Se bloquearán todas sus funcionalidades</li>
+                                            <li>Sus subidas activas se detendrán</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="suspensionReason" class="block text-sm font-medium text-gray-700 mb-2">
+                                Motivo de la Suspensión (Opcional)
+                            </label>
+                            <textarea
+                                wire:model="suspensionReason"
+                                id="suspensionReason"
+                                rows="3"
+                                placeholder="Motivo opcional de la suspensión..."
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    {{-- Footer --}}
+                    <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+                        <button type="button" wire:click="closeSuspensionModal"
+                                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-times mr-2"></i>
+                            Cancelar
+                        </button>
+                        <button wire:click="confirmSuspendUser"
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                            <div wire:loading wire:target="confirmSuspendUser">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>
+                                Suspendiendo...
+                            </div>
+                            <div wire:loading.remove wire:target="confirmSuspendUser">
+                                <i class="fas fa-user-times mr-2"></i>
+                                Confirmar Suspensión
+                            </div>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     @endif

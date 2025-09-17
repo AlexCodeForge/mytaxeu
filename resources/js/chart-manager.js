@@ -39,14 +39,31 @@ class ChartManager {
      * @returns {Chart} Chart instance
      */
     createChart(id, canvas, config) {
+        // Validate inputs
+        if (!id || typeof id !== 'string') {
+            throw new Error('Chart ID must be a non-empty string');
+        }
+
+        if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Canvas must be a valid HTMLCanvasElement');
+        }
+
+        if (!config || typeof config !== 'object') {
+            throw new Error('Chart config must be a valid object');
+        }
+
         // Destroy existing chart with same ID
         this.destroyChart(id);
 
-        // Ensure canvas is clean
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         try {
+            // Ensure canvas is clean
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Could not get 2D context from canvas');
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             const chart = new Chart(ctx, config);
             this.charts.set(id, {
                 instance: chart,
@@ -58,6 +75,8 @@ class ChartManager {
             return chart;
         } catch (error) {
             console.error(`❌ Failed to create chart ${id}:`, error);
+            // Clean up any partial state
+            this.charts.delete(id);
             throw error;
         }
     }
@@ -69,11 +88,25 @@ class ChartManager {
      * @param {string} mode - Animation mode (default: 'active')
      */
     updateChart(id, newData, mode = 'active') {
+        if (!id || typeof id !== 'string') {
+            console.error('❌ Chart ID must be a non-empty string');
+            return;
+        }
+
+        if (!newData || typeof newData !== 'object') {
+            console.error('❌ Chart data must be a valid object');
+            return;
+        }
+
         const chartInfo = this.charts.get(id);
         if (chartInfo && chartInfo.instance) {
-            chartInfo.instance.data = newData;
-            chartInfo.instance.update(mode);
-            console.log(`📊 Chart updated: ${id}`);
+            try {
+                chartInfo.instance.data = newData;
+                chartInfo.instance.update(mode);
+                console.log(`📊 Chart updated: ${id}`);
+            } catch (error) {
+                console.error(`❌ Failed to update chart ${id}:`, error);
+            }
         } else {
             console.warn(`⚠️ Chart not found for update: ${id}`);
         }
@@ -117,17 +150,43 @@ class ChartManager {
 
     /**
      * Clean up charts within a specific DOM element
+     * Respects wire:ignore to prevent destroying charts that should persist
      * @param {HTMLElement} element - DOM element to search
      */
     cleanupChartsInElement(element) {
         const canvases = element.querySelectorAll('canvas');
         canvases.forEach(canvas => {
+            // Check if canvas or any parent has wire:ignore
+            if (this.shouldPreserveChart(canvas)) {
+                console.log(`🔒 Preserving chart for canvas with wire:ignore: ${canvas.id}`);
+                return;
+            }
+
             for (const [id, chartInfo] of this.charts) {
                 if (chartInfo.canvas === canvas || chartInfo.canvasId === canvas.id) {
                     this.destroyChart(id);
                 }
             }
         });
+    }
+
+    /**
+     * Check if a canvas element should be preserved during Livewire updates
+     * @param {HTMLCanvasElement} canvas - Canvas element to check
+     * @returns {boolean} True if chart should be preserved
+     */
+    shouldPreserveChart(canvas) {
+        let element = canvas;
+
+        // Walk up the DOM tree to check for wire:ignore
+        while (element && element !== document.body) {
+            if (element.hasAttribute && element.hasAttribute('wire:ignore')) {
+                return true;
+            }
+            element = element.parentElement;
+        }
+
+        return false;
     }
 
     /**

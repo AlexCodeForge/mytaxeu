@@ -8,14 +8,18 @@
         @php
             $user = auth()->user();
             $limitValidator = app(\App\Services\UploadLimitValidator::class);
-            $isAdmin = $user && $user->isAdmin();
-            $currentLimit = $user ? $limitValidator->getCurrentLimit($user) : 100;
-            $userLimit = $user ? $limitValidator->getUserLimit($user) : null;
-            $displayLimit = $isAdmin ? 'unlimited' : $currentLimit;
-            $jsLimit = $isAdmin ? 999999999 : $currentLimit; // Use large number for JS comparison
+            $limitInfo = $user ? $limitValidator->getLimitInfo($user) : $limitValidator->getLimitInfo(null, request()->ip());
+            $isAdmin = $limitInfo['is_admin'] ?? false;
+            $currentLimit = $limitInfo['limit'];
+            $userLimit = ($limitInfo['is_custom'] ?? false) ? $limitValidator->getUserLimit($user) : null;
+            $isSubscription = $limitInfo['is_subscription'] ?? false;
+            $hasCredits = $limitInfo['has_credits'] ?? false;
+            $hasUnlimitedAccess = $isAdmin || $isSubscription || $hasCredits;
+            $displayLimit = $hasUnlimitedAccess ? 'unlimited' : $currentLimit;
+            $jsLimit = $hasUnlimitedAccess ? 999999999 : $currentLimit; // Use large number for JS comparison
         @endphp
 
-        <div class="mb-6 p-4 @if($isAdmin) bg-green-50 border-green-200 @else bg-blue-50 border-blue-200 @endif border rounded-lg">
+        <div class="mb-6 p-4 @if($hasUnlimitedAccess) bg-green-50 border-green-200 @else bg-blue-50 border-blue-200 @endif border rounded-lg">
             <div class="flex items-center justify-between">
                 <div>
                     @if($isAdmin)
@@ -23,23 +27,34 @@
                             Administrador: sin límites de líneas por archivo.
                         </h4>
                         <p class="text-xs text-green-700">Como administrador, puede procesar archivos CSV de cualquier tamaño.</p>
+                    @elseif($isSubscription)
+                        <h4 class="text-sm font-medium text-green-900">
+                            Plan Premium: sin límites de líneas por archivo.
+                        </h4>
+                        <p class="text-xs text-green-700">Como suscriptor activo, puede procesar archivos CSV de cualquier tamaño.</p>
+                    @elseif($hasCredits)
+                        <h4 class="text-sm font-medium text-green-900">
+                            Con créditos: sin límites de líneas por archivo.
+                        </h4>
+                        <p class="text-xs text-green-700">Tienes créditos disponibles. Puedes procesar archivos CSV de cualquier tamaño mientras tengas créditos.</p>
+                    @elseif($userLimit)
+                        <h4 class="text-sm font-medium text-blue-900">
+                            Su límite actual es de {{ number_format($currentLimit) }} líneas por archivo.
+                        </h4>
+                        <p class="text-xs text-blue-700">
+                            Límite personalizado: {{ number_format($currentLimit) }} líneas por archivo
+                            @if($userLimit->expires_at)
+                                - Este límite expira el {{ $userLimit->expires_at->format('d/m/Y') }}
+                            @endif
+                        </p>
                     @else
                         <h4 class="text-sm font-medium text-blue-900">
                             Su límite actual es de {{ number_format($currentLimit) }} líneas por archivo.
                         </h4>
-                        @if($userLimit)
-                            <p class="text-xs text-blue-700">
-                                Límite personalizado: {{ number_format($currentLimit) }} líneas por archivo
-                                @if($userLimit->expires_at)
-                                    - Este límite expira el {{ $userLimit->expires_at->format('d/m/Y') }}
-                                @endif
-                            </p>
-                        @else
-                            <p class="text-xs text-blue-700">Plan gratuito: limitado a {{ number_format($currentLimit) }} líneas por archivo CSV.</p>
-                        @endif
+                        <p class="text-xs text-blue-700">Plan gratuito: limitado a {{ number_format($currentLimit) }} líneas por archivo CSV.</p>
                     @endif
                 </div>
-                @if(!$isAdmin && !$userLimit)
+                @if(!$hasUnlimitedAccess && !$userLimit)
                     <a href="{{ route('billing.subscriptions') }}" wire:navigate class="text-xs text-blue-600 hover:text-blue-800 underline">
                         Actualizar Plan
                     </a>

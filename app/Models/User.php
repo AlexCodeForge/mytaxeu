@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\ResetPasswordNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -30,6 +31,10 @@ class User extends Authenticatable
         'total_lines_processed',
         'current_month_usage',
         'usage_reset_date',
+        'is_suspended',
+        'suspended_at',
+        'suspended_by',
+        'suspension_reason',
     ];
 
     /**
@@ -57,6 +62,8 @@ class User extends Authenticatable
             'total_lines_processed' => 'integer',
             'current_month_usage' => 'integer',
             'usage_reset_date' => 'date',
+            'is_suspended' => 'boolean',
+            'suspended_at' => 'datetime',
         ];
     }
 
@@ -121,5 +128,13 @@ class User extends Authenticatable
     {
         $subscription = $this->subscription($type);
         return $subscription && $subscription->valid();
+    }
+
+    /**
+     * Send the password reset notification.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }

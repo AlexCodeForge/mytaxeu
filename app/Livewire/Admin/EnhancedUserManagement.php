@@ -42,6 +42,11 @@ class EnhancedUserManagement extends Component
     public int $creditsChange = 0;
     public string $creditsOperation = 'add'; // add or subtract
 
+    // Suspension management
+    public bool $showSuspensionModal = false;
+    public string $suspensionReason = '';
+    public ?int $userToSuspend = null;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'activityFilter' => ['except' => 'all'],
@@ -114,9 +119,15 @@ class EnhancedUserManagement extends Component
         $this->userActivity = [];
     }
 
-    public function suspendUser(int $userId): void
+    public function openSuspensionModal(int $userId): void
     {
+        logger()->info('🚨 MODAL DEBUG: openSuspensionModal called', [
+            'userId' => $userId,
+            'admin_id' => Auth::id(),
+        ]);
+
         if ($userId === Auth::id()) {
+            logger()->warning('🚨 MODAL WARNING: Admin trying to suspend themselves');
             $this->dispatch('show-notification', [
                 'message' => 'No puedes suspenderte a ti mismo',
                 'type' => 'error',
@@ -127,6 +138,7 @@ class EnhancedUserManagement extends Component
         $user = User::findOrFail($userId);
 
         if ($user->isAdmin()) {
+            logger()->warning('🚨 MODAL WARNING: Trying to suspend admin user');
             $this->dispatch('show-notification', [
                 'message' => 'Los usuarios administradores no pueden ser suspendidos',
                 'type' => 'error',
@@ -134,22 +146,94 @@ class EnhancedUserManagement extends Component
             return;
         }
 
-        $user->update([
-            'is_suspended' => true,
-            'suspended_at' => now(),
-            'suspended_by' => Auth::id(),
+        $this->userToSuspend = $userId;
+        $this->suspensionReason = '';
+        $this->showSuspensionModal = true;
+
+        logger()->info('🚨 MODAL DEBUG: Modal opened successfully', [
+            'userToSuspend' => $this->userToSuspend,
+            'showSuspensionModal' => $this->showSuspensionModal,
+        ]);
+    }
+
+    public function closeSuspensionModal(): void
+    {
+        $this->showSuspensionModal = false;
+        $this->userToSuspend = null;
+        $this->suspensionReason = '';
+        $this->resetErrorBag();
+    }
+
+    public function confirmSuspendUser(): void
+    {
+        logger()->info('🚨 SUSPENSION DEBUG: confirmSuspendUser called', [
+            'userToSuspend' => $this->userToSuspend,
+            'admin_id' => Auth::id(),
         ]);
 
-        $this->logAdminAction('user_suspended', $userId, "Usuario {$user->email} suspendido");
-
-        $this->dispatch('show-notification', [
-            'message' => "El usuario {$user->name} ha sido suspendido exitosamente",
-            'type' => 'success',
-        ]);
-
-        if ($this->selectedUserId === $userId) {
-            $this->selectedUser = $user->fresh();
+        if (!$this->userToSuspend) {
+            logger()->error('🚨 SUSPENSION ERROR: No userToSuspend found');
+            $this->addError('user', 'Usuario no encontrado.');
+            return;
         }
+
+        try {
+            $user = User::findOrFail($this->userToSuspend);
+
+            logger()->info('🚨 SUSPENSION DEBUG: User found', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'current_suspension_status' => $user->is_suspended,
+            ]);
+
+            $updateData = [
+                'is_suspended' => true,
+                'suspended_at' => now(),
+                'suspended_by' => Auth::id(),
+                'suspension_reason' => $this->suspensionReason ?: 'Suspendido por administrador',
+            ];
+
+            logger()->info('🚨 SUSPENSION DEBUG: About to update user with data', $updateData);
+
+            $updateResult = $user->update($updateData);
+
+            logger()->info('🚨 SUSPENSION DEBUG: Update result', [
+                'update_success' => $updateResult,
+                'user_after_update' => $user->fresh()->only(['id', 'email', 'is_suspended', 'suspended_at', 'suspended_by']),
+            ]);
+
+            $this->logAdminAction('user_suspended', $this->userToSuspend, "Usuario {$user->email} suspendido" . ($this->suspensionReason ? ". Motivo: {$this->suspensionReason}" : ""));
+
+            $this->dispatch('show-notification', [
+                'message' => "El usuario {$user->name} ha sido suspendido exitosamente",
+                'type' => 'success',
+            ]);
+
+            if ($this->selectedUserId === $this->userToSuspend) {
+                $this->selectedUser = $user->fresh();
+            }
+
+            $this->closeSuspensionModal();
+
+            logger()->info('🚨 SUSPENSION DEBUG: Process completed successfully');
+
+        } catch (\Exception $e) {
+            logger()->error('🚨 SUSPENSION ERROR: Exception occurred', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $this->dispatch('show-notification', [
+                'message' => 'Error al suspender usuario: ' . $e->getMessage(),
+                'type' => 'error',
+            ]);
+        }
+    }
+
+    public function suspendUser(int $userId): void
+    {
+        // Keep this method for backward compatibility, but redirect to modal
+        $this->openSuspensionModal($userId);
     }
 
     public function activateUser(int $userId): void
@@ -310,7 +394,18 @@ class EnhancedUserManagement extends Component
             return;
         }
 
+        // Update user credits and create transaction record
         $this->selectedUser->update(['credits' => $newCredits]);
+
+        // Create proper credit transaction for tracking
+        \App\Models\CreditTransaction::create([
+            'user_id' => $this->selectedUser->id,
+            'type' => $this->creditsOperation === 'add' ? 'purchased' : 'consumed',
+            'amount' => $this->creditsOperation === 'add' ? $this->creditsChange : -$this->creditsChange,
+            'description' => 'Ajuste manual por administrador: ' .
+                           ($this->creditsOperation === 'add' ? 'agregados' : 'removidos') .
+                           " {$this->creditsChange} créditos",
+        ]);
 
         logger()->info('Cambio de créditos por administrador', [
             'admin_id' => auth()->id(),

@@ -35,7 +35,7 @@
                 </div>
 
                 <div class="flex items-center space-x-4 hidden md:flex">
-                    <a href="{{ route('admin.index') }}" class="bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg text-primary font-medium transition-all">
+                    <a href="{{ route('login') }}" class="bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg text-primary font-medium transition-all">
                         <i class="fas fa-cog mr-2"></i>Admin
                     </a>
                     <button class="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105 shadow-md">

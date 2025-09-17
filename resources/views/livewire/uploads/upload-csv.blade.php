@@ -54,6 +54,84 @@
         setTimeout(() => closeToast(toastId), duration);
     }
 
+    // Drag and drop helper functions
+    function handleDragAndDrop() {
+        return {
+            dragOver: false,
+            dragCounter: 0, // Track enter/leave events to handle child elements
+
+            handleDragOver(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.dragOver = true;
+            },
+
+            handleDragEnter(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.dragCounter++;
+                this.dragOver = true;
+            },
+
+            handleDragLeave(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.dragCounter--;
+
+                // Only set dragOver to false when we leave the main container
+                if (this.dragCounter === 0) {
+                    this.dragOver = false;
+                }
+            },
+
+            handleDrop(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.dragOver = false;
+                this.dragCounter = 0;
+
+                const files = event.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+
+                    // Validate file type
+                    if (!file.name.toLowerCase().endsWith('.csv')) {
+                        showToast('error', 'Por favor selecciona un archivo CSV válido.');
+                        return;
+                    }
+
+                    // Validate file size (100MB = 104,857,600 bytes)
+                    const maxSize = 104857600;
+                    if (file.size > maxSize) {
+                        showToast('error', 'El archivo no puede ser mayor a 100MB.');
+                        return;
+                    }
+
+                    // Update Alpine state first
+                    this.fileSelected = true;
+                    this.fileName = file.name;
+
+                    // Create a new FileList with the dropped file
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+
+                    // Set the file to the input element
+                    const fileInput = document.getElementById('csvFile');
+                    if (fileInput) {
+                        fileInput.files = dt.files;
+
+                        // Trigger the change event to update Livewire state
+                        const changeEvent = new Event('change', { bubbles: true });
+                        fileInput.dispatchEvent(changeEvent);
+
+                        console.log('File dropped and set:', file.name);
+                        showToast('success', `Archivo "${file.name}" cargado correctamente`);
+                    }
+                }
+            }
+        }
+    }
+
     function closeToast(toastId) {
         const toast = document.getElementById(toastId);
         if (toast) {
@@ -135,6 +213,28 @@
 
         // Modal is now controlled purely by Alpine.js x-show directive
         // No manual JavaScript control needed
+
+        // Prevent default drag behaviors on the entire page
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.addEventListener(eventName, function(e) {
+                // Allow events within our upload area
+                if (e.target.closest('label[for="csvFile"]')) {
+                    return;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        // Prevent browser from opening files when dropped outside upload area
+        document.addEventListener('drop', function(e) {
+            if (!e.target.closest('label[for="csvFile"]')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('File drop prevented outside upload area');
+            }
+        });
     });
 </script>
 @endpush
@@ -147,7 +247,8 @@
     $currentLimit = $limitInfo['limit'];
     $userLimit = ($limitInfo['is_custom'] ?? false) ? $limitValidator->getUserLimit($user) : null;
     $isSubscription = $limitInfo['is_subscription'] ?? false;
-    $hasUnlimitedAccess = $isAdmin || $isSubscription;
+    $hasCredits = $limitInfo['has_credits'] ?? false;
+    $hasUnlimitedAccess = $isAdmin || $isSubscription || $hasCredits;
     $displayLimit = $hasUnlimitedAccess ? 'unlimited' : $currentLimit;
     $jsLimit = $hasUnlimitedAccess ? 999999999 : $currentLimit; // Use large number for JS comparison
 @endphp
@@ -162,6 +263,7 @@
     lineCount: 0,
     fileName: '',
     hasUnlimitedAccess: {{ $hasUnlimitedAccess ? 'true' : 'false' }},
+    ...handleDragAndDrop(),
     init() {
         this.$watch('fileSelected', (value) => {
             if (!value) {
@@ -227,6 +329,11 @@
                             Plan Premium: sin límites de líneas por archivo.
                         </h4>
                         <p class="text-xs text-green-700">Como suscriptor activo, puede procesar archivos CSV de cualquier tamaño.</p>
+                    @elseif($hasCredits)
+                        <h4 class="text-sm font-medium text-green-900">
+                            Con créditos: sin límites de líneas por archivo.
+                        </h4>
+                        <p class="text-xs text-green-700">Tienes créditos disponibles. Puedes procesar archivos CSV de cualquier tamaño mientras tengas créditos.</p>
                     @elseif($userLimit)
                         <h4 class="text-sm font-medium text-blue-900">
                             Su límite actual es de {{ number_format($currentLimit) }} líneas por archivo.
@@ -317,13 +424,19 @@
                             :class="{
                                 'border-red-400 bg-red-50 hover:bg-red-100 hover:border-red-500': fileSelected && !hasUnlimitedAccess && lineCount > {{ $jsLimit }},
                                 'border-green-400 bg-green-50 hover:bg-green-100 hover:border-green-500': fileSelected && (hasUnlimitedAccess || lineCount <= {{ $jsLimit }}),
-                                'border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400': !fileSelected || analyzing
+                                'border-blue-400 bg-blue-50 border-blue-600': dragOver,
+                                'border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400': !fileSelected && !analyzing && !dragOver
                             }"
 
                             x-on:livewire-upload-start="analyzing = true"
                             x-on:livewire-upload-finish="analyzing = false"
                             x-on:livewire-upload-cancel="analyzing = false; fileSelected = false"
                             x-on:livewire-upload-error="analyzing = false; fileSelected = false"
+
+                            @dragenter.prevent="handleDragEnter($event)"
+                            @dragover.prevent="handleDragOver($event)"
+                            @dragleave.prevent="handleDragLeave($event)"
+                            @drop.prevent="handleDrop($event)"
                         >
                             <!-- Hidden File Input -->
                             <input
@@ -337,12 +450,16 @@
                                     fileSelected = $event.target.files.length > 0;
                                     if ($event.target.files.length > 0) {
                                         console.log('File selected:', $event.target.files[0].name);
+                                        fileName = $event.target.files[0].name;
+                                    } else {
+                                        fileName = '';
                                     }
                                 "
                                 class="hidden"
                             >
 
-                            <div class="flex flex-col items-center justify-center pt-5 pb-6" x-show="!fileSelected">
+                            <!-- Default State (No file selected, not dragging) -->
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6" x-show="!fileSelected && !dragOver">
                                 <!-- Upload Icon -->
                                 <svg class="w-8 h-8 mb-4 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.566 5.566 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
@@ -353,6 +470,20 @@
                                     <span class="font-semibold text-blue-600">Haz clic para subir</span> o arrastra y suelta
                                 </p>
                                 <p class="text-xs text-gray-500">CSV (Máx. 100MB)</p>
+                            </div>
+
+                            <!-- Drag Over State -->
+                            <div x-show="dragOver && !fileSelected" x-cloak class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <!-- Drop Icon -->
+                                <svg class="w-12 h-12 mb-4 text-blue-600 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4"/>
+                                </svg>
+
+                                <!-- Drop Text -->
+                                <p class="mb-2 text-lg font-semibold text-blue-600">
+                                    ¡Suelta tu archivo CSV aquí!
+                                </p>
+                                <p class="text-sm text-blue-500">El archivo se procesará automáticamente</p>
                             </div>
 
                             <!-- Analyzing State -->
@@ -586,7 +717,7 @@
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h4 class="text-sm font-medium text-blue-900 mb-2">Instrucciones:</h4>
                     <ul class="text-sm text-blue-700 space-y-1">
-                        <li>• Asegúrate de que tu archivo CSV contenga la columna 'ACTIVITY_PERIOD' requerida</li>
+                        <li>• No modifiques el archivo antes de subirlo.</li>
                         <li>• El costo es de <strong>1 crédito por cada período (mes)</strong> detectado en tu archivo</li>
                         <li>• Se permite un máximo de 3 períodos distintos por archivo</li>
                         @if(!$hasUnlimitedAccess && !$userLimit)

@@ -8,68 +8,83 @@
     <meta name="description" content="@yield('meta_description', 'Panel de administración y usuario de MyTaxEU')">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
-    @livewireScriptConfig
+    {{-- @livewireScriptConfig --}}
     @stack('head')
 
-    <!-- Alpine.js Global Store for Mobile Navigation -->
+    <!-- Simplified Mobile Navigation Script -->
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.store('mobile', {
-                open: false,
-                toggle() {
-                    this.open = !this.open;
-                },
-                close() {
-                    this.open = false;
-                },
-                show() {
-                    this.open = true;
+        // Simple mobile menu toggle without Alpine store
+        function toggleMobileMenu() {
+            const mobileMenu = document.querySelector('[data-mobile-menu]');
+            const backdrop = document.querySelector('[data-mobile-backdrop]');
+
+            if (mobileMenu && backdrop) {
+                const isHidden = mobileMenu.classList.contains('hidden');
+
+                if (isHidden) {
+                    // Show menu
+                    mobileMenu.classList.remove('hidden');
+                    backdrop.classList.remove('hidden');
+                    setTimeout(() => {
+                        mobileMenu.classList.remove('-translate-x-full');
+                        backdrop.querySelector('div').classList.remove('opacity-0');
+                    }, 10);
+                } else {
+                    // Hide menu
+                    closeMobileMenu();
                 }
-            });
+            }
+        }
+
+        function closeMobileMenu() {
+            const mobileMenu = document.querySelector('[data-mobile-menu]');
+            const backdrop = document.querySelector('[data-mobile-backdrop]');
+
+            if (mobileMenu && backdrop) {
+                mobileMenu.classList.add('-translate-x-full');
+                backdrop.querySelector('div').classList.add('opacity-0');
+
+                setTimeout(() => {
+                    mobileMenu.classList.add('hidden');
+                    backdrop.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeMobileMenu();
+            }
         });
+
+        // Make functions globally available
+        window.toggleMobileMenu = toggleMobileMenu;
+        window.closeMobileMenu = closeMobileMenu;
     </script>
 </head>
 <body class="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-100 text-gray-900 antialiased">
     <div class="flex h-screen">
         <!-- Sidebar (desktop) -->
-        <aside class="hidden lg:block w-72 bg-white border-r">
+        <aside class="hidden lg:block bg-white border-r">
             <livewire:panel.sidebar />
         </aside>
 
         <!-- Off-canvas for mobile -->
-        <div class="lg:hidden" x-cloak>
-            <div class="fixed inset-0 z-40"
-                 x-show="$store.mobile.open"
-                 x-transition:enter="transition-opacity ease-out duration-300"
-                 x-transition:enter-start="opacity-0"
-                 x-transition:enter-end="opacity-100"
-                 x-transition:leave="transition-opacity ease-in duration-200"
-                 x-transition:leave-start="opacity-100"
-                 x-transition:leave-end="opacity-0"
-                 @keydown.escape.window="$store.mobile.close()">
-                <!-- Backdrop overlay with smooth fade -->
-                <div class="fixed inset-0 bg-black/40 backdrop-blur-sm"
-                     @click="$store.mobile.close()"
-                     x-transition:enter="transition-opacity ease-out duration-300"
-                     x-transition:enter-start="opacity-0"
-                     x-transition:enter-end="opacity-100"
-                     x-transition:leave="transition-opacity ease-in duration-200"
-                     x-transition:leave-start="opacity-100"
-                     x-transition:leave-end="opacity-0">
+        <div class="lg:hidden">
+            <!-- Backdrop overlay -->
+            <div class="fixed inset-0 z-40 hidden"
+                 data-mobile-backdrop>
+                <div class="fixed inset-0 bg-black/40 backdrop-blur-sm opacity-0 transition-opacity duration-300"
+                     onclick="closeMobileMenu()">
                 </div>
-
-                <!-- Mobile sidebar with smooth slide animation -->
-                <aside class="fixed inset-y-0 left-0 w-72 bg-white shadow-xl"
-                       x-show="$store.mobile.open"
-                       x-transition:enter="transition-transform ease-out duration-300"
-                       x-transition:enter-start="transform -translate-x-full"
-                       x-transition:enter-end="transform translate-x-0"
-                       x-transition:leave="transition-transform ease-in duration-250"
-                       x-transition:leave-start="transform translate-x-0"
-                       x-transition:leave-end="transform -translate-x-full">
-                    <livewire:panel.sidebar />
-                </aside>
             </div>
+
+            <!-- Mobile sidebar -->
+            <aside class="fixed inset-y-0 left-0 w-72 bg-white shadow-xl z-50 transform -translate-x-full transition-transform duration-300 hidden"
+                   data-mobile-menu>
+                <livewire:panel.sidebar />
+            </aside>
         </div>
 
         <!-- Main content -->

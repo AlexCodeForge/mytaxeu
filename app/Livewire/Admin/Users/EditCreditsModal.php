@@ -75,7 +75,18 @@ class EditCreditsModal extends Component
             return;
         }
 
+        // Update user credits and create transaction record
         $this->user->update(['credits' => $newCredits]);
+
+        // Create proper credit transaction for tracking
+        \App\Models\CreditTransaction::create([
+            'user_id' => $this->user->id,
+            'type' => $this->operation === 'add' ? 'purchased' : 'consumed',
+            'amount' => $this->operation === 'add' ? $this->creditsChange : -$this->creditsChange,
+            'description' => 'Ajuste manual por administrador: ' .
+                           ($this->operation === 'add' ? 'agregados' : 'removidos') .
+                           " {$this->creditsChange} créditos",
+        ]);
 
         // Log the credit change (could be enhanced with an audit table later)
         logger()->info('Admin credit change', [

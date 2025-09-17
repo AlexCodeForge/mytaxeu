@@ -299,6 +299,53 @@
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-6">
+                {{-- Credits Received --}}
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['total_credits_allocated'] ?? 0) }}</p>
+                            <p class="text-sm text-gray-600">Créditos Recibidos</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Credits Consumed --}}
+                <div class="bg-orange-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['total_credits_consumed'] ?? 0) }}</p>
+                            <p class="text-sm text-gray-600">Créditos Consumidos</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Credits in Circulation --}}
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['total_credits_in_circulation'] ?? 0) }}</p>
+                            <p class="text-sm text-gray-600">Créditos en Circulación</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {{-- Processing Time --}}
                 <div class="bg-gray-50 p-4 rounded-lg">
@@ -415,12 +462,14 @@
 <script>
 Alpine.data('adminDashboard', () => ({
     chartId: 'dashboard-uploads-chart',
+    chart: null, // Track chart instance state
+    chartHealthCheck: null, // Health check interval
 
     init() {
         console.log('🚀 Alpine adminDashboard init started');
         console.log('🚀 Available refs:', Object.keys(this.$refs || {}));
 
-        // Initialize chart if canvas exists
+        // Initialize chart if canvas exists - with multiple attempts
         this.$nextTick(() => {
             console.log('🔄 Next tick - checking for canvas');
             console.log('🔄 Canvas ref:', this.$refs.uploadsChart);
@@ -429,7 +478,16 @@ Alpine.data('adminDashboard', () => ({
                 console.log('✅ Canvas found, initializing chart');
                 this.initializeChart();
             } else {
-                console.error('❌ Canvas not found in refs');
+                console.error('❌ Canvas not found in refs, retrying...');
+                // Retry after a short delay in case of timing issues
+                setTimeout(() => {
+                    if (this.$refs.uploadsChart) {
+                        console.log('✅ Canvas found on retry, initializing chart');
+                        this.initializeChart();
+                    } else {
+                        console.error('❌ Canvas still not found after retry');
+                    }
+                }, 100);
             }
         });
 
@@ -438,6 +496,30 @@ Alpine.data('adminDashboard', () => ({
             console.log('Dashboard data refreshed');
             this.updateChart();
         });
+
+        // Recovery mechanism: check chart existence periodically
+        this.chartHealthCheck = setInterval(() => {
+            this.ensureChartExists();
+        }, 35000); // Check every 35s (after potential polling)
+    },
+
+    checkDependencies() {
+        if (!window.Chart) {
+            console.error('❌ Chart.js not loaded!');
+            return false;
+        }
+
+        if (!window.chartManager) {
+            console.error('❌ Chart manager not loaded!');
+            return false;
+        }
+
+        if (!this.$refs.uploadsChart) {
+            console.error('❌ Canvas not found!');
+            return false;
+        }
+
+        return true;
     },
 
     destroy() {
@@ -445,6 +527,13 @@ Alpine.data('adminDashboard', () => ({
         if (window.chartManager) {
             console.log('🗑️ Cleaning up dashboard chart on destroy');
             window.chartManager.destroyChart(this.chartId);
+            this.chart = null; // Reset Alpine state
+        }
+
+        // Clear health check interval
+        if (this.chartHealthCheck) {
+            clearInterval(this.chartHealthCheck);
+            this.chartHealthCheck = null;
         }
     },
 
@@ -454,18 +543,17 @@ Alpine.data('adminDashboard', () => ({
         console.log('Window Chart:', !!window.Chart);
         console.log('Canvas element:', this.$refs.uploadsChart);
 
-        if (!window.Chart) {
-            console.error('❌ Chart.js not loaded!');
-            return;
-        }
-
-        if (!window.chartManager) {
-            console.error('❌ Chart manager not loaded!');
-            return;
-        }
-
-        if (!this.$refs.uploadsChart) {
-            console.error('❌ Canvas not found!');
+        // Check dependencies with retry mechanism
+        if (!this.checkDependencies()) {
+            console.warn('⚠️ Dependencies not ready, retrying in 500ms...');
+            setTimeout(() => {
+                if (this.checkDependencies()) {
+                    this.initializeChart();
+                } else {
+                    console.error('❌ Dependencies still not ready after retry');
+                    this.chart = null;
+                }
+            }, 500);
             return;
         }
 
@@ -580,11 +668,12 @@ Alpine.data('adminDashboard', () => ({
             };
 
             // Create chart using chart manager
-            const chart = window.chartManager.createChart(this.chartId, canvas, chartConfig);
+            const chartInstance = window.chartManager.createChart(this.chartId, canvas, chartConfig);
+            this.chart = chartInstance; // Update Alpine state
 
-            console.log('✅ Chart created successfully!', chart);
-            console.log('📊 Chart canvas:', chart.canvas);
-            console.log('📊 Chart visible:', chart.canvas.style.display !== 'none');
+            console.log('✅ Chart created successfully!', chartInstance);
+            console.log('📊 Chart canvas:', chartInstance.canvas);
+            console.log('📊 Chart visible:', chartInstance.canvas.style.display !== 'none');
 
             // Force a manual render to make sure chart shows up
             setTimeout(() => {
@@ -601,6 +690,9 @@ Alpine.data('adminDashboard', () => ({
             console.error('Error details:', error.message);
             console.error('Error stack:', error.stack);
 
+            // Reset chart state on error
+            this.chart = null;
+
             // Try a simple fallback chart
             this.createFallbackChart(canvas);
         }
@@ -609,6 +701,7 @@ Alpine.data('adminDashboard', () => ({
     updateChart() {
         const chart = window.chartManager.getChart(this.chartId);
         if (!chart) {
+            this.chart = null; // Ensure Alpine state is consistent
             this.initializeChart();
             return;
         }
@@ -661,10 +754,24 @@ Alpine.data('adminDashboard', () => ({
                 }
             };
 
-            window.chartManager.createChart(this.chartId + '-fallback', canvas, fallbackConfig);
+            const fallbackChart = window.chartManager.createChart(this.chartId + '-fallback', canvas, fallbackConfig);
+            this.chart = fallbackChart; // Update Alpine state with fallback chart
             console.log('✅ Fallback chart created');
         } catch (error) {
             console.error('❌ Even fallback chart failed:', error);
+            this.chart = null; // Ensure chart state is null if everything fails
+        }
+    },
+
+    ensureChartExists() {
+        // Check if chart should exist but doesn't
+        if (this.$refs.uploadsChart && !window.chartManager.hasChart(this.chartId)) {
+            console.log('🔄 Chart missing, attempting recovery...');
+            this.chart = null; // Reset Alpine state
+            this.initializeChart();
+        } else if (this.$refs.uploadsChart && window.chartManager.hasChart(this.chartId)) {
+            // Chart exists, ensure Alpine state is synchronized
+            this.chart = window.chartManager.getChart(this.chartId);
         }
     }
 }));

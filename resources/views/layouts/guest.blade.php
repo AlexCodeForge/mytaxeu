@@ -15,7 +15,7 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
-        @livewireScriptConfig
+        {{-- @livewireScriptConfig --}}
 
         <style>
             .glass {
@@ -91,4 +91,5 @@
             </div>
         </div>
     </body>
+    @livewireScripts
 </html>

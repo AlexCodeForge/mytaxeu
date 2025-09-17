@@ -232,6 +232,11 @@ class UsageMeteringService
 
         $totalFileSize = UploadMetric::sum('file_size_bytes');
 
+        // Get credits data
+        $totalCreditsConsumed = UploadMetric::sum('credits_consumed') ?? 0;
+        $totalCreditsAllocated = \App\Models\CreditTransaction::where('type', 'purchased')->sum('amount') ?? 0;
+        $totalCreditsInCirculation = User::sum('credits') ?? 0;
+
         return [
             'total_uploads' => $totalMetrics,
             'successful_uploads' => $completedMetrics,
@@ -243,6 +248,9 @@ class UsageMeteringService
             'total_file_size_bytes' => $totalFileSize,
             'total_file_size_mb' => round($totalFileSize / 1024 / 1024, 2),
             'active_users_count' => User::whereHas('uploadMetrics')->count(),
+            'total_credits_consumed' => $totalCreditsConsumed,
+            'total_credits_allocated' => $totalCreditsAllocated,
+            'total_credits_in_circulation' => $totalCreditsInCirculation,
         ];
     }
 

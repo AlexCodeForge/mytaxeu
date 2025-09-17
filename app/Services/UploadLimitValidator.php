@@ -92,7 +92,16 @@ class UploadLimitValidator
             ];
         }
 
-        // Default to free tier limit
+        // Check if user has credits - users with credits bypass the free tier limit
+        if ($user->credits > 0) {
+            return [
+                'allowed' => true,
+                'limit' => PHP_INT_MAX, // Effectively unlimited
+                'has_credits' => true,
+            ];
+        }
+
+        // Default to free tier limit (only applies to users with no credits)
         $limit = self::FREE_TIER_LINE_LIMIT;
         if ($lineCount > $limit) {
             return [
@@ -167,7 +176,12 @@ class UploadLimitValidator
             return $subscriptionLimit;
         }
 
-        // Default to free tier limit
+        // Check if user has credits - users with credits bypass the free tier limit
+        if ($user->credits > 0) {
+            return PHP_INT_MAX; // Effectively unlimited
+        }
+
+        // Default to free tier limit (only applies to users with no credits)
         return self::FREE_TIER_LINE_LIMIT;
     }
 
@@ -257,7 +271,19 @@ class UploadLimitValidator
                 ];
             }
 
-            // Default to free tier
+            // Check if user has credits - users with credits bypass the free tier limit
+            if ($user->credits > 0) {
+                return [
+                    'limit' => PHP_INT_MAX,
+                    'is_custom' => false,
+                    'is_subscription' => false,
+                    'has_credits' => true,
+                    'expires_at' => null,
+                    'type' => 'credits',
+                ];
+            }
+
+            // Default to free tier (only applies to users with no credits)
             return [
                 'limit' => self::FREE_TIER_LINE_LIMIT,
                 'is_custom' => false,
