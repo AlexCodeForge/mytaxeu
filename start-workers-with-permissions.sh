@@ -141,7 +141,7 @@ start_worker() {
 }
 
 # Start 1 main worker for emails and default queue (prevent SQLite lock conflicts)
-start_worker "main" "1" "emails,default" "3" "2048" "3600"
+start_worker "main" "1" "emails,default,slow,high-priority" "3" "2048" "3600"
 
 sleep 3
 

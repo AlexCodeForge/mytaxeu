@@ -71,7 +71,7 @@
         🔍 Ver Estado del Procesamiento
     @endcomponent>
 
-    @if(($file['rows'] ?? 0) > 100 && !isset($user->subscription))
+    @if(($file['rows'] ?? 0) > 100 && !$user->subscribed())
         @component('emails.components.alert', ['type' => 'warning', 'title' => '⚠️ Limitación del Plan Gratuito'])
             Tu archivo contiene {{ number_format($file['rows']) }} filas, pero el plan gratuito está limitado a 100 filas.
             Solo se procesarán las primeras 100 filas.

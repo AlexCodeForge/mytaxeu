@@ -89,7 +89,7 @@ class ProcessUploadJob implements ShouldQueue
         // Track initial memory usage
         $initialMemory = memory_get_usage(true);
 
-        $upload = Upload::find($this->uploadId);
+            $upload = Upload::find($this->uploadId);
 
         if (! $upload) {
             Log::error('ProcessUploadJob: Upload not found', ['upload_id' => $this->uploadId]);
@@ -97,6 +97,7 @@ class ProcessUploadJob implements ShouldQueue
         }
 
         // Create UploadMetric record to track processing details
+
         $uploadMetric = UploadMetric::create([
             'user_id' => $upload->user_id,
             'upload_id' => $upload->id,
@@ -153,7 +154,7 @@ class ProcessUploadJob implements ShouldQueue
                 'upload_id' => $upload->id,
                 'user_id' => $upload->user_id,
                 'filename' => $upload->original_name,
-                'job_id' => $this->job->getJobId(),
+                'job_id' => $this->getJobIdSafely(),
             ]);
 
             // Send processing started email notification
@@ -349,7 +350,7 @@ class ProcessUploadJob implements ShouldQueue
                 'upload_id' => $upload->id,
                 'rows_processed' => $upload->rows_count,
                 'credit_consumed' => $creditConsumed,
-                'job_id' => $this->job->getJobId(),
+                'job_id' => $this->getJobIdSafely(),
             ]);
 
         } catch (\Exception $e) {
@@ -357,7 +358,7 @@ class ProcessUploadJob implements ShouldQueue
                 'upload_id' => $upload->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'job_id' => $this->job->getJobId(),
+                'job_id' => $this->getJobIdSafely(),
             ]);
 
             // Mark as failed in both upload and jobs table
@@ -485,7 +486,7 @@ class ProcessUploadJob implements ShouldQueue
             } catch (\Exception $e) {
                 Log::error('Failed to update job status on permanent failure', [
                     'upload_id' => $upload->id,
-                    'job_id' => $this->job->getJobId(),
+                    'job_id' => $this->getJobIdSafely(),
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -494,7 +495,7 @@ class ProcessUploadJob implements ShouldQueue
                 'upload_id' => $upload->id,
                 'error' => $exception->getMessage(),
                 'attempts' => $this->attempts(),
-                'job_id' => $this->job->getJobId(),
+                'job_id' => $this->getJobIdSafely(),
             ]);
         }
     }
@@ -539,10 +540,49 @@ class ProcessUploadJob implements ShouldQueue
     }
 
     /**
+     * Safely get the job ID, returning a fallback value if not available.
+     */
+    private function getJobIdSafely(): string
+    {
+        try {
+            if ($this->job && $this->job->getJobId() && $this->job->getJobId() != 0) {
+                return (string) $this->job->getJobId();
+            }
+        } catch (\Exception $e) {
+            // Ignore any errors getting job ID
+        }
+
+        return 'unknown-job-id';
+    }
+
+    /**
      * Check if we should skip job status tracking (for Redis queues).
+     * Allow tracking in debug mode for troubleshooting, but only if we have a valid job ID.
      */
     private function shouldSkipJobStatusTracking(): bool
     {
+        // Always skip if we don't have a valid job object or ID
+        try {
+            if (!$this->job) {
+                return true;
+            }
+
+            $jobId = $this->job->getJobId();
+
+            // Skip for invalid job IDs (0, null, test IDs, etc.)
+            if (!$jobId || $jobId == 0 || $jobId === 'test-job-id') {
+                return true;
+            }
+        } catch (\Exception $e) {
+            // If we can't get the job ID, skip tracking
+            return true;
+        }
+
+        // Only enable tracking when explicitly enabled via env (not just debug mode)
+        if (config('queue.enable_status_tracking', false)) {
+            return false;
+        }
+
         return config('queue.default') === 'redis';
     }
 
@@ -563,14 +603,14 @@ class ProcessUploadJob implements ShouldQueue
 
             logger()->info('Successfully initialized job metadata', [
                 'upload_id' => $upload->id,
-                'job_id' => $this->job->getJobId(),
+                'job_id' => $this->getJobIdSafely(),
                 'user_id' => $upload->user_id,
                 'queue_driver' => config('queue.default')
             ]);
         } catch (\Exception $e) {
             Log::warning('Failed to initialize job metadata', [
                 'upload_id' => $upload->id,
-                'job_id' => $this->job->getJobId(),
+                'job_id' => $this->getJobIdSafely(),
                 'error' => $e->getMessage(),
             ]);
         }
@@ -582,10 +622,26 @@ class ProcessUploadJob implements ShouldQueue
      */
     private function processCsvTransformationStreaming(Upload $upload, StreamingCsvTransformer $streamingTransformer, JobStatusService $jobStatusService): void
     {
+        $transformationStartTime = microtime(true);
+
         try {
             // Get absolute paths for the transformer
             $inputPath = Storage::disk($upload->disk)->path($upload->path);
             $outputPath = $this->generateOutputPath($upload);
+
+            // Validate input file before processing
+            if (!file_exists($inputPath)) {
+                throw new \Exception("Input file does not exist: $inputPath");
+            }
+
+            if (!is_readable($inputPath)) {
+                throw new \Exception("Input file is not readable: $inputPath");
+            }
+
+            $inputFileSize = filesize($inputPath);
+            if ($inputFileSize === false || $inputFileSize === 0) {
+                throw new \Exception("Input file is empty or unreadable");
+            }
 
             // Ensure output directory exists
             $outputDirectory = dirname($outputPath);
@@ -599,15 +655,39 @@ class ProcessUploadJob implements ShouldQueue
                 'upload_id' => $upload->id,
                 'input_path' => $inputPath,
                 'output_path' => $absoluteOutputPath,
-                'job_id' => $this->job->getJobId(),
+                'input_file_size_mb' => round($inputFileSize / 1024 / 1024, 2),
+                'job_id' => $this->getJobIdSafely(),
+                'memory_before_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
             ]);
+
+            // Log progress for job status tracking
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
+                    level: JobStatusService::LOG_LEVEL_INFO,
+                    message: 'Starting CSV transformation with streaming processor',
+                    metadata: [
+                        'input_file_size_mb' => round($inputFileSize / 1024 / 1024, 2),
+                        'processor' => 'StreamingCsvTransformer'
+                    ]
+                );
+            }
 
             // Perform the streaming CSV transformation
             $streamingTransformer->transform($inputPath, $absoluteOutputPath);
 
+            $transformationEndTime = microtime(true);
+            $transformationDuration = $transformationEndTime - $transformationStartTime;
+
             // Verify output file was created
             if (!Storage::disk($upload->disk)->exists($outputPath)) {
                 throw new \Exception('Streaming transformation completed but output file not found');
+            }
+
+            // Verify output file has content
+            $outputFileSize = Storage::disk($upload->disk)->size($outputPath);
+            if ($outputFileSize === 0) {
+                throw new \Exception('Output file was created but is empty');
             }
 
             // Save the transformed file path to the upload record
@@ -616,16 +696,54 @@ class ProcessUploadJob implements ShouldQueue
             Log::info('ProcessUploadJob: Streaming CSV transformation completed', [
                 'upload_id' => $upload->id,
                 'output_path' => $outputPath,
-                'output_size' => Storage::disk($upload->disk)->size($outputPath),
-                'job_id' => $this->job->getJobId(),
+                'output_size_mb' => round($outputFileSize / 1024 / 1024, 2),
+                'transformation_duration_seconds' => round($transformationDuration, 2),
+                'memory_after_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                'peak_memory_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+                'job_id' => $this->getJobIdSafely(),
             ]);
 
+            // Log completion for job status tracking
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
+                    level: JobStatusService::LOG_LEVEL_INFO,
+                    message: 'CSV transformation completed successfully',
+                    metadata: [
+                        'output_file_size_mb' => round($outputFileSize / 1024 / 1024, 2),
+                        'transformation_duration_seconds' => round($transformationDuration, 2),
+                        'peak_memory_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2)
+                    ]
+                );
+            }
+
         } catch (\Exception $e) {
+            $errorTime = microtime(true);
+            $errorDuration = $errorTime - $transformationStartTime;
+
             Log::error('ProcessUploadJob: Streaming CSV transformation failed', [
                 'upload_id' => $upload->id,
                 'error' => $e->getMessage(),
-                'job_id' => $this->job->getJobId(),
+                'error_type' => get_class($e),
+                'transformation_duration_before_error' => round($errorDuration, 2),
+                'memory_at_error_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                'job_id' => $this->getJobIdSafely(),
+                'trace' => $e->getTraceAsString()
             ]);
+
+            // Log error for job status tracking
+            if (!$this->shouldSkipJobStatusTracking()) {
+                $jobStatusService->logJobActivity(
+                    jobId: (int) $this->job->getJobId(),
+                    level: JobStatusService::LOG_LEVEL_ERROR,
+                    message: 'CSV transformation failed: ' . $e->getMessage(),
+                    metadata: [
+                        'error_type' => get_class($e),
+                        'transformation_duration_before_error' => round($errorDuration, 2),
+                        'memory_at_error_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+                    ]
+                );
+            }
 
             throw $e;
         }

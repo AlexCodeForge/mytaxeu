@@ -80,43 +80,65 @@ class StreamingCsvTransformer
     {
         $startTime = microtime(true);
         $initialMemory = memory_get_usage(true);
+        $maxExecutionTime = 540; // 9 minutes (less than job timeout of 10 minutes)
 
         $this->log("Starting streaming CSV transformation", [
             'input' => $inputPath,
             'output' => $outputPath,
             'size_mb' => round(filesize($inputPath) / 1024 / 1024, 2),
-            'initial_memory_mb' => round($initialMemory / 1024 / 1024, 2)
+            'initial_memory_mb' => round($initialMemory / 1024 / 1024, 2),
+            'max_execution_time' => $maxExecutionTime
         ]);
 
-        // Initialize aggregates
-        $this->initializeAggregates();
-        $this->activityPeriods = [];
-        $this->processedRows = 0;
+        try {
+            // Initialize aggregates
+            $this->initializeAggregates();
+            $this->activityPeriods = [];
+            $this->processedRows = 0;
 
-        // Process CSV in streaming mode
-        $this->processFileStreaming($inputPath);
+            // Process CSV in streaming mode with timeout checking
+            $this->processFileStreaming($inputPath, $startTime, $maxExecutionTime);
 
-        // Apply UK marketplace allocation logic (4.7% to Czech Republic and Poland)
-        $this->applyUkMarketplaceAllocation();
+            // Check timeout before heavy operations
+            $this->checkTimeout($startTime, $maxExecutionTime, 'before UK marketplace allocation');
 
-        // Validate activity periods
-        $this->validateActivityPeriods();
+            // Apply UK marketplace allocation logic (4.7% to Czech Republic and Poland)
+            $this->applyUkMarketplaceAllocation();
 
-        // Generate Excel output
-        $this->generateExcelOutput($outputPath);
+            // Check timeout before validation
+            $this->checkTimeout($startTime, $maxExecutionTime, 'before activity period validation');
 
-        $endTime = microtime(true);
-        $finalMemory = memory_get_usage(true);
-        $peakMemory = memory_get_peak_usage(true);
+            // Validate activity periods
+            $this->validateActivityPeriods();
 
-        $this->log("Streaming CSV transformation completed", [
-            'output' => $outputPath,
-            'rows_processed' => $this->processedRows,
-            'processing_time_seconds' => round($endTime - $startTime, 2),
-            'final_memory_mb' => round($finalMemory / 1024 / 1024, 2),
-            'peak_memory_mb' => round($peakMemory / 1024 / 1024, 2),
-            'memory_efficient' => true
-        ]);
+            // Check timeout before Excel generation
+            $this->checkTimeout($startTime, $maxExecutionTime, 'before Excel generation');
+
+            // Generate Excel output
+            $this->generateExcelOutput($outputPath);
+
+            $endTime = microtime(true);
+            $finalMemory = memory_get_usage(true);
+            $peakMemory = memory_get_peak_usage(true);
+
+            $this->log("Streaming CSV transformation completed", [
+                'output' => $outputPath,
+                'rows_processed' => $this->processedRows,
+                'processing_time_seconds' => round($endTime - $startTime, 2),
+                'final_memory_mb' => round($finalMemory / 1024 / 1024, 2),
+                'peak_memory_mb' => round($peakMemory / 1024 / 1024, 2),
+                'memory_efficient' => true
+            ]);
+        } catch (\Exception $e) {
+            $errorTime = microtime(true);
+            $this->log("Streaming CSV transformation failed", [
+                'error' => $e->getMessage(),
+                'processing_time_seconds' => round($errorTime - $startTime, 2),
+                'rows_processed_before_failure' => $this->processedRows,
+                'memory_at_failure_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+            ]);
+            throw $e;
+        }
     }
 
     private function initializeAggregates(): void
@@ -133,7 +155,7 @@ class StreamingCsvTransformer
         ];
     }
 
-    private function processFileStreaming(string $inputPath): void
+    private function processFileStreaming(string $inputPath, float $startTime, int $maxExecutionTime): void
     {
         $handle = fopen($inputPath, 'r');
         if (!$handle) {
@@ -143,47 +165,74 @@ class StreamingCsvTransformer
         $headers = null;
         $rowCount = 0;
 
-        while (($row = fgetcsv($handle)) !== false) {
-            // First row = headers
-            if ($headers === null) {
-                $headers = $row;
-                continue;
-            }
+        try {
+            while (($row = fgetcsv($handle)) !== false) {
+                // First row = headers
+                if ($headers === null) {
+                    $headers = $row;
+                    continue;
+                }
 
-            $rowCount++;
+                $rowCount++;
 
-            // Create associative array for this row
-            $transaction = array_combine($headers, $row);
+                // Create associative array for this row
+                $transaction = array_combine($headers, $row);
 
-            // Skip RETURN transactions
-            if (($transaction['TRANSACTION_TYPE'] ?? '') === 'RETURN') {
-                continue;
-            }
-
-            // Track activity periods
-            $period = trim($transaction['ACTIVITY_PERIOD'] ?? '');
-            if (!empty($period) && !in_array($period, $this->activityPeriods)) {
-                $this->activityPeriods[] = $period;
-            }
-
-            // Process this transaction (apply business logic)
-            $this->processTransaction($transaction);
-            $this->processedRows++;
-
-            // Memory cleanup every 1000 rows
-            if ($rowCount % 1000 === 0) {
-                gc_collect_cycles();
-
-                if ($rowCount % 10000 === 0) {
-                    $this->log("Streaming progress", [
-                        'rows_processed' => $rowCount,
-                        'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+                // Validate that array_combine worked (same number of headers and values)
+                if ($transaction === false) {
+                    $this->log("Warning: Row $rowCount has mismatched columns", [
+                        'headers_count' => count($headers),
+                        'values_count' => count($row),
+                        'row_data' => array_slice($row, 0, 5) // Log first 5 values for debugging
                     ]);
+                    continue;
+                }
+
+                // Skip RETURN transactions
+                if (($transaction['TRANSACTION_TYPE'] ?? '') === 'RETURN') {
+                    continue;
+                }
+
+                // Track activity periods
+                $period = trim($transaction['ACTIVITY_PERIOD'] ?? '');
+                if (!empty($period) && !in_array($period, $this->activityPeriods)) {
+                    $this->activityPeriods[] = $period;
+                }
+
+                // Process this transaction (apply business logic)
+                $this->processTransaction($transaction);
+                $this->processedRows++;
+
+                // Memory cleanup and progress reporting every 1000 rows
+                if ($rowCount % 1000 === 0) {
+                    gc_collect_cycles();
+
+                    // Enhanced progress reporting every 5000 rows
+                    if ($rowCount % 5000 === 0) {
+                        $currentTime = microtime(true);
+                        $elapsedTime = $currentTime - $startTime;
+                        $this->log("Streaming progress", [
+                            'rows_processed' => $rowCount,
+                            'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                            'peak_memory_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+                            'elapsed_time_seconds' => round($elapsedTime, 2),
+                            'rows_per_second' => round($rowCount / $elapsedTime, 2),
+                            'activity_periods_found' => count($this->activityPeriods)
+                        ]);
+                    }
+
+                    // Check timeout every 1000 rows to avoid performance impact
+                    $this->checkTimeout($startTime, $maxExecutionTime, "processing row $rowCount");
                 }
             }
+        } finally {
+            fclose($handle);
         }
 
-        fclose($handle);
+        $this->log("File streaming completed", [
+            'total_rows_processed' => $this->processedRows,
+            'activity_periods' => $this->activityPeriods
+        ]);
     }
 
     private function processTransaction(array $transaction): void
@@ -907,6 +956,35 @@ class StreamingCsvTransformer
                 // REPLACE No IVA with allocation amount (Power BI logic)
                 $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$country]['No IVA (€)'] = $allocationAmount;
             }
+        }
+    }
+
+    private function checkTimeout(float $startTime, int $maxExecutionTime, string $context = ''): void
+    {
+        $elapsedTime = microtime(true) - $startTime;
+
+        if ($elapsedTime > $maxExecutionTime) {
+            $this->log("Processing timeout exceeded", [
+                'elapsed_time_seconds' => round($elapsedTime, 2),
+                'max_execution_time' => $maxExecutionTime,
+                'context' => $context,
+                'rows_processed' => $this->processedRows,
+                'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+            ]);
+
+            throw new \Exception("Processing timeout exceeded: {$elapsedTime}s > {$maxExecutionTime}s at {$context}");
+        }
+
+        // Warning at 80% of timeout
+        $warningThreshold = $maxExecutionTime * 0.8;
+        if ($elapsedTime > $warningThreshold) {
+            $this->log("Processing timeout warning", [
+                'elapsed_time_seconds' => round($elapsedTime, 2),
+                'warning_threshold' => $warningThreshold,
+                'max_execution_time' => $maxExecutionTime,
+                'context' => $context,
+                'rows_processed' => $this->processedRows
+            ]);
         }
     }
 
