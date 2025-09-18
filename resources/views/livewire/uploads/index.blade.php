@@ -128,16 +128,22 @@
                                         </div>
                                     @endif
 
-                                    @if($upload->isCompleted())
+                                    @if($upload->isCompleted() && $upload->hasTransformedFile())
                                         <button
                                             wire:click="downloadUpload({{ $upload->id }})"
                                             class="text-green-600 hover:text-green-900 text-xs"
                                             wire:loading.attr="disabled"
                                             wire:target="downloadUpload({{ $upload->id }})"
+                                            title="Descargar archivo transformado"
                                         >
                                             <i class="fas fa-download mr-1"></i>
                                             Descargar
                                         </button>
+                                    @elseif($upload->isCompleted() && !$upload->hasTransformedFile())
+                                        <div class="text-orange-600 text-xs">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                            Archivo procesado sin resultado
+                                        </div>
                                     @endif
 
                                     @if(auth()->user()->isAdmin())

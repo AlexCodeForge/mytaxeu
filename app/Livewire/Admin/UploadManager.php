@@ -15,6 +15,7 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class UploadManager extends Component
 {
@@ -207,65 +208,204 @@ class UploadManager extends Component
 
     public function downloadUpload(int $uploadId)
     {
-        $upload = Upload::findOrFail($uploadId);
+        try {
+            Log::info("UploadManager: Starting download for upload ID: {$uploadId}");
 
-        // Check if file is completed and exists
-        if (!$upload->isCompleted()) {
+            $upload = Upload::findOrFail($uploadId);
+            Log::info("UploadManager: Found upload", [
+                'id' => $upload->id,
+                'status' => $upload->status,
+                'original_name' => $upload->original_name,
+                'transformed_path' => $upload->transformed_path,
+                'disk' => $upload->disk,
+            ]);
+
+            // Check if file is completed and exists
+            if (!$upload->isCompleted()) {
+                Log::warning("UploadManager: Upload not completed", [
+                    'upload_id' => $uploadId,
+                    'status' => $upload->status,
+                ]);
+                $this->dispatch('show-notification', [
+                    'message' => 'El archivo debe estar completado para poder descargarlo.',
+                    'type' => 'error',
+                ]);
+                return;
+            }
+
+            Log::info("UploadManager: Upload is completed, checking for transformed file");
+
+            // Check if transformed file exists
+            if (!$upload->hasTransformedFile()) {
+                Log::warning("UploadManager: No transformed file available", [
+                    'upload_id' => $uploadId,
+                    'transformed_path' => $upload->transformed_path,
+                ]);
+                $this->dispatch('show-notification', [
+                    'message' => 'El archivo transformado no se encuentra disponible para descarga.',
+                    'type' => 'error',
+                ]);
+                return;
+            }
+
+            Log::info("UploadManager: Transformed file available, checking disk existence");
+
+            // Additional check to ensure file exists on disk
+            $fileExists = Storage::disk($upload->disk)->exists($upload->transformed_path);
+            Log::info("UploadManager: File existence check", [
+                'transformed_path' => $upload->transformed_path,
+                'disk' => $upload->disk,
+                'exists' => $fileExists,
+            ]);
+
+            if (!$fileExists) {
+                Log::error("UploadManager: Transformed file does not exist on disk", [
+                    'upload_id' => $uploadId,
+                    'transformed_path' => $upload->transformed_path,
+                    'disk' => $upload->disk,
+                ]);
+                $this->dispatch('show-notification', [
+                    'message' => 'El archivo transformado no existe en el disco.',
+                    'type' => 'error',
+                ]);
+                return;
+            }
+
+            // Use the actual transformed filename (which already includes date and _transformado suffix)
+            $transformedFilename = basename($upload->transformed_path);
+            Log::info("UploadManager: Preparing download", [
+                'transformed_filename' => $transformedFilename,
+                'file_path' => $upload->transformed_path,
+            ]);
+
+            // Return download response for transformed file
+            Log::info("UploadManager: Initiating file download");
+            return Storage::disk($upload->disk)->download(
+                $upload->transformed_path,
+                $transformedFilename
+            );
+
+        } catch (\Exception $e) {
+            Log::error("UploadManager: Download failed with exception", [
+                'upload_id' => $uploadId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             $this->dispatch('show-notification', [
-                'message' => 'El archivo debe estar completado para poder descargarlo.',
+                'message' => 'Error al descargar el archivo: ' . $e->getMessage(),
                 'type' => 'error',
             ]);
             return;
         }
-
-        // Check if transformed file exists
-        if (!$upload->hasTransformedFile()) {
-            $this->dispatch('show-notification', [
-                'message' => 'El archivo transformado no se encuentra disponible para descarga.',
-                'type' => 'error',
-            ]);
-            return;
-        }
-
-        // Use the actual transformed filename (which already includes date and _transformado suffix)
-        $transformedFilename = basename($upload->transformed_path);
-
-        // Return download response for transformed file
-        return Storage::disk($upload->disk)->download(
-            $upload->transformed_path,
-            $transformedFilename
-        );
     }
 
     public function downloadOriginalFile(int $uploadId)
     {
-        $upload = Upload::findOrFail($uploadId);
+        try {
+            Log::info("UploadManager: Starting original file download for upload ID: {$uploadId}");
 
-        if (!Storage::disk($upload->disk)->exists($upload->path)) {
+            $upload = Upload::findOrFail($uploadId);
+            Log::info("UploadManager: Found upload for original download", [
+                'id' => $upload->id,
+                'original_name' => $upload->original_name,
+                'path' => $upload->path,
+                'disk' => $upload->disk,
+            ]);
+
+            if (!Storage::disk($upload->disk)->exists($upload->path)) {
+                Log::error("UploadManager: Original file does not exist", [
+                    'upload_id' => $uploadId,
+                    'path' => $upload->path,
+                    'disk' => $upload->disk,
+                ]);
+                $this->dispatch('show-notification', [
+                    'message' => 'Archivo original no encontrado',
+                    'type' => 'error',
+                ]);
+                return;
+            }
+
+            Log::info("UploadManager: Initiating original file download", [
+                'path' => $upload->path,
+                'filename' => $upload->original_name,
+            ]);
+
+            return Storage::disk($upload->disk)->download($upload->path, $upload->original_name);
+
+        } catch (\Exception $e) {
+            Log::error("UploadManager: Original file download failed with exception", [
+                'upload_id' => $uploadId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             $this->dispatch('show-notification', [
-                'message' => 'Archivo original no encontrado',
+                'message' => 'Error al descargar el archivo original: ' . $e->getMessage(),
                 'type' => 'error',
             ]);
             return;
         }
-
-        return Storage::disk($upload->disk)->download($upload->path, $upload->original_name);
     }
 
     public function downloadTransformedFile(int $uploadId)
     {
-        $upload = Upload::findOrFail($uploadId);
+        try {
+            Log::info("UploadManager: Starting transformed file download for upload ID: {$uploadId}");
 
-        if (!$upload->transformed_path || !Storage::disk($upload->disk)->exists($upload->transformed_path)) {
+            $upload = Upload::findOrFail($uploadId);
+            Log::info("UploadManager: Found upload for transformed download", [
+                'id' => $upload->id,
+                'original_name' => $upload->original_name,
+                'transformed_path' => $upload->transformed_path,
+                'disk' => $upload->disk,
+            ]);
+
+            if (!$upload->transformed_path) {
+                Log::error("UploadManager: No transformed path set", [
+                    'upload_id' => $uploadId,
+                ]);
+                $this->dispatch('show-notification', [
+                    'message' => 'Archivo transformado no encontrado - ruta no establecida',
+                    'type' => 'error',
+                ]);
+                return;
+            }
+
+            if (!Storage::disk($upload->disk)->exists($upload->transformed_path)) {
+                Log::error("UploadManager: Transformed file does not exist on disk", [
+                    'upload_id' => $uploadId,
+                    'transformed_path' => $upload->transformed_path,
+                    'disk' => $upload->disk,
+                ]);
+                $this->dispatch('show-notification', [
+                    'message' => 'Archivo transformado no encontrado',
+                    'type' => 'error',
+                ]);
+                return;
+            }
+
+            $filename = 'transformed_' . $upload->original_name;
+            Log::info("UploadManager: Initiating transformed file download", [
+                'transformed_path' => $upload->transformed_path,
+                'filename' => $filename,
+            ]);
+
+            return Storage::disk($upload->disk)->download($upload->transformed_path, $filename);
+
+        } catch (\Exception $e) {
+            Log::error("UploadManager: Transformed file download failed with exception", [
+                'upload_id' => $uploadId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             $this->dispatch('show-notification', [
-                'message' => 'Archivo transformado no encontrado',
+                'message' => 'Error al descargar el archivo transformado: ' . $e->getMessage(),
                 'type' => 'error',
             ]);
             return;
         }
-
-        $filename = 'transformed_' . $upload->original_name;
-        return Storage::disk($upload->disk)->download($upload->transformed_path, $filename);
     }
 
 

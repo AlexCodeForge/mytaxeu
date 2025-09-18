@@ -50,12 +50,12 @@ class StripeConfigProvider extends ServiceProvider
                     Config::set('cashier.webhook.secret', $stripeConfig['webhook_secret']);
                 }
 
-                Log::info('Stripe configuration loaded from database', [
-                    'has_public_key' => !empty($stripeConfig['public_key']),
-                    'has_secret_key' => !empty($stripeConfig['secret_key']),
-                    'has_webhook_secret' => !empty($stripeConfig['webhook_secret']),
-                    'test_mode' => $stripeConfig['test_mode'],
-                ]);
+                // Log::info('Stripe configuration loaded from database', [
+                //     'has_public_key' => !empty($stripeConfig['public_key']),
+                //     'has_secret_key' => !empty($stripeConfig['secret_key']),
+                //     'has_webhook_secret' => !empty($stripeConfig['webhook_secret']),
+                //     'test_mode' => $stripeConfig['test_mode'],
+                // ]);
             }
 
         } catch (\Exception $e) {

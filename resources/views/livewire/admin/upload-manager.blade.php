@@ -185,6 +185,9 @@
                                 <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
                             @endif
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones
+                        </th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -239,10 +242,67 @@
                                 <div>{{ $upload->created_at->format('M j, Y') }}</div>
                                 <div class="text-xs">{{ $upload->created_at->format('H:i') }}</div>
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <div class="flex items-center space-x-2">
+                                    {{-- Details Button --}}
+                                    <button
+                                        wire:click="showUploadDetails({{ $upload->id }})"
+                                        class="text-blue-600 hover:text-blue-900 text-xs"
+                                        title="Ver detalles"
+                                    >
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Detalles
+                                    </button>
+
+                                    {{-- Download Button for Completed Uploads --}}
+                                    @if($upload->isCompleted() && $upload->hasTransformedFile())
+                                        <button
+                                            wire:click="downloadUpload({{ $upload->id }})"
+                                            class="text-green-600 hover:text-green-900 text-xs"
+                                            wire:loading.attr="disabled"
+                                            wire:target="downloadUpload({{ $upload->id }})"
+                                            title="Descargar archivo transformado"
+                                        >
+                                            <i class="fas fa-download mr-1"></i>
+                                            Descargar
+                                        </button>
+                                    @endif
+
+                                    {{-- Original File Download --}}
+                                    @if(\Illuminate\Support\Facades\Storage::disk($upload->disk)->exists($upload->path))
+                                        <button
+                                            wire:click="downloadOriginalFile({{ $upload->id }})"
+                                            class="text-orange-600 hover:text-orange-900 text-xs"
+                                            wire:loading.attr="disabled"
+                                            wire:target="downloadOriginalFile({{ $upload->id }})"
+                                            title="Descargar archivo original"
+                                        >
+                                            <i class="fas fa-file-download mr-1"></i>
+                                            Original
+                                        </button>
+                                    @endif
+
+                                    {{-- Processing Indicator --}}
+                                    @if($upload->isProcessing())
+                                        <div class="flex items-center text-blue-600">
+                                            <div class="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-1"></div>
+                                            <span class="text-xs">Procesando...</span>
+                                        </div>
+                                    @endif
+
+                                    {{-- Failed Status --}}
+                                    @if($upload->isFailed())
+                                        <div class="text-red-600 text-xs">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                            Fallido
+                                        </div>
+                                    @endif
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                                 <div class="text-lg mb-2">No se encontraron cargas</div>
                                 <div class="text-sm">Intenta ajustar tus filtros o criterios de búsqueda</div>
                             </td>

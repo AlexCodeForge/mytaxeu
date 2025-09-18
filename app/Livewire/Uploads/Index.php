@@ -12,6 +12,7 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class Index extends Component
 {
@@ -102,36 +103,120 @@ class Index extends Component
 
     public function downloadUpload(int $uploadId)
     {
-        $upload = Upload::findOrFail($uploadId);
+        try {
+            Log::info("USER DOWNLOAD: Starting download for upload ID: {$uploadId}", [
+                'user_id' => auth()->id(),
+                'user_email' => auth()->user()->email,
+            ]);
+            
+            $upload = Upload::findOrFail($uploadId);
+            Log::info("USER DOWNLOAD: Found upload", [
+                'upload_id' => $upload->id,
+                'upload_user_id' => $upload->user_id,
+                'current_user_id' => auth()->id(),
+                'status' => $upload->status,
+                'original_name' => $upload->original_name,
+                'transformed_path' => $upload->transformed_path,
+                'disk' => $upload->disk,
+            ]);
 
-        $this->authorize('download', $upload);
+            Log::info("USER DOWNLOAD: Attempting authorization check");
+            $this->authorize('download', $upload);
+            Log::info("USER DOWNLOAD: Authorization passed");
 
-        // Check if file is completed and exists
-        if (!$upload->isCompleted()) {
+            // Check if file is completed and exists
+            if (!$upload->isCompleted()) {
+                Log::warning("USER DOWNLOAD: Upload not completed", [
+                    'upload_id' => $uploadId,
+                    'status' => $upload->status,
+                ]);
+                $this->dispatch('flash-message', [
+                    'type' => 'error',
+                    'message' => 'El archivo debe estar completado para poder descargarlo.'
+                ]);
+                return;
+            }
+
+            Log::info("USER DOWNLOAD: Upload is completed, checking for transformed file");
+
+            // Check if transformed file exists
+            if (!$upload->hasTransformedFile()) {
+                Log::warning("USER DOWNLOAD: No transformed file available", [
+                    'upload_id' => $uploadId,
+                    'transformed_path' => $upload->transformed_path,
+                    'hasTransformedFile' => $upload->hasTransformedFile(),
+                ]);
+                $this->dispatch('flash-message', [
+                    'type' => 'error',
+                    'message' => 'El archivo transformado no se encuentra disponible para descarga.'
+                ]);
+                return;
+            }
+
+            Log::info("USER DOWNLOAD: Transformed file available, checking disk existence");
+
+            // Additional check to ensure file exists on disk
+            $fileExists = \Storage::disk($upload->disk)->exists($upload->transformed_path);
+            Log::info("USER DOWNLOAD: File existence check", [
+                'transformed_path' => $upload->transformed_path,
+                'disk' => $upload->disk,
+                'exists' => $fileExists,
+            ]);
+
+            if (!$fileExists) {
+                Log::error("USER DOWNLOAD: Transformed file does not exist on disk", [
+                    'upload_id' => $uploadId,
+                    'transformed_path' => $upload->transformed_path,
+                    'disk' => $upload->disk,
+                ]);
+                $this->dispatch('flash-message', [
+                    'type' => 'error',
+                    'message' => 'El archivo transformado no existe en el disco.'
+                ]);
+                return;
+            }
+
+            // Use the actual transformed filename (which already includes date and _transformado suffix)
+            $transformedFilename = basename($upload->transformed_path);
+            Log::info("USER DOWNLOAD: Preparing download", [
+                'transformed_filename' => $transformedFilename,
+                'file_path' => $upload->transformed_path,
+            ]);
+
+            // Return download response for transformed file
+            Log::info("USER DOWNLOAD: Initiating file download");
+            return \Storage::disk($upload->disk)->download(
+                $upload->transformed_path,
+                $transformedFilename
+            );
+
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            Log::error("USER DOWNLOAD: Authorization failed", [
+                'upload_id' => $uploadId,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+            
             $this->dispatch('flash-message', [
                 'type' => 'error',
-                'message' => 'El archivo debe estar completado para poder descargarlo.'
+                'message' => 'No tienes permisos para descargar este archivo.'
+            ]);
+            return;
+            
+        } catch (\Exception $e) {
+            Log::error("USER DOWNLOAD: Download failed with exception", [
+                'upload_id' => $uploadId,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            $this->dispatch('flash-message', [
+                'type' => 'error',
+                'message' => 'Error al descargar el archivo: ' . $e->getMessage()
             ]);
             return;
         }
-
-        // Check if transformed file exists
-        if (!$upload->hasTransformedFile()) {
-            $this->dispatch('flash-message', [
-                'type' => 'error',
-                'message' => 'El archivo transformado no se encuentra disponible para descarga.'
-            ]);
-            return;
-        }
-
-        // Use the actual transformed filename (which already includes date and _transformado suffix)
-        $transformedFilename = basename($upload->transformed_path);
-
-        // Return download response for transformed file
-        return \Storage::disk($upload->disk)->download(
-            $upload->transformed_path,
-            $transformedFilename
-        );
     }
 
     #[On('upload-created')]
