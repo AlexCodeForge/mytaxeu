@@ -6,7 +6,7 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
-use Illuminate\Support\Facades\Cache;
+use Livewire\WithPagination;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\CreditTransaction;
@@ -19,13 +19,23 @@ use Illuminate\Validation\ValidationException;
 #[Layout('layouts.panel')]
 class FinancialDashboard extends Component
 {
+    use WithPagination;
     public string $timePeriod = 'monthly';
     public ?string $startDate = null;
     public ?string $endDate = null;
     public bool $loading = false;
     public bool $hasError = false;
+    public int $perPage = 10;
 
     protected ?FinancialDataService $financialService = null;
+
+    protected $queryString = [
+        'timePeriod' => ['except' => 'monthly'],
+        'startDate' => ['except' => ''],
+        'endDate' => ['except' => ''],
+        'perPage' => ['except' => 10],
+        'page' => ['except' => 1],
+    ];
 
     public function mount(): void
     {
@@ -88,16 +98,16 @@ class FinancialDashboard extends Component
                     $this->endDate = null;
                 }
 
-                // Clear cache and auto-refresh data
-                $this->clearFinancialCache();
+                // Auto-refresh data - force re-calculation by resetting computed properties
+                $this->resetFinancialData();
                 $this->dispatch('time-period-changed', $this->timePeriod);
                 $this->dispatch('chart-data-updated');
                 $this->dispatch('financial-data-refreshed');
             }
 
             // Auto-refresh when custom date range is complete
-            if (in_array($propertyName, ['startDate', 'endDate']) && $this->timePeriod === 'custom') {
-                if ($this->startDate && $this->endDate) {
+            if (in_array($propertyName, ['startDate', 'endDate'])) {
+                if ($this->timePeriod === 'custom' && $this->startDate && $this->endDate) {
                     try {
                         // Validate the date range
                         $this->validate([
@@ -106,16 +116,61 @@ class FinancialDashboard extends Component
                         ]);
 
                         // Auto-refresh with new date range
-                        $this->clearFinancialCache();
-                        $this->dispatch('financial-data-refreshed');
-                        $this->dispatch('chart-data-updated');
+                        $this->resetFinancialData();
                     } catch (ValidationException $e) {
                         // Validation errors will be displayed automatically
                     }
+                } elseif ($this->timePeriod === 'custom') {
+                    // Still in custom mode but missing one date - no refresh yet
+                } else {
+                    // Not in custom mode, refresh immediately
+                    $this->resetFinancialData();
                 }
             }
         }
+
+        if ($propertyName === 'perPage') {
+            $this->resetPage('subscriptionsPage');
+        }
     }
+
+    /**
+     * Reset financial data to force re-calculation
+     */
+    private function resetFinancialData(): void
+    {
+        // Force Livewire to re-compute computed properties by dispatching events
+        $this->dispatch('financial-data-refreshed');
+        $this->dispatch('chart-data-updated');
+    }
+
+    /**
+     * Manual refresh method for the financial data
+     */
+    public function refreshData(): void
+    {
+        $this->resetFinancialData();
+        $this->dispatch('financial-data-refreshed');
+        $this->dispatch('chart-data-updated');
+    }
+
+
+    /**
+     * Test method to ensure date filtering is working
+     */
+    public function testDateFilter(): array
+    {
+        $dateRange = $this->getDateRange();
+
+        return [
+            'period' => $this->timePeriod,
+            'start_date' => $dateRange['start']->format('Y-m-d'),
+            'end_date' => $dateRange['end']->format('Y-m-d'),
+            'custom_start' => $this->startDate,
+            'custom_end' => $this->endDate,
+        ];
+    }
+
 
 
 
@@ -127,15 +182,7 @@ class FinancialDashboard extends Component
             abort(403, 'Access denied');
         }
 
-        $cacheKey = "financial_dashboard_{$this->timePeriod}";
-
-        if ($this->timePeriod === 'custom' && $this->startDate && $this->endDate) {
-            $cacheKey .= "_{$this->startDate}_{$this->endDate}";
-        }
-
-        return Cache::remember($cacheKey, now()->addMinutes(10), function () {
-            return $this->calculateFinancialData();
-        });
+        return $this->calculateFinancialData();
     }
 
     public function getChartDataProperty(): array
@@ -145,13 +192,9 @@ class FinancialDashboard extends Component
             abort(403, 'Access denied');
         }
 
-        $cacheKey = "financial_chart_data_{$this->timePeriod}";
-
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () {
-            return [
-                'revenue_trend' => $this->getFinancialService()->getRevenueTrendData(6)
-            ];
-        });
+        return [
+            'revenue_trend' => $this->getFinancialService()->getRevenueTrendData(6)
+        ];
     }
 
     public function getSubscriptionBreakdownProperty(): array
@@ -162,6 +205,54 @@ class FinancialDashboard extends Component
         }
 
         return $this->getFinancialService()->getSubscriptionStatusBreakdown();
+    }
+
+    public function getSubscriptionsListProperty()
+    {
+        // Ensure user is still admin
+        if (!Auth::user() || !Auth::user()->isAdmin()) {
+            abort(403, 'Access denied');
+        }
+
+        try {
+            return Subscription::with(['user:id,name,email'])
+                ->orderBy('created_at', 'desc')
+                ->paginate($this->perPage, ['*'], 'subscriptionsPage');
+        } catch (\Exception $e) {
+            Log::error('FinancialDashboard: Failed to load subscriptions list', [
+                'error' => $e->getMessage(),
+            ]);
+            return new \Illuminate\Pagination\LengthAwarePaginator([], 0, $this->perPage);
+        }
+    }
+
+    /**
+     * Get the next billing date for a subscription from Stripe
+     */
+    public function getSubscriptionNextBillingDate(Subscription $subscription): ?Carbon
+    {
+        try {
+            if ($subscription->stripe_status !== 'active') {
+                return null;
+            }
+
+            // Try to get from Stripe API
+            $stripeConfig = \App\Models\AdminSetting::getStripeConfig();
+            \Stripe\Stripe::setApiKey($stripeConfig['secret_key']);
+
+            $stripeSubscription = \Stripe\Subscription::retrieve($subscription->stripe_id);
+
+            if ($stripeSubscription->current_period_end) {
+                return Carbon::createFromTimestamp($stripeSubscription->current_period_end);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch next billing date from Stripe', [
+                'subscription_id' => $subscription->stripe_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 
     private function calculateFinancialData(): array
@@ -275,20 +366,6 @@ class FinancialDashboard extends Component
         }
     }
 
-    private function clearFinancialCache(): void
-    {
-        $this->getFinancialService()->clearCache();
-
-        // Clear component-specific caches
-        $patterns = [
-            'financial_dashboard_*',
-            'financial_chart_data_*',
-        ];
-
-        foreach ($patterns as $pattern) {
-            Cache::forget($pattern);
-        }
-    }
 
 
 
@@ -298,11 +375,13 @@ class FinancialDashboard extends Component
             $financialData = $this->financialData;
             $chartData = $this->chartData;
             $subscriptionBreakdown = $this->subscriptionBreakdown;
+            $subscriptionsList = $this->subscriptionsList;
 
             return view('livewire.admin.financial-dashboard', [
                 'financialData' => $financialData,
                 'chartData' => $chartData,
                 'subscriptionBreakdown' => $subscriptionBreakdown,
+                'subscriptionsList' => $subscriptionsList,
             ]);
 
         } catch (\Exception $e) {
@@ -321,6 +400,7 @@ class FinancialDashboard extends Component
                 ],
                 'chartData' => ['revenue_trend' => ['labels' => [], 'data' => []]],
                 'subscriptionBreakdown' => [],
+                'subscriptionsList' => collect(),
             ]);
         }
     }

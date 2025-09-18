@@ -14,10 +14,10 @@ sleep 2
 # Start workers for different queues
 echo "▶️ Starting queue workers..."
 
-# Start default workers (4 workers for 1-5MB files)
+# Start default workers (4 workers for 1-5MB files) - includes emails queue
 for i in {1..4}; do
-    nohup php /var/www/mytaxeu/artisan queue:work redis --queue=default --sleep=3 --tries=3 --max-time=3600 --memory=2048 > /var/www/mytaxeu/storage/logs/worker-default-$i.log 2>&1 &
-    echo "Started default worker $i"
+    nohup php /var/www/mytaxeu/artisan queue:work redis --queue=emails,default --sleep=3 --tries=3 --max-time=3600 --memory=2048 > /var/www/mytaxeu/storage/logs/worker-default-$i.log 2>&1 &
+    echo "Started default worker $i (emails,default queues)"
 done
 
 # Start high-priority workers (2 workers for <1MB files)

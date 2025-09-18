@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Models\CreditTransaction;
 use App\Notifications\SubscriptionPaymentConfirmation;
 use App\Notifications\SaleNotification;
 use App\Services\CreditService;
@@ -331,6 +332,18 @@ class StripeWebhookController extends WebhookController
             return;
         }
 
+        // Record the actual revenue transaction for financial reporting
+        $revenueAmount = $invoice->amount_paid; // This is in cents
+
+        // Create revenue transaction for financial dashboard
+        CreditTransaction::create([
+            'user_id' => $user->id,
+            'type' => 'purchased',
+            'amount' => $revenueAmount, // Store actual payment amount in cents
+            'description' => "Pago de suscripción: {$invoice->id} (€" . number_format($revenueAmount / 100, 2) . ")",
+            'subscription_id' => $localSubscription->id,
+        ]);
+
         // Allocate monthly credits for recurring payments
         $creditService = app(CreditService::class);
         $creditsToAllocate = $this->getCreditsForInvoice($invoice);
@@ -342,11 +355,13 @@ class StripeWebhookController extends WebhookController
             $localSubscription
         );
 
-        Log::info('Payment succeeded - credits allocated', [
+        Log::info('Payment succeeded - revenue recorded and credits allocated', [
             'user_id' => $user->id,
             'invoice_id' => $invoice->id,
             'subscription_id' => $invoice->subscription,
             'billing_reason' => $invoice->billing_reason,
+            'revenue_amount_cents' => $revenueAmount,
+            'revenue_amount_eur' => $revenueAmount / 100,
             'credits_allocated' => $creditsToAllocate,
             'success' => $success,
         ]);
@@ -448,13 +463,18 @@ class StripeWebhookController extends WebhookController
             }
         }
 
-        // Default: 10 credits per payment
-        Log::info('Using default credits for invoice', [
+        // Default: Calculate credits based on payment amount
+        // For example: 1 EUR = 10 credits, so 500 EUR = 5000 credits
+        $paymentAmount = $invoice->amount_paid / 100; // Convert cents to euros
+        $defaultCredits = (int) ($paymentAmount * 10); // 10 credits per euro
+
+        Log::info('Using default credits calculation based on payment amount', [
             'invoice_id' => $invoice->id,
-            'credits' => 10,
+            'payment_amount_eur' => $paymentAmount,
+            'credits' => $defaultCredits,
         ]);
 
-        return 10;
+        return $defaultCredits;
     }
 
     /**

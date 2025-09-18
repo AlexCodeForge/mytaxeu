@@ -7,72 +7,109 @@ namespace App\Services;
 use App\Models\CreditTransaction;
 use Laravel\Cashier\Subscription;
 use Laravel\Cashier\SubscriptionItem;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class FinancialDataService
 {
-    private const CACHE_TTL_MINUTES = 15;
-    private const MRR_CACHE_KEY = 'financial_mrr';
 
     /**
      * Calculate Monthly Recurring Revenue from active subscriptions.
      *
      * This method calculates MRR by aggregating revenue from all active Stripe subscriptions.
-     * In a real implementation, this would fetch actual pricing from Stripe API.
+     * Gets actual pricing from Stripe API for accurate calculations.
      */
     public function calculateMonthlyRecurringRevenue(): float
     {
-        return Cache::remember(self::MRR_CACHE_KEY, now()->addMinutes(self::CACHE_TTL_MINUTES), function () {
-            try {
-                Log::debug('FinancialDataService: Calculating MRR from active subscriptions');
+        try {
+            Log::debug('FinancialDataService: Calculating MRR from active subscriptions');
 
-                // For now, we'll use a simplified calculation
-                // In production, this would integrate with Stripe's API to get actual pricing
-                $activeSubscriptionsCount = Subscription::where('stripe_status', 'active')->count();
+            $activeSubscriptions = Subscription::where('stripe_status', 'active')->get();
+            $totalMrr = 0.0;
 
-                // Placeholder calculation - in reality would sum actual subscription prices
-                $averageSubscriptionPrice = 10.00; // $10 per subscription as baseline
-                $mrr = $activeSubscriptionsCount * $averageSubscriptionPrice;
+            // Set up Stripe API
+            $stripeConfig = \App\Models\AdminSetting::getStripeConfig();
+            \Stripe\Stripe::setApiKey($stripeConfig['secret_key']);
 
-                Log::info('FinancialDataService: MRR calculated', [
-                    'active_subscriptions' => $activeSubscriptionsCount,
-                    'mrr' => $mrr,
-                ]);
+            foreach ($activeSubscriptions as $subscription) {
+                try {
+                    // Get actual subscription from Stripe
+                    $stripeSubscription = \Stripe\Subscription::retrieve($subscription->stripe_id);
 
-                return (float) $mrr;
+                    // Sum up all subscription items
+                    foreach ($stripeSubscription->items->data as $item) {
+                        $priceAmount = $item->price->unit_amount ?? 0; // in cents
+                        $quantity = $item->quantity ?? 1;
 
-            } catch (\Exception $e) {
-                Log::error('FinancialDataService: Failed to calculate MRR', [
-                    'error' => $e->getMessage(),
-                ]);
-                return 0.0;
+                        // Convert to monthly amount based on interval
+                        $monthlyAmount = $this->convertToMonthlyAmount($priceAmount, $item->price->recurring->interval ?? 'month');
+                        $totalMrr += ($monthlyAmount * $quantity) / 100; // Convert cents to euros
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to retrieve subscription from Stripe for MRR calculation', [
+                        'subscription_id' => $subscription->stripe_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
-        });
+
+            Log::info('FinancialDataService: MRR calculated from real Stripe data', [
+                'active_subscriptions' => $activeSubscriptions->count(),
+                'mrr_eur' => $totalMrr,
+            ]);
+
+            return (float) $totalMrr;
+
+        } catch (\Exception $e) {
+            Log::error('FinancialDataService: Failed to calculate MRR', [
+                'error' => $e->getMessage(),
+            ]);
+            return 0.0;
+        }
     }
 
     /**
-     * Calculate total revenue from all credit transactions.
+     * Convert price amount to monthly equivalent
+     */
+    private function convertToMonthlyAmount(int $amount, string $interval): int
+    {
+        switch ($interval) {
+            case 'day':
+                return $amount * 30; // Approximate monthly
+            case 'week':
+                return $amount * 4; // Approximate monthly
+            case 'month':
+                return $amount;
+            case 'year':
+                return (int) ($amount / 12);
+            default:
+                return $amount;
+        }
+    }
+
+    /**
+     * Calculate total revenue from all subscription payments.
      */
     public function calculateTotalRevenue(): float
     {
         try {
             Log::debug('FinancialDataService: Calculating total revenue');
 
+            // Sum revenue from actual subscription payments (not credit allocations)
             $totalRevenue = CreditTransaction::where('type', 'purchased')
-                ->where('description', 'NOT LIKE', '%TEST%') // Exclude test transactions
+                ->where('description', 'NOT LIKE', '%TEST%')
+                ->where('description', 'LIKE', '%Pago de suscripción%') // Only actual payment transactions
                 ->sum('amount');
 
-            $revenueInDollars = $totalRevenue / 100; // Convert cents to dollars
+            $revenueInEuros = $totalRevenue / 100; // Convert cents to euros
 
             Log::info('FinancialDataService: Total revenue calculated', [
                 'total_revenue_cents' => $totalRevenue,
-                'total_revenue_dollars' => $revenueInDollars,
+                'total_revenue_euros' => $revenueInEuros,
             ]);
 
-            return (float) $revenueInDollars;
+            return (float) $revenueInEuros;
 
         } catch (\Exception $e) {
             Log::error('FinancialDataService: Failed to calculate total revenue', [
@@ -89,39 +126,36 @@ class FinancialDataService
     {
         $this->validateDateRange($startDate, $endDate);
 
-        $cacheKey = $this->getPeriodRevenueCacheKey($startDate, $endDate);
+        try {
+            Log::debug('FinancialDataService: Calculating period revenue', [
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+            ]);
 
-        return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_TTL_MINUTES), function () use ($startDate, $endDate) {
-            try {
-                Log::debug('FinancialDataService: Calculating period revenue', [
-                    'start_date' => $startDate->toDateString(),
-                    'end_date' => $endDate->toDateString(),
-                ]);
+            $totalRevenue = CreditTransaction::where('type', 'purchased')
+                ->where('description', 'NOT LIKE', '%TEST%')
+                ->where('description', 'LIKE', '%Pago de suscripción%') // Only actual payment transactions
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->sum('amount');
 
-                $totalRevenue = CreditTransaction::where('type', 'purchased')
-                    ->where('description', 'NOT LIKE', '%TEST%')
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->sum('amount');
+            $revenueInEuros = $totalRevenue / 100;
 
-                $revenueInDollars = $totalRevenue / 100;
+            Log::info('FinancialDataService: Period revenue calculated', [
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'revenue' => $revenueInEuros,
+            ]);
 
-                Log::info('FinancialDataService: Period revenue calculated', [
-                    'start_date' => $startDate->toDateString(),
-                    'end_date' => $endDate->toDateString(),
-                    'revenue' => $revenueInDollars,
-                ]);
+            return (float) $revenueInEuros;
 
-                return (float) $revenueInDollars;
-
-            } catch (\Exception $e) {
-                Log::error('FinancialDataService: Failed to calculate period revenue', [
-                    'error' => $e->getMessage(),
-                    'start_date' => $startDate->toDateString(),
-                    'end_date' => $endDate->toDateString(),
-                ]);
-                return 0.0;
-            }
-        });
+        } catch (\Exception $e) {
+            Log::error('FinancialDataService: Failed to calculate period revenue', [
+                'error' => $e->getMessage(),
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+            ]);
+            return 0.0;
+        }
     }
 
     /**
@@ -193,6 +227,7 @@ class FinancialDataService
 
             $userCount = CreditTransaction::where('type', 'purchased')
                 ->where('description', 'NOT LIKE', '%TEST%')
+                ->where('description', 'LIKE', '%Pago de suscripción%') // Only actual payment transactions
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->distinct('user_id')
                 ->count('user_id');
@@ -224,40 +259,36 @@ class FinancialDataService
      */
     public function getSubscriptionStatusBreakdown(): array
     {
-        $cacheKey = 'financial_subscription_breakdown';
+        try {
+            $breakdown = Subscription::select('stripe_status', DB::raw('count(*) as count'))
+                ->groupBy('stripe_status')
+                ->pluck('count', 'stripe_status')
+                ->toArray();
 
-        return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_TTL_MINUTES), function () {
-            try {
-                $breakdown = Subscription::select('stripe_status', DB::raw('count(*) as count'))
-                    ->groupBy('stripe_status')
-                    ->pluck('count', 'stripe_status')
-                    ->toArray();
+            // Ensure all expected statuses are present
+            $statuses = ['active', 'canceled', 'past_due', 'incomplete', 'trialing'];
+            $result = [];
 
-                // Ensure all expected statuses are present
-                $statuses = ['active', 'canceled', 'past_due', 'incomplete', 'trialing'];
-                $result = [];
-
-                foreach ($statuses as $status) {
-                    $result[$status] = $breakdown[$status] ?? 0;
-                }
-
-                Log::debug('FinancialDataService: Subscription breakdown calculated', $result);
-
-                return $result;
-
-            } catch (\Exception $e) {
-                Log::error('FinancialDataService: Failed to get subscription breakdown', [
-                    'error' => $e->getMessage(),
-                ]);
-                return [
-                    'active' => 0,
-                    'canceled' => 0,
-                    'past_due' => 0,
-                    'incomplete' => 0,
-                    'trialing' => 0,
-                ];
+            foreach ($statuses as $status) {
+                $result[$status] = $breakdown[$status] ?? 0;
             }
-        });
+
+            Log::debug('FinancialDataService: Subscription breakdown calculated', $result);
+
+            return $result;
+
+        } catch (\Exception $e) {
+            Log::error('FinancialDataService: Failed to get subscription breakdown', [
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'active' => 0,
+                'canceled' => 0,
+                'past_due' => 0,
+                'incomplete' => 0,
+                'trialing' => 0,
+            ];
+        }
     }
 
     /**
@@ -265,46 +296,42 @@ class FinancialDataService
      */
     public function getRevenueTrendData(int $months = 6): array
     {
-        $cacheKey = "financial_trend_data_{$months}";
+        try {
+            $labels = [];
+            $data = [];
 
-        return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_TTL_MINUTES), function () use ($months) {
-            try {
-                $labels = [];
-                $data = [];
+            for ($i = $months - 1; $i >= 0; $i--) {
+                $date = now()->subMonths($i);
+                $startOfMonth = $date->copy()->startOfMonth();
+                $endOfMonth = $date->copy()->endOfMonth();
 
-                for ($i = $months - 1; $i >= 0; $i--) {
-                    $date = now()->subMonths($i);
-                    $startOfMonth = $date->copy()->startOfMonth();
-                    $endOfMonth = $date->copy()->endOfMonth();
+                $monthRevenue = $this->calculatePeriodRevenue($startOfMonth, $endOfMonth);
 
-                    $monthRevenue = $this->calculatePeriodRevenue($startOfMonth, $endOfMonth);
-
-                    $labels[] = $date->format('M Y');
-                    $data[] = $monthRevenue;
-                }
-
-                $result = [
-                    'labels' => $labels,
-                    'data' => $data,
-                ];
-
-                Log::debug('FinancialDataService: Trend data generated', [
-                    'months' => $months,
-                    'data_points' => count($data),
-                ]);
-
-                return $result;
-
-            } catch (\Exception $e) {
-                Log::error('FinancialDataService: Failed to generate trend data', [
-                    'error' => $e->getMessage(),
-                ]);
-                return [
-                    'labels' => [],
-                    'data' => [],
-                ];
+                $labels[] = $date->format('M Y');
+                $data[] = $monthRevenue;
             }
-        });
+
+            $result = [
+                'labels' => $labels,
+                'data' => $data,
+            ];
+
+            Log::debug('FinancialDataService: Trend data generated', [
+                'months' => $months,
+                'data_points' => count($data),
+            ]);
+
+            return $result;
+
+        } catch (\Exception $e) {
+            Log::error('FinancialDataService: Failed to generate trend data', [
+                'error' => $e->getMessage(),
+            ]);
+            return [
+                'labels' => [],
+                'data' => [],
+            ];
+        }
     }
 
     /**
@@ -381,38 +408,6 @@ class FinancialDataService
         }
     }
 
-    /**
-     * Clear all financial data caches.
-     */
-    public function clearCache(): void
-    {
-        try {
-            $patterns = [
-                self::MRR_CACHE_KEY,
-                'financial_revenue_*',
-                'financial_subscription_breakdown',
-                'financial_trend_data_*',
-            ];
-
-            foreach ($patterns as $pattern) {
-                if (str_contains($pattern, '*')) {
-                    // For patterns with wildcards, we'd need a more sophisticated cache clearing mechanism
-                    // For now, just log the intent
-                    Log::debug('FinancialDataService: Would clear cache pattern', ['pattern' => $pattern]);
-                } else {
-                    Cache::forget($pattern);
-                    Log::debug('FinancialDataService: Cleared cache', ['key' => $pattern]);
-                }
-            }
-
-            Log::info('FinancialDataService: Financial data cache cleared');
-
-        } catch (\Exception $e) {
-            Log::error('FinancialDataService: Failed to clear cache', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
 
     /**
      * Validate date range parameters.
@@ -428,32 +423,6 @@ class FinancialDataService
         }
     }
 
-    /**
-     * Generate cache key for period revenue.
-     */
-    private function getPeriodRevenueCacheKey(Carbon $startDate, Carbon $endDate): string
-    {
-        $period = $this->determinePeriodType($startDate, $endDate);
-        return "financial_revenue_{$period}_{$startDate->format('Y-m-d')}_{$endDate->format('Y-m-d')}";
-    }
-
-    /**
-     * Determine the type of period for caching optimization.
-     */
-    private function determinePeriodType(Carbon $startDate, Carbon $endDate): string
-    {
-        $days = $startDate->diffInDays($endDate);
-
-        if ($days <= 31) {
-            return 'monthly';
-        } elseif ($days <= 93) {
-            return 'quarterly';
-        } elseif ($days <= 366) {
-            return 'yearly';
-        } else {
-            return 'custom';
-        }
-    }
 
     /**
      * Validate and sanitize date inputs to prevent injection attacks.

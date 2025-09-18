@@ -10,16 +10,25 @@
       </p>
     </div>
     <div class="mt-4 flex md:ml-4 md:mt-0">
-      <div class="flex items-center text-sm text-gray-500">
-        <svg wire:loading class="animate-spin mr-2 h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span wire:loading>Cargando datos...</span>
-        <span wire:loading.remove class="flex items-center">
-          <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-          Datos actualizados automáticamente
-        </span>
+      <div class="flex items-center space-x-4">
+        <button @click="refreshData()"
+                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Actualizar
+        </button>
+        <div class="flex items-center text-sm text-gray-500">
+          <svg wire:loading class="animate-spin mr-2 h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span wire:loading wire:target="timePeriod,startDate,endDate,refreshData">Cargando datos...</span>
+          <span wire:loading.remove wire:target="timePeriod,startDate,endDate,refreshData" class="flex items-center">
+            <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+            Datos en tiempo real
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -30,7 +39,7 @@
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div>
         <label class="block text-sm font-medium text-gray-700">Tipo de Período</label>
-        <select wire:model.live="timePeriod" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+        <select x-model="timePeriod" @change="onTimePeriodChange()" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
           <option value="monthly">Mensual</option>
           <option value="quarterly">Trimestral</option>
           <option value="yearly">Anual</option>
@@ -38,32 +47,36 @@
         </select>
       </div>
 
-      @if($timePeriod === 'custom')
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Fecha Inicio</label>
-          <input wire:model="startDate" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-          @error('startDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-        </div>
+      <div x-show="timePeriod === 'custom'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+        <label class="block text-sm font-medium text-gray-700">Fecha Inicio</label>
+        <input x-model="startDate" @change="onDateChange()" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+        <span x-show="dateError" x-text="dateError" class="text-red-600 text-sm"></span>
+      </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Fecha Fin</label>
-          <input wire:model="endDate" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-          @error('endDate') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-        </div>
-      @endif
+      <div x-show="timePeriod === 'custom'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+        <label class="block text-sm font-medium text-gray-700">Fecha Fin</label>
+        <input x-model="endDate" @change="onDateChange()" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+        <span x-show="dateError" x-text="dateError" class="text-red-600 text-sm"></span>
+      </div>
 
       <div class="sm:col-span-2 lg:col-span-1 flex items-end">
         <div class="text-sm text-gray-500">
-          @if($timePeriod === 'monthly')
-            <span>Este mes</span>
-          @elseif($timePeriod === 'quarterly')
-            <span>Este trimestre</span>
-          @elseif($timePeriod === 'yearly')
-            <span>Este año</span>
-          @else
-            <span>Rango seleccionado</span>
-          @endif
+          <span x-show="timePeriod === 'monthly'">Este mes</span>
+          <span x-show="timePeriod === 'quarterly'">Este trimestre</span>
+          <span x-show="timePeriod === 'yearly'">Este año</span>
+          <span x-show="timePeriod === 'custom'">Rango seleccionado</span>
         </div>
+      </div>
+
+      <!-- Debug Info (remove in production) -->
+      <div class="sm:col-span-4 text-xs text-gray-400 p-2 bg-gray-50 rounded">
+        <span>Período: </span><span x-text="timePeriod"></span> |
+        <span x-show="timePeriod === 'custom'">
+          Inicio: <span x-text="startDate || 'no seleccionado'"></span> |
+          Fin: <span x-text="endDate || 'no seleccionado'"></span>
+        </span>
+        <span x-show="timePeriod !== 'custom'">Auto-calculado</span>
+        | <span>Última actualización: </span><span x-text="lastUpdate"></span>
       </div>
     </div>
   </div>
@@ -106,7 +119,7 @@
       <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
         <dt class="truncate text-sm font-medium text-gray-500">Ingresos Recurrentes Mensuales</dt>
         <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-          ${{ number_format($financialData['mrr'] ?? 0, 2) }}
+          €{{ number_format($financialData['mrr'] ?? 0, 2) }}
         </dd>
         @if(isset($financialData['revenue_growth']) && $financialData['revenue_growth'] != 0)
           <div class="mt-2 flex items-center text-sm">
@@ -130,7 +143,7 @@
       <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
         <dt class="truncate text-sm font-medium text-gray-500">Ingresos Totales</dt>
         <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-          ${{ number_format($financialData['total_revenue'] ?? 0, 2) }}
+          €{{ number_format($financialData['total_revenue'] ?? 0, 2) }}
         </dd>
         <div class="mt-2 text-sm text-gray-500">Todos los tiempos</div>
       </div>
@@ -139,7 +152,7 @@
       <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
         <dt class="truncate text-sm font-medium text-gray-500">Ingresos del Período</dt>
         <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-          ${{ number_format($financialData['period_revenue'] ?? 0, 2) }}
+          €{{ number_format($financialData['period_revenue'] ?? 0, 2) }}
         </dd>
         <div class="mt-2 text-sm text-gray-500">
           @if($timePeriod === 'monthly')
@@ -167,7 +180,7 @@
       <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
         <dt class="truncate text-sm font-medium text-gray-500">Ingreso Promedio por Usuario</dt>
         <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-          ${{ number_format($financialData['arpu'] ?? 0, 2) }}
+          €{{ number_format($financialData['arpu'] ?? 0, 2) }}
         </dd>
         <div class="mt-2 text-sm text-gray-500">ARPU mensual</div>
       </div>
@@ -287,6 +300,124 @@
     </div>
   </div>
 
+  <!-- Subscriptions Table -->
+  @if(!$loading && !$hasError)
+    <div class="rounded-lg bg-white shadow overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-medium leading-6 text-gray-900">Suscripciones Recientes</h3>
+          <div class="text-sm text-gray-500">
+            Últimas {{ $subscriptionsList->count() }} suscripciones
+          </div>
+        </div>
+      </div>
+
+      @if($subscriptionsList && $subscriptionsList->count() > 0)
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stripe ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Inicio</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finaliza</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              @foreach($subscriptionsList as $subscription)
+                <tr class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0 h-8 w-8">
+                        <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-medium">
+                          {{ strtoupper(substr($subscription->user->name ?? 'U', 0, 1)) }}
+                        </div>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-900">
+                          {{ $subscription->user->name ?? 'Usuario Desconocido' }}
+                        </div>
+                        <div class="text-sm text-gray-500">
+                          {{ $subscription->user->email ?? 'Email no disponible' }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                      @if($subscription->stripe_status === 'active') bg-green-100 text-green-800
+                      @elseif($subscription->stripe_status === 'canceled') bg-red-100 text-red-800
+                      @elseif($subscription->stripe_status === 'past_due') bg-yellow-100 text-yellow-800
+                      @elseif($subscription->stripe_status === 'incomplete') bg-orange-100 text-orange-800
+                      @elseif($subscription->stripe_status === 'trialing') bg-blue-100 text-blue-800
+                      @else bg-gray-100 text-gray-800
+                      @endif">
+                      @if($subscription->stripe_status === 'active') Activa
+                      @elseif($subscription->stripe_status === 'canceled') Cancelada
+                      @elseif($subscription->stripe_status === 'past_due') Vencida
+                      @elseif($subscription->stripe_status === 'incomplete') Incompleta
+                      @elseif($subscription->stripe_status === 'trialing') En Prueba
+                      @else {{ ucfirst($subscription->stripe_status) }}
+                      @endif
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                    {{ Str::limit($subscription->stripe_id, 20) }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ $subscription->created_at ? $subscription->created_at->format('d/m/Y H:i') : 'N/A' }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    @if($subscription->stripe_status === 'active')
+                      @php
+                        $nextBilling = $this->getSubscriptionNextBillingDate($subscription);
+                      @endphp
+                      @if($nextBilling)
+                        {{ $nextBilling->format('d/m/Y H:i') }}
+                      @else
+                        <span class="text-gray-500">Renovación automática</span>
+                      @endif
+                    @elseif($subscription->ends_at)
+                      {{ $subscription->ends_at->format('d/m/Y H:i') }}
+                    @else
+                      <span class="text-gray-500">Sin fecha</span>
+                    @endif
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div class="flex items-center justify-end space-x-2">
+                      <a href="https://dashboard.stripe.com/subscriptions/{{ $subscription->stripe_id }}"
+                         target="_blank"
+                         class="text-indigo-600 hover:text-indigo-900 text-xs">
+                        Ver en Stripe
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        @if($subscriptionsList->hasPages())
+        <div class="px-6 py-4 border-t border-gray-200">
+          {{ $subscriptionsList->links('custom.pagination') }}
+        </div>
+        @endif
+      @else
+        <div class="px-6 py-12 text-center">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          <h4 class="mt-2 text-sm font-medium text-gray-900">No hay suscripciones</h4>
+          <p class="mt-1 text-sm text-gray-500">Aún no se han creado suscripciones en el sistema.</p>
+        </div>
+      @endif
+    </div>
+  @endif
+
 </div>
 
 <!-- Alpine.js for enhanced interactivity -->
@@ -297,6 +428,17 @@
     revenueChartId: 'financial-revenue-chart',
     subscriptionChartId: 'financial-subscription-chart',
     chartType: 'line',
+
+    // Filtering state
+    timePeriod: @js($timePeriod ?? 'monthly'),
+    startDate: @js($startDate ?? ''),
+    endDate: @js($endDate ?? ''),
+    dateError: '',
+    lastUpdate: new Date().toLocaleTimeString(),
+
+
+    // Debounce timers
+    filterDebounce: null,
 
     init() {
       // Initialize charts if canvas exists
@@ -312,6 +454,7 @@
       // Listen for financial data updates
       this.$wire.on('financial-data-refreshed', () => {
         console.log('Financial data refreshed');
+        this.updateLastUpdate();
         this.updateChart();
         this.updateSubscriptionChart();
       });
@@ -326,6 +469,7 @@
         this.updateChart();
         this.updateSubscriptionChart();
       });
+
 
       this.$wire.on('show-toast', (event) => {
         this.showToast(event.type || 'info', event.message);
@@ -401,7 +545,7 @@
               displayColors: false,
               callbacks: {
                 label: function(context) {
-                  return `Ingresos: $${context.parsed.y.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+                  return `Ingresos: €${context.parsed.y.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
                 }
               }
             }
@@ -431,7 +575,7 @@
                   size: 11
                 },
                 callback: function(value) {
-                  return '$' + value.toLocaleString('es-ES');
+                  return '€' + value.toLocaleString('es-ES');
                 }
               }
             }
@@ -727,7 +871,83 @@
         toast.classList.add('translate-x-full');
         setTimeout(() => toast.remove(), 300);
       }, 5000);
-    }
+    },
+
+    // === FILTERING METHODS ===
+    onTimePeriodChange() {
+      console.log('Time period changed to:', this.timePeriod);
+
+      // Reset custom dates when switching away from custom
+      if (this.timePeriod !== 'custom') {
+        this.startDate = '';
+        this.endDate = '';
+      }
+
+      // Clear any existing error
+      this.dateError = '';
+
+      // Update server with debounce
+      this.updateFiltersWithDebounce();
+    },
+
+    onDateChange() {
+      console.log('Date changed:', this.startDate, this.endDate);
+
+      // Validate dates if both are provided
+      if (this.timePeriod === 'custom' && this.startDate && this.endDate) {
+        if (this.startDate > this.endDate) {
+          this.dateError = 'La fecha de fin debe ser posterior a la fecha de inicio';
+          return;
+        }
+      }
+
+      // Clear error if validation passes
+      this.dateError = '';
+
+      // Update server only if both dates are provided (for custom) or if not custom
+      if (this.timePeriod !== 'custom' || (this.startDate && this.endDate)) {
+        this.updateFiltersWithDebounce();
+      }
+    },
+
+    updateFiltersWithDebounce() {
+      // Clear existing debounce timer
+      if (this.filterDebounce) {
+        clearTimeout(this.filterDebounce);
+      }
+
+      // Set new timer for 300ms debounce
+      this.filterDebounce = setTimeout(() => {
+        this.updateLastUpdate();
+
+        // Update Livewire component
+        this.$wire.set('timePeriod', this.timePeriod);
+        if (this.timePeriod === 'custom') {
+          this.$wire.set('startDate', this.startDate);
+          this.$wire.set('endDate', this.endDate);
+        }
+
+        console.log('Filters updated on server');
+      }, 300);
+    },
+
+
+    updateLastUpdate() {
+      this.lastUpdate = new Date().toLocaleTimeString();
+    },
+
+    // === REFRESH METHODS ===
+    refreshData() {
+      console.log('Manual refresh triggered');
+      this.updateLastUpdate();
+
+      // Trigger Livewire refresh
+      this.$wire.call('refreshData');
+
+      // Show feedback
+      this.showToast('info', 'Actualizando datos...');
+    },
+
   }));
 </script>
 @endscript
