@@ -38,7 +38,7 @@
                 </td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'highlight', 'title' => '💳 Detalles de la Venta'])
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -71,7 +71,7 @@
                 </tr>
             @endif
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.metrics', ['metrics' => [
         'Ventas Hoy' => $revenue['today_sales'] ?? 1,
@@ -79,12 +79,12 @@
         'Ventas del Mes' => $revenue['month_sales'] ?? 1,
         'Ingresos del Mes' => '€' . number_format($revenue['month_revenue'] ?? $sale['amount'] ?? 0, 0)
     ]])
-    @endcomponent>
+    @endcomponent
 
     @if(isset($sale['is_first_purchase']) && $sale['is_first_purchase'])
         @component('emails.components.alert', ['type' => 'success', 'title' => '🎯 ¡Nuevo Cliente!'])
             Esta es la primera compra de este cliente. ¡Bienvenido a la familia MyTaxEU!
-        @endcomponent>
+        @endcomponent
     @endif
 
     @if(isset($sale['discount_applied']) && $sale['discount_applied'])
@@ -93,7 +93,7 @@
             @if(isset($sale['coupon_code']))
                 con el cupón <strong>{{ $sale['coupon_code'] }}</strong>.
             @endif
-        @endcomponent>
+        @endcomponent
     @endif
 
     @component('emails.components.card', ['type' => 'default', 'title' => '📊 Resumen del Rendimiento'])
@@ -126,7 +126,7 @@
                 </div>
             @endif
         </div>
-    @endcomponent>
+    @endcomponent
 
     <div style="text-align: center; margin: 32px 0;">
         <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #111827;">
@@ -138,12 +138,12 @@
                 <td style="padding: 8px 16px;">
                     @component('emails.components.button', ['url' => config('app.url') . '/admin/users/' . ($customer['id'] ?? ''), 'type' => 'primary'])
                         👤 Ver Perfil del Cliente
-                    @endcomponent>
+                    @endcomponent
                 </td>
                 <td style="padding: 8px 16px;">
                     @component('emails.components.button', ['url' => config('app.url') . '/admin/sales', 'type' => 'secondary'])
                         📊 Dashboard de Ventas
-                    @endcomponent>
+                    @endcomponent
                 </td>
             </tr>
         </table>
@@ -152,7 +152,7 @@
     @if(isset($revenue['milestone_reached']) && $revenue['milestone_reached'])
         @component('emails.components.alert', ['type' => 'success', 'title' => '🏆 ¡Hito Alcanzado!'])
             {{ $revenue['milestone_message'] ?? '¡Has alcanzado un nuevo hito de ventas!' }}
-        @endcomponent>
+        @endcomponent
     @endif
 
     <div style="margin: 32px 0 16px 0;">

@@ -18,7 +18,7 @@
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500; width: 35%;">Nombre del archivo:</td>
-                <td style="padding: 8px 0; font-weight: 600; word-break: break-word;">{{ $file['name'] ?? 'archivo.csv' }}</td>
+                <td style="padding: 8px 0; font-weight: 600;" class="allow-break">{{ $file['name'] ?? 'archivo.csv' }}</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500;">Tamaño:</td>
@@ -47,7 +47,7 @@
         @component('emails.components.alert', ['type' => 'info', 'title' => '⏱️ Tiempo Estimado de Procesamiento'])
             Tu archivo será procesado en aproximadamente <strong>{{ $processing['estimated_time'] }}</strong>.
             Te enviaremos un email cuando el procesamiento haya terminado.
-        @endcomponent>
+        @endcomponent
     @endif
 
     @component('emails.components.metrics', ['metrics' => [
@@ -65,11 +65,11 @@
             <li style="margin-bottom: 8px;"><strong>Generación:</strong> Creamos los informes para modelos 349 y 369</li>
             <li><strong>Descarga:</strong> Te enviamos el link para descargar los resultados</li>
         </ol>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.button', ['url' => config('app.url') . '/uploads/' . ($upload['id'] ?? ''), 'type' => 'primary'])
         🔍 Ver Estado del Procesamiento
-    @endcomponent>
+    @endcomponent
 
     @if(($file['rows'] ?? 0) > 100 && !$user->subscribed())
         @component('emails.components.alert', ['type' => 'warning', 'title' => '⚠️ Limitación del Plan Gratuito'])
@@ -81,7 +81,7 @@
                     ⬆️ Actualizar a Plan de Pago
                 </a>
             </div>
-        @endcomponent>
+        @endcomponent
     @endif
 
     <div style="margin: 32px 0 16px 0;">
@@ -117,7 +117,7 @@
                     <li style="margin-bottom: 6px;">{{ $tip }}</li>
                 @endforeach
             </ul>
-        @endcomponent>
+        @endcomponent
     @endif
 
     <p class="email-text">

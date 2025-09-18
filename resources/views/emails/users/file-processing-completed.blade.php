@@ -18,7 +18,7 @@
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500; width: 35%;">Archivo procesado:</td>
-                <td style="padding: 8px 0; font-weight: 600; word-break: break-word;">{{ $upload->original_name ?? 'archivo.csv' }}</td>
+                <td style="padding: 8px 0; font-weight: 600;" class="allow-break">{{ $upload->original_name ?? 'archivo.csv' }}</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500;">Filas procesadas:</td>
@@ -43,7 +43,7 @@
                 </td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.metrics', ['metrics' => [
         'Tiempo Ahorrado' => round(($uploadMetric->line_count ?? 0) * 0.1) . ' minutos',
@@ -56,19 +56,19 @@
         @component('emails.components.alert', ['type' => 'success', 'title' => '📥 Archivo Listo para Descarga'])
             Tu archivo transformado está disponible para descarga inmediata.
             Incluye los datos procesados y organizados según los requisitos fiscales españoles.
-        @endcomponent>
+        @endcomponent
 
         @component('emails.components.button', ['url' => route('download.upload', ['upload' => $upload->id]), 'type' => 'accent', 'fullWidth' => true])
             📥 Descargar Archivo Procesado
-        @endcomponent>
+        @endcomponent
     @else
         @component('emails.components.alert', ['type' => 'info', 'title' => 'ℹ️ Archivo Procesado'])
             El procesamiento ha sido completado. Puedes revisar los resultados desde tu dashboard.
-        @endcomponent>
+        @endcomponent
 
         @component('emails.components.button', ['url' => route('dashboard'), 'type' => 'primary', 'fullWidth' => true])
             📂 Ver en Dashboard
-        @endcomponent>
+        @endcomponent
     @endif
 
     @component('emails.components.card', ['type' => 'highlight', 'title' => '📊 Lo que se ha Procesado'])
@@ -94,7 +94,7 @@
                 <span>Verificación de integridad y consistencia</span>
             </div>
         </div>
-    @endcomponent>
+    @endcomponent
 
     @if(($uploadMetric->line_count ?? 0) > 1000)
         @component('emails.components.card', ['type' => 'success', 'title' => '🚀 Impacto del Procesamiento'])
@@ -105,7 +105,7 @@
                 <strong>Tiempo que te hemos ahorrado:</strong> Aproximadamente {{ round(($uploadMetric->line_count ?? 0) * 0.2) }} minutos
                 de trabajo manual de clasificación y validación.
             </p>
-        @endcomponent>
+        @endcomponent
     @endif
 
     <div style="margin: 32px 0 16px 0;">
@@ -159,12 +159,12 @@
                 <td style="padding: 8px 16px;">
                     @component('emails.components.button', ['url' => config('app.url') . '/uploads/new', 'type' => 'secondary'])
                         📁 Subir Otro Archivo
-                    @endcomponent>
+                    @endcomponent
                 </td>
                 <td style="padding: 8px 16px;">
                     @component('emails.components.button', ['url' => config('app.url') . '/uploads', 'type' => 'secondary'])
                         🗂️ Ver Historial
-                    @endcomponent>
+                    @endcomponent
                 </td>
             </tr>
         </table>
@@ -176,7 +176,7 @@
             <div style="margin-top: 8px; font-family: monospace; font-size: 14px; color: #92400e;">
                 {{ $uploadMetric->error_message }}
             </div>
-        @endcomponent>
+        @endcomponent
     @endif
 
     <p class="email-text">

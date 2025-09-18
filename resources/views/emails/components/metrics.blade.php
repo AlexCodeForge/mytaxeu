@@ -18,7 +18,7 @@
 @endphp
 
 <div class="email-metrics" style="{{ $containerStyle }}">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 24px 0;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 24px 0; table-layout: fixed;">
         <tr>
             @foreach($metrics as $label => $value)
                 <td style="width: {{ $columnWidth }}%; text-align: center; vertical-align: top; padding: 8px;">

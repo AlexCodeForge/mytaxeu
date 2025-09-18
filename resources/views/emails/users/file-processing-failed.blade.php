@@ -18,7 +18,7 @@
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500; width: 35%;">Archivo afectado:</td>
-                <td style="padding: 8px 0; font-weight: 600; word-break: break-word;">{{ $upload->original_name ?? 'archivo.csv' }}</td>
+                <td style="padding: 8px 0; font-weight: 600;" class="allow-break">{{ $upload->original_name ?? 'archivo.csv' }}</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500;">Error encontrado:</td>
@@ -47,12 +47,12 @@
                 </td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.alert', ['type' => 'warning', 'title' => '💡 No te preocupes'])
         Los errores de procesamiento son raros y generalmente tienen soluciones rápidas.
         La mayoría se resuelven ajustando el formato del archivo o corrigiendo datos específicos.
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'default', 'title' => '🛠️ Soluciones Recomendadas'])
         <div style="margin: 0;">
@@ -86,7 +86,7 @@
                 </ul>
             </div>
         </div>
-    @endcomponent>
+    @endcomponent
 
     @if(str_contains(strtolower($errorMessage), 'activity_period'))
         @component('emails.components.alert', ['type' => 'info', 'title' => '📅 Error Específico: ACTIVITY_PERIOD'])
@@ -97,7 +97,7 @@
                 <li>No tienes más de 3 períodos diferentes</li>
                 <li>No hay celdas vacías en esta columna</li>
             </ul>
-        @endcomponent>
+        @endcomponent
     @elseif(str_contains(strtolower($errorMessage), 'vat') || str_contains(strtolower($errorMessage), 'iva'))
         @component('emails.components.alert', ['type' => 'info', 'title' => '🏛️ Error Específico: Números de IVA'])
             El error está relacionado con la validación de números de IVA:
@@ -107,17 +107,17 @@
                 <li>No uses espacios ni caracteres especiales</li>
                 <li>Puedes dejar algunos campos vacíos si no aplican</li>
             </ul>
-        @endcomponent>
+        @endcomponent
     @endif
 
     <div style="text-align: center; margin: 32px 0;">
         @component('emails.components.button', ['url' => config('app.url') . '/uploads/new', 'type' => 'accent'])
             🔄 Intentar de Nuevo con Archivo Corregido
-        @endcomponent>
+        @endcomponent
 
         @component('emails.components.button', ['url' => config('app.url') . '/dashboard', 'type' => 'secondary'])
             📂 Ver Dashboard
-        @endcomponent>
+        @endcomponent
     </div>
 
     @component('emails.components.card', ['type' => 'highlight', 'title' => '🎯 ¿Necesitas Ayuda Personalizada?'])
@@ -151,7 +151,7 @@
                 </td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.metrics', ['metrics' => [
         'Tiempo de Respuesta' => '< 2 horas',
@@ -191,7 +191,7 @@
         @component('emails.components.alert', ['type' => 'success', 'title' => '💳 Créditos Protegidos'])
             No te preocupes por los créditos. Como el procesamiento falló, los <strong>{{ $uploadMetric->credits_consumed }} créditos</strong>
             que se iban a consumir han sido devueltos automáticamente a tu cuenta.
-        @endcomponent>
+        @endcomponent
     @endif
 
     <p class="email-text">

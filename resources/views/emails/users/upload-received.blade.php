@@ -22,7 +22,7 @@
             </tr>
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500;">Créditos estimados:</td>
-                <td style="padding: 8px 0; font-weight: 600;">{{ $upload->credits_required ?? 'Calculando...' }}</td>
+                <td style="padding: 8px 0; font-weight: 600;">{{ $upload->credits_required ?? 'Calculando' }}</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500;">ID de referencia:</td>

@@ -18,7 +18,7 @@
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500; width: 35%;">Archivo:</td>
-                <td style="padding: 8px 0; font-weight: 600; word-break: break-word;">{{ $file['name'] ?? 'archivo.csv' }}</td>
+                <td style="padding: 8px 0; font-weight: 600;" class="allow-break">{{ $file['name'] ?? 'archivo.csv' }}</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500;">Inicio del procesamiento:</td>
@@ -45,7 +45,7 @@
                 </td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'success', 'title' => '⚙️ Procesos Activos'])
         <div style="margin: 0;">
@@ -55,7 +55,7 @@
             </div>
             <div style="display: flex; align-items: center; margin-bottom: 12px;">
                 <span style="color: #fbbf24; font-weight: bold; margin-right: 8px;">●</span>
-                <span style="color: #92400e;">Transformación de datos en progreso...</span>
+                <span style="color: #92400e;">Transformación de datos en progreso</span>
             </div>
             <div style="display: flex; align-items: center; margin-bottom: 12px;">
                 <span style="color: #6b7280; font-weight: bold; margin-right: 8px;">○</span>
@@ -70,7 +70,7 @@
                 <span style="color: #6b7280;">Preparación para descarga pendiente</span>
             </div>
         </div>
-    @endcomponent>
+    @endcomponent
 
     @if(isset($processing['estimated_duration']) && $processing['estimated_duration'])
         @component('emails.components.metrics', ['metrics' => [
@@ -89,11 +89,11 @@
             <li>📋 Generando informes para modelos 349 y 369</li>
             <li>⚡ Optimizando los datos para máxima precisión</li>
         </ul>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.button', ['url' => config('app.url') . '/uploads/' . ($upload['id'] ?? ''), 'type' => 'primary'])
         📊 Ver Progreso en Tiempo Real
-    @endcomponent>
+    @endcomponent
 
     <div style="margin: 32px 0 16px 0;">
         <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #111827;">
@@ -118,7 +118,7 @@
                     <li style="margin-bottom: 6px;">{{ $tip }}</li>
                 @endforeach
             </ul>
-        @endcomponent>
+        @endcomponent
     @endif
 
     @if(($file['rows'] ?? 0) > 1000)
@@ -129,7 +129,7 @@
                 <strong>{{ round(($file['rows'] / 100) * 2) }} horas</strong>.
                 Con MyTaxEU, estará listo en minutos.
             </p>
-        @endcomponent>
+        @endcomponent
     @endif
 
     <div style="margin: 32px 0 16px 0; text-align: center;">

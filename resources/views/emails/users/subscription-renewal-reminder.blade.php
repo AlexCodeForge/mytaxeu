@@ -96,14 +96,14 @@
 
         @component('emails.components.button', ['url' => config('app.url') . '/subscription', 'type' => 'secondary'])
             ⚙️ Gestionar Suscripción
-        @endcomponent>
+        @endcomponent
     </div>
 
     @if($daysUntilRenewal <= 3)
         @component('emails.components.alert', ['type' => 'warning', 'title' => '⏰ Última Oportunidad'])
             Si deseas cambiar tu plan o cancelar tu suscripción, hazlo antes de la fecha de renovación.
             Los cambios realizados después de la renovación se aplicarán en el siguiente ciclo de facturación.
-        @endcomponent>
+        @endcomponent
     @endif
 
     <div style="margin: 32px 0 16px 0;">

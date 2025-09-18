@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminSetting;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Log;
 use Stripe\Checkout\Session;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Stripe;
 
 class ThankYouController extends Controller
 {
@@ -22,6 +24,19 @@ class ThankYouController extends Controller
 
         if ($sessionId) {
             try {
+                // Configure Stripe API key
+                $stripeConfig = AdminSetting::getStripeConfig();
+                if (empty($stripeConfig['secret_key'])) {
+                    Log::error('Stripe secret key not configured for thank you page');
+                    throw new \RuntimeException('Stripe secret key not configured');
+                }
+
+                Stripe::setApiKey($stripeConfig['secret_key']);
+
+                Log::info('🎉 Retrieving checkout session for thank you page', [
+                    'session_id' => $sessionId,
+                ]);
+
                 // Retrieve the checkout session from Stripe
                 $session = Session::retrieve($sessionId);
 

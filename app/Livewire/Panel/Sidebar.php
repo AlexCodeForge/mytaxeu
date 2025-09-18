@@ -36,6 +36,7 @@ class Sidebar extends Component
             ['label' => 'Usuarios', 'icon' => 'fa-users', 'route' => 'admin.users.enhanced'],
             ['label' => 'Gestión de Uploads', 'icon' => 'fa-file-upload', 'route' => 'admin.uploads'],
             ['label' => 'Planes de Suscripción', 'icon' => 'fa-credit-card', 'route' => 'admin.subscriptions.plans'],
+            ['label' => 'Códigos de Descuento', 'icon' => 'fa-tags', 'route' => 'admin.subscriptions.discount-codes'],
             // ['label' => 'Análisis de Uso', 'icon' => 'fa-chart-bar', 'route' => 'admin.usage.analytics'],
             ['label' => 'Monitoreo de Trabajos', 'icon' => 'fa-tasks', 'route' => 'admin.job.monitor'],
             // ['label' => 'Análisis de Créditos', 'icon' => 'fa-coins', 'route' => 'admin.credit.analytics'],
@@ -53,6 +54,14 @@ class Sidebar extends Component
 
         // Handle email settings sub-routes
         if ($route === 'admin.email-settings.index' && str_starts_with($this->currentRoute, 'admin.email-settings.')) {
+            return true;
+        }
+
+        // Handle subscription sub-routes
+        if ($route === 'admin.subscriptions.plans' && str_starts_with($this->currentRoute, 'admin.subscriptions.')) {
+            return true;
+        }
+        if ($route === 'admin.subscriptions.discount-codes' && str_starts_with($this->currentRoute, 'admin.subscriptions.')) {
             return true;
         }
 

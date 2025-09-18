@@ -34,7 +34,7 @@
 </p>
 
 <div class="email-card">
-    <p style="margin: 0; font-family: monospace; font-size: 14px; word-break: break-all; color: #1e40af;">
+    <p style="margin: 0; font-family: monospace; font-size: 14px; color: #1e40af;" class="allow-break">
         {{ $resetUrl }}
     </p>
 </div>

@@ -30,7 +30,7 @@
             <strong>Atención requerida</strong><br>
             La tasa de éxito ({{ number_format($successRate, 1) }}%) está por debajo del objetivo (95%).
         @endif
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'default', 'title' => '📊 Estadísticas de Procesamiento'])
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -51,7 +51,7 @@
                 <td style="padding: 8px 0; font-weight: 600;">{{ number_format($jobData['jobs']['queued_jobs'] ?? 0) }}</td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'highlight', 'title' => '📈 Rendimiento'])
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -72,7 +72,7 @@
                 <td style="padding: 8px 0; font-weight: 600;">{{ number_format($jobData['performance']['total_credits_consumed'] ?? 0) }}</td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @if(($jobData['jobs']['failed_jobs'] ?? 0) > 0)
         @component('emails.components.card', ['type' => 'error', 'title' => '❌ Trabajos Fallidos'])
@@ -91,7 +91,7 @@
                     </ul>
                 </div>
             @endif
-        @endcomponent>
+        @endcomponent
     @endif
 
     @if(isset($jobData['hourly_breakdown']) && count($jobData['hourly_breakdown']) > 0)
@@ -122,7 +122,7 @@
                     @endif
                 @endforeach
             </div>
-        @endcomponent>
+        @endcomponent
     @endif
 
     @if(isset($jobData['top_users']) && count($jobData['top_users']) > 0)
@@ -143,7 +143,7 @@
                     </div>
                 @endforeach
             </div>
-        @endcomponent>
+        @endcomponent
     @endif
 
     @component('emails.components.card', ['type' => 'default', 'title' => '🔧 Estado de la Infraestructura'])
@@ -167,16 +167,16 @@
                 <td style="padding: 8px 0; font-weight: 600;">{{ number_format($jobData['jobs']['queued_jobs'] ?? 0) }}</td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     <div style="text-align: center; margin: 32px 0;">
         @component('emails.components.button', ['url' => config('app.url') . '/admin/jobs', 'type' => 'primary'])
             🔍 Ver Detalles de Trabajos
-        @endcomponent>
+        @endcomponent
 
         @component('emails.components.button', ['url' => config('app.url') . '/admin/monitoring', 'type' => 'secondary'])
             📊 Panel de Monitoreo
-        @endcomponent>
+        @endcomponent
     </div>
 
     @php
@@ -218,7 +218,7 @@
     @foreach($alerts as $alert)
         @component('emails.components.alert', ['type' => $alert['type'], 'title' => $alert['title']])
             {{ $alert['message'] }}
-        @endcomponent>
+        @endcomponent
     @endforeach
 
     <div style="margin: 32px 0 16px 0;">

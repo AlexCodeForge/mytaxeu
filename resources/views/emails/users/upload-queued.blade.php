@@ -26,7 +26,7 @@
             </tr>
             <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 500;">Posición en cola:</td>
-                <td style="padding: 8px 0; font-weight: 600; color: #fbbf24;">#{{ $queuePosition ?? 'Calculando...' }}</td>
+                <td style="padding: 8px 0; font-weight: 600; color: #fbbf24;">#{{ $queuePosition ?? 'Calculando' }}</td>
             </tr>
         </table>
     @endcomponent

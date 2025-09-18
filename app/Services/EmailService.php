@@ -274,6 +274,11 @@ class EmailService
         array $data,
         array $options
     ): EmailMailable {
+        // Ensure email variable is always available in the template
+        if (!isset($data['email']) || empty($data['email'])) {
+            $data['email'] = is_array($to) ? $to[0] : $to;
+        }
+
         return new EmailMailable($to, $subject, $view, $data, $options);
     }
 

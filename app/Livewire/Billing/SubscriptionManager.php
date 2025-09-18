@@ -393,14 +393,22 @@ class SubscriptionManager extends Component
                     $this->appliedDiscount['discount_amount'] = $discountAmount;
                     $this->appliedDiscount['final_amount'] = max(0, $originalAmount - $discountAmount);
 
+                    Log::info('🎟️ Applying discount code to checkout session', [
+                        'user_entered_code' => $this->discountCode,
+                        'stripe_coupon_id' => $discountCodeModel->stripe_coupon_id,
+                        'discount_amount' => $discountAmount,
+                        'plan_id' => $planId,
+                    ]);
+
                     $stripeDiscountService = app(StripeDiscountService::class);
                     $sessionData = $stripeDiscountService->applyCouponToCheckoutSession(
                         $sessionData,
-                        $this->discountCode
+                        $discountCodeModel->stripe_coupon_id // Use the actual Stripe coupon ID, not user input
                     );
 
                     // Add discount code to metadata
                     $sessionData['metadata']['discount_code'] = $this->discountCode;
+                    $sessionData['metadata']['stripe_coupon_id'] = $discountCodeModel->stripe_coupon_id;
                 }
             }
 
@@ -570,6 +578,85 @@ class SubscriptionManager extends Component
                 return;
             }
 
+            // Additional validation: Check if the coupon exists in Stripe
+            Log::info('🔍 Validating discount code in Stripe', [
+                'user_entered_code' => $this->discountCode,
+                'local_code' => $discountCode->code,
+                'stripe_coupon_id' => $discountCode->stripe_coupon_id,
+            ]);
+
+            try {
+                $stripeDiscountService = app(StripeDiscountService::class);
+
+                // First, get coupon info regardless of validity to sync usage counts
+                $stripeCouponInfo = $stripeDiscountService->getCouponInfo($discountCode->stripe_coupon_id);
+
+                if (!$stripeCouponInfo) {
+                    Log::warning('⚠️ Discount code exists locally but not in Stripe', [
+                        'local_code' => $discountCode->code,
+                        'stripe_coupon_id' => $discountCode->stripe_coupon_id,
+                    ]);
+                    session()->flash('discount_error', 'Este código de descuento no está disponible en este momento. Contacta al soporte.');
+                    return;
+                }
+
+                // Check for usage count mismatch and sync if needed
+                $localUsedCount = (int) $discountCode->used_count;
+                $stripeTimesRedeemed = (int) ($stripeCouponInfo['times_redeemed'] ?? 0);
+
+                if ($localUsedCount !== $stripeTimesRedeemed) {
+                    Log::info('🔄 Syncing discount code usage count', [
+                        'code' => $discountCode->code,
+                        'local_count' => $localUsedCount,
+                        'stripe_count' => $stripeTimesRedeemed,
+                    ]);
+
+                    // Update local count to match Stripe
+                    $discountCode->used_count = $stripeTimesRedeemed;
+                    $discountCode->save();
+
+                    Log::info('✅ Usage count synchronized', [
+                        'code' => $discountCode->code,
+                        'updated_count' => $stripeTimesRedeemed,
+                    ]);
+                }
+
+                // Check if the coupon is still valid after sync
+                if (!($stripeCouponInfo['valid'] ?? false)) {
+                    Log::warning('⚠️ Discount code is no longer valid in Stripe', [
+                        'code' => $discountCode->code,
+                        'stripe_valid' => false,
+                        'times_redeemed' => $stripeTimesRedeemed,
+                        'max_redemptions' => $stripeCouponInfo['max_redemptions'] ?? null,
+                    ]);
+
+                    // Determine specific reason for invalidity
+                    $errorMessage = 'Este código de descuento ya no está disponible.';
+                    if (isset($stripeCouponInfo['max_redemptions']) && $stripeTimesRedeemed >= $stripeCouponInfo['max_redemptions']) {
+                        $errorMessage = 'Este código de descuento ya ha alcanzado su límite de usos.';
+                    }
+
+                    session()->flash('discount_error', $errorMessage);
+                    return;
+                }
+
+                Log::info('✅ Discount code validated in both local and Stripe', [
+                    'code' => $discountCode->code,
+                    'stripe_valid' => $stripeCouponInfo['valid'] ?? false,
+                    'stripe_times_redeemed' => $stripeTimesRedeemed,
+                    'local_used_count' => $discountCode->used_count,
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('❌ Error validating discount code in Stripe', [
+                    'code' => $discountCode->code,
+                    'stripe_coupon_id' => $discountCode->stripe_coupon_id,
+                    'error' => $e->getMessage(),
+                ]);
+                session()->flash('discount_error', 'Error al validar el código de descuento. Inténtalo de nuevo.');
+                return;
+            }
+
             // Store the validated discount code for later use
             $this->appliedDiscount = [
                 'code' => $discountCode->code,
@@ -579,6 +666,7 @@ class SubscriptionManager extends Component
                 'discount_code_id' => $discountCode->id,
                 'is_global' => $discountCode->is_global,
                 'valid' => true,
+                'stripe_coupon_id' => $discountCode->stripe_coupon_id,
             ];
 
             session()->flash('discount_success', "¡Código válido! Se aplicará automáticamente cuando selecciones un plan compatible.");

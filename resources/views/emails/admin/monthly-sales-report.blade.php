@@ -48,7 +48,7 @@
                     </td>
                 </tr>
             </table>
-        @endcomponent>
+        @endcomponent
     @endif
 
     @component('emails.components.card', ['type' => 'highlight', 'title' => '💰 Resumen Financiero'])
@@ -75,7 +75,7 @@
                 </td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'success', 'title' => '👥 Análisis de Clientes'])
         <div style="margin-bottom: 16px;">
@@ -106,7 +106,7 @@
                 <span style="color: #92400e; font-weight: 600;">⚠️ Oportunidad de mejora en conversión</span>
             </div>
         @endif
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'default', 'title' => '📋 Distribución de Planes'])
         @if(isset($reportData['plans']) && count($reportData['plans']) > 0)
@@ -134,7 +134,7 @@
         @else
             <p style="margin: 0; color: #6b7280; font-style: italic;">No hay datos de distribución de planes disponibles.</p>
         @endif
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'default', 'title' => '⚙️ Operaciones y Rendimiento'])
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -163,7 +163,7 @@
                 <td style="padding: 8px 0; font-weight: 600;">{{ number_format($reportData['performance']['total_credits_consumed'] ?? 0) }}</td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @php
         $successRate = $reportData['jobs']['success_rate'] ?? 100;
@@ -209,16 +209,16 @@
                 </div>
             </div>
         </div>
-    @endcomponent>
+    @endcomponent
 
     <div style="text-align: center; margin: 32px 0;">
         @component('emails.components.button', ['url' => config('app.url') . '/admin/reports/monthly', 'type' => 'accent'])
             📊 Ver Análisis Detallado
-        @endcomponent>
+        @endcomponent
 
         @component('emails.components.button', ['url' => config('app.url') . '/admin/dashboard', 'type' => 'primary'])
             🎛️ Dashboard Ejecutivo
-        @endcomponent>
+        @endcomponent
     </div>
 
     @component('emails.components.card', ['type' => 'default', 'title' => '📋 Plan de Acción para el Próximo Mes'])
@@ -253,7 +253,7 @@
                 <li style="margin-bottom: 8px; font-weight: 500;">{{ $action }}</li>
             @endforeach
         </ul>
-    @endcomponent>
+    @endcomponent
 
     <p class="email-text-small">
         <strong>Nota:</strong> Este reporte ejecutivo mensual se genera automáticamente el primer día de cada mes.

@@ -130,8 +130,13 @@ class FinancialDashboard extends Component
         }
 
         if ($propertyName === 'perPage') {
-            $this->resetPage('subscriptionsPage');
+            $this->resetPage();
         }
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
     }
 
     /**
@@ -217,7 +222,7 @@ class FinancialDashboard extends Component
         try {
             return Subscription::with(['user:id,name,email'])
                 ->orderBy('created_at', 'desc')
-                ->paginate($this->perPage, ['*'], 'subscriptionsPage');
+                ->paginate($this->perPage);
         } catch (\Exception $e) {
             Log::error('FinancialDashboard: Failed to load subscriptions list', [
                 'error' => $e->getMessage(),

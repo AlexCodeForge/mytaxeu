@@ -62,7 +62,7 @@
             margin: 0 auto !important;
             background-color: #ffffff !important;
             border-radius: 8px !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07) !important;
         }
 
@@ -248,6 +248,8 @@
             color: #9ca3af !important;
             font-size: 14px !important;
             text-align: center !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
         }
 
         .email-footer a {
@@ -300,6 +302,17 @@
                 display: block !important;
                 margin: 16px 0 !important;
             }
+        }
+
+        /* Selective word breaking for long strings only */
+        .allow-break {
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+        }
+
+        /* Fixed table layout for metrics */
+        .email-metrics table {
+            table-layout: fixed !important;
         }
 
         /* Dark mode support */

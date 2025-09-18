@@ -51,7 +51,7 @@
                 <td style="padding: 8px 0; font-weight: 600;">{{ $jobDetails['failed_at'] ?? now()->format('d/m/Y H:i:s') }}</td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'warning', 'title' => '⚠️ Detalles del Error'])
         <div style="margin-bottom: 16px;">
@@ -71,8 +71,8 @@
         @if(isset($errorDetails['stack_trace']) && $errorDetails['stack_trace'])
             <div style="margin-bottom: 16px;">
                 <strong style="color: #92400e;">Stack trace (primeras líneas):</strong>
-                <div style="background-color: #fffbeb; border: 1px solid #f3e8ff; border-radius: 4px; padding: 12px; margin-top: 8px; font-family: monospace; font-size: 12px; color: #78350f; max-height: 150px; overflow: auto;">
-                    {{ Str::limit($errorDetails['stack_trace'], 500, '...') }}
+                <div style="background-color: #fffbeb; border: 1px solid #f3e8ff; border-radius: 4px; padding: 12px; margin-top: 8px; font-family: monospace; font-size: 12px; color: #78350f; max-height: 150px; overflow: auto;" class="allow-break">
+                    {{ Str::limit($errorDetails['stack_trace'], 500, '') }}
                 </div>
             </div>
         @endif
@@ -83,7 +83,7 @@
                 <span style="color: #ef4444; font-weight: 600;">{{ $jobDetails['retry_count'] }}/{{ $jobDetails['max_retries'] ?? 3 }}</span>
             </div>
         @endif
-    @endcomponent>
+    @endcomponent
 
     @component('emails.components.card', ['type' => 'default', 'title' => '📊 Contexto del Sistema'])
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -110,7 +110,7 @@
                 <td style="padding: 8px 0; font-weight: 600;">{{ $systemContext['system_load'] ?? 'N/A' }}</td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @if(isset($jobDetails['input_data']) && $jobDetails['input_data'])
         @component('emails.components.card', ['type' => 'default', 'title' => '📄 Información del Archivo'])
@@ -134,7 +134,7 @@
                     </tr>
                 @endif
             </table>
-        @endcomponent>
+        @endcomponent
     @endif
 
     @php
@@ -158,7 +158,7 @@
         @else
             🟢 <strong>Monitoreo continuo</strong> - Incidente aislado
         @endif
-    @endcomponent>
+    @endcomponent
 
     <div style="text-align: center; margin: 32px 0;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
@@ -166,17 +166,17 @@
                 <td style="padding: 0 8px;">
                     @component('emails.components.button', ['url' => config('app.url') . '/admin/jobs/' . ($jobDetails['job_id'] ?? ''), 'type' => 'primary'])
                         🔍 Ver Detalles del Trabajo
-                    @endcomponent>
+                    @endcomponent
                 </td>
                 <td style="padding: 0 8px;">
                     @component('emails.components.button', ['url' => config('app.url') . '/admin/users/' . ($jobDetails['user_id'] ?? ''), 'type' => 'secondary'])
                         👤 Ver Usuario
-                    @endcomponent>
+                    @endcomponent
                 </td>
                 <td style="padding: 0 8px;">
                     @component('emails.components.button', ['url' => config('app.url') . '/admin/logs', 'type' => 'accent'])
                         📋 Ver Logs del Sistema
-                    @endcomponent>
+                    @endcomponent
                 </td>
             </tr>
         </table>
@@ -196,7 +196,7 @@
             <li style="margin-bottom: 8px;">Documentar la causa raíz una vez identificada</li>
             <li style="margin-bottom: 8px;">Implementar medidas preventivas si es aplicable</li>
         </ol>
-    @endcomponent>
+    @endcomponent
 
     @if(isset($errorDetails['similar_errors']) && count($errorDetails['similar_errors']) > 0)
         @component('emails.components.card', ['type' => 'warning', 'title' => '🔄 Errores Similares Recientes'])
@@ -215,7 +215,7 @@
                     </li>
                 @endif
             </ul>
-        @endcomponent>
+        @endcomponent
     @endif
 
     <p class="email-text-small">

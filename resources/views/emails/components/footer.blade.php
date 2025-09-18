@@ -13,14 +13,18 @@
         <a href="{{ config('app.url') }}/support" style="margin: 0 8px;">Soporte</a>
     </p>
 
-    <p style="margin: 0 0 16px 0; font-size: 12px;">
-        Si no deseas recibir estos emails, puedes
-        <a href="{{ config('app.url') }}/unsubscribe?token={{ $unsubscribeToken ?? '' }}">darte de baja aquí</a>.
-    </p>
+    @if(isset($unsubscribeToken) && $unsubscribeToken)
+        <p style="margin: 0 0 16px 0; font-size: 12px;">
+            Si no deseas recibir estos emails, puedes
+            <a href="{{ config('app.url') }}/unsubscribe?token={{ $unsubscribeToken }}">darte de baja aquí</a>.
+        </p>
+    @endif
 
-    <p style="margin: 0; font-size: 12px; color: #6b7280;">
-        © {{ date('Y') }} MyTaxEU. Todos los derechos reservados.<br>
-        Este email fue enviado a {{ $email ?? 'tu email' }}.
+    <p style="margin: 0; font-size: 12px; color: #6b7280; word-wrap: break-word; overflow-wrap: break-word;">
+        © {{ date('Y') }} MyTaxEU. Todos los derechos reservados.
+        @if(isset($email) && $email && $email !== 'tu email')
+            <br>Este email fue enviado a {{ $email }}.
+        @endif
     </p>
 </div>
 

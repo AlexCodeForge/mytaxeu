@@ -26,6 +26,7 @@ class EnhancedUserManagement extends Component
     public string $sortDirection = 'desc';
     public string $dateFrom = '';
     public string $dateTo = '';
+    public int $perPage = 20;
 
     public bool $showUserModal = false;
     public ?int $selectedUserId = null;
@@ -52,6 +53,7 @@ class EnhancedUserManagement extends Component
         'activityFilter' => ['except' => 'all'],
         'sortBy' => ['except' => 'created_at'],
         'sortDirection' => ['except' => 'desc'],
+        'perPage' => ['except' => 20],
         'page' => ['except' => 1],
     ];
 
@@ -64,7 +66,7 @@ class EnhancedUserManagement extends Component
 
     public function render()
     {
-        $users = $this->getUsersQuery()->paginate(20);
+        $users = $this->getUsersQuery()->paginate($this->perPage);
 
         return view('livewire.admin.enhanced-user-management', [
             'users' => $users,
@@ -87,6 +89,11 @@ class EnhancedUserManagement extends Component
     }
 
     public function updatedDateTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
     {
         $this->resetPage();
     }

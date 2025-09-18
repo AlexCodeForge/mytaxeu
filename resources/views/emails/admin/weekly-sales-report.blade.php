@@ -34,7 +34,7 @@
                 <td style="padding: 6px 0; font-weight: 600; text-align: right;">{{ number_format($reportData['jobs']['success_rate'] ?? 0, 1) }}%</td>
             </tr>
         </table>
-    @endcomponent>
+    @endcomponent
 
     @if(isset($reportData['growth']['revenue_growth_rate']))
         @php
@@ -43,20 +43,20 @@
         @endphp
         @component('emails.components.alert', ['type' => $isPositive ? 'success' : 'warning', 'title' => '📈 Crecimiento'])
             <strong>{{ $isPositive ? '↗️' : '↘️' }} {{ number_format(abs($growthRate), 1) }}%</strong> {{ $isPositive ? 'crecimiento' : 'descenso' }} vs semana anterior
-        @endcomponent>
+        @endcomponent
     @endif
 
     @if(($reportData['jobs']['failed_jobs'] ?? 0) > 0)
         @component('emails.components.alert', ['type' => 'warning', 'title' => '⚠️ Atención'])
             {{ $reportData['jobs']['failed_jobs'] }} trabajos fallidos esta semana.
             <a href="{{ config('app.url') }}/admin/jobs?status=failed" style="color: #1e40af;">Ver detalles →</a>
-        @endcomponent>
+        @endcomponent
     @endif
 
     <div style="text-align: center; margin: 24px 0;">
         @component('emails.components.button', ['url' => config('app.url') . '/admin/reports', 'type' => 'primary'])
             📊 Ver Dashboard Completo
-        @endcomponent>
+        @endcomponent
     </div>
 
     <p class="email-text-small" style="text-align: center; margin: 16px 0 0 0;">

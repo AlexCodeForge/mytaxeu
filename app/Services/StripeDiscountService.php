@@ -142,6 +142,37 @@ class StripeDiscountService
     }
 
     /**
+     * Get coupon information from Stripe regardless of validity status.
+     * Used for syncing usage counts even for invalid/exhausted coupons.
+     */
+    public function getCouponInfo(string $couponCode): ?array
+    {
+        try {
+            $coupon = Coupon::retrieve($couponCode);
+
+            return [
+                'id' => $coupon->id,
+                'name' => $coupon->name,
+                'amount_off' => $coupon->amount_off,
+                'percent_off' => $coupon->percent_off,
+                'currency' => $coupon->currency,
+                'duration' => $coupon->duration,
+                'duration_in_months' => $coupon->duration_in_months,
+                'max_redemptions' => $coupon->max_redemptions,
+                'times_redeemed' => $coupon->times_redeemed,
+                'redeem_by' => $coupon->redeem_by,
+                'valid' => $coupon->valid,
+            ];
+        } catch (ApiErrorException $e) {
+            Log::debug('Coupon info retrieval failed', [
+                'coupon_code' => $couponCode,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * Create a promotion code in Stripe for a coupon.
      */
     public function createPromotionCode(string $couponId, array $promotionData = []): string
