@@ -29,6 +29,25 @@
                         @if($configStatus['test_mode'])
                             <p class="mt-1 font-medium">⚠️ Modo de prueba activado</p>
                         @endif
+                        <div class="mt-2 text-xs text-green-600">
+                            <p>✓ Clave pública: {{ $configStatus['public_key_preview'] }}</p>
+                            <p>✓ Clave secreta: {{ $configStatus['secret_key_preview'] }}</p>
+                            @if($configStatus['has_webhook_secret'])
+                                <p>✓ Webhook secret configurado</p>
+                            @endif
+                        </div>
+                        <div class="mt-3">
+                            <button type="button" wire:click="testCurrentConfiguration"
+                                    wire:loading.attr="disabled" wire:target="testCurrentConfiguration"
+                                    class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 disabled:opacity-50">
+                                <svg wire:loading wire:target="testCurrentConfiguration" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span wire:loading.remove wire:target="testCurrentConfiguration">Probar Configuración</span>
+                                <span wire:loading wire:target="testCurrentConfiguration">Probando...</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

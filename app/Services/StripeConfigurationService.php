@@ -20,7 +20,34 @@ class StripeConfigurationService
      */
     public function getConfig(): array
     {
-        return AdminSetting::getStripeConfig();
+        try {
+            $config = AdminSetting::getStripeConfig();
+
+            Log::info('Stripe configuration retrieved', [
+                'source' => 'AdminSetting::getStripeConfig()',
+                'has_public_key' => !empty($config['public_key']),
+                'has_secret_key' => !empty($config['secret_key']),
+                'has_webhook_secret' => !empty($config['webhook_secret']),
+                'test_mode' => $config['test_mode'],
+                'public_key_prefix' => substr($config['public_key'] ?? '', 0, 10),
+                'secret_key_prefix' => substr($config['secret_key'] ?? '', 0, 10),
+            ]);
+
+            return $config;
+        } catch (\Exception $e) {
+            Log::error('Error retrieving Stripe configuration', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Return empty configuration as fallback
+            return [
+                'public_key' => '',
+                'secret_key' => '',
+                'webhook_secret' => '',
+                'test_mode' => false,
+            ];
+        }
     }
 
     /**
@@ -28,23 +55,64 @@ class StripeConfigurationService
      */
     public function setConfig(array $config): bool
     {
+        Log::info('Starting Stripe configuration save process', [
+            'has_public_key' => !empty($config['public_key']),
+            'has_secret_key' => !empty($config['secret_key']),
+            'has_webhook_secret' => !empty($config['webhook_secret']),
+            'test_mode' => $config['test_mode'] ?? false,
+            'public_key_prefix' => substr($config['public_key'] ?? '', 0, 10),
+            'secret_key_prefix' => substr($config['secret_key'] ?? '', 0, 10),
+        ]);
+
         // Validate required fields
         if (empty($config['public_key']) || empty($config['secret_key'])) {
+            Log::error('Stripe configuration validation failed - missing keys', [
+                'has_public_key' => !empty($config['public_key']),
+                'has_secret_key' => !empty($config['secret_key']),
+            ]);
             throw new \InvalidArgumentException('Public key and secret key are required');
         }
 
+        // Validate key formats
+        if (!str_starts_with($config['public_key'], 'pk_')) {
+            Log::error('Stripe configuration validation failed - invalid public key format', [
+                'public_key_prefix' => substr($config['public_key'], 0, 10),
+            ]);
+            throw new \InvalidArgumentException('Public key must start with pk_');
+        }
+
+        if (!str_starts_with($config['secret_key'], 'sk_')) {
+            Log::error('Stripe configuration validation failed - invalid secret key format', [
+                'secret_key_prefix' => substr($config['secret_key'], 0, 10),
+            ]);
+            throw new \InvalidArgumentException('Secret key must start with sk_');
+        }
+
         // Test the API key before saving
+        Log::info('Testing Stripe API key before saving configuration');
         if (!$this->testApiKey($config['secret_key'])) {
+            Log::error('Stripe configuration save failed - API key test failed');
             throw new \RuntimeException('Invalid Stripe API key or connection failed');
         }
 
+        Log::info('API key test passed, saving configuration to database');
+
         // Save configuration
-        AdminSetting::setStripeConfig($config);
+        try {
+            AdminSetting::setStripeConfig($config);
+            Log::info('Stripe configuration saved to database successfully');
+        } catch (\Exception $e) {
+            Log::error('Failed to save Stripe configuration to database', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw new \RuntimeException('Failed to save configuration to database: ' . $e->getMessage());
+        }
 
         // Clear cached client
         $this->stripeClient = null;
 
-        Log::info('Stripe configuration updated', [
+        Log::info('Stripe configuration update completed successfully', [
             'test_mode' => $config['test_mode'] ?? false,
             'has_webhook_secret' => !empty($config['webhook_secret']),
         ]);
@@ -57,35 +125,48 @@ class StripeConfigurationService
      */
     public function testApiKey(string $secretKey): bool
     {
+        Log::info('Starting Stripe API key test', [
+            'key_prefix' => substr($secretKey, 0, 10),
+            'key_length' => strlen($secretKey),
+        ]);
+
         try {
             $stripe = new StripeClient($secretKey);
 
-            // Make a simple API call to test the key
-            $account = $stripe->account->retrieve();
+            // Make a simple API call to test the key - use the correct method
+            $account = $stripe->accounts->retrieve();
 
             Log::info('Stripe API key test successful', [
                 'account_id' => $account->id,
                 'country' => $account->country,
                 'currency' => $account->default_currency,
+                'business_profile' => $account->business_profile->name ?? 'N/A',
             ]);
 
             return true;
 
         } catch (AuthenticationException $e) {
-            Log::warning('Invalid Stripe API key', [
+            Log::warning('Invalid Stripe API key - Authentication failed', [
                 'error' => $e->getMessage(),
+                'key_prefix' => substr($secretKey, 0, 10),
             ]);
             return false;
 
         } catch (InvalidRequestException $e) {
             Log::warning('Stripe API request error during key test', [
                 'error' => $e->getMessage(),
+                'error_code' => $e->getStripeCode(),
+                'key_prefix' => substr($secretKey, 0, 10),
             ]);
             return false;
 
         } catch (\Exception $e) {
             Log::error('Unexpected error testing Stripe API key', [
                 'error' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'key_prefix' => substr($secretKey, 0, 10),
             ]);
             return false;
         }

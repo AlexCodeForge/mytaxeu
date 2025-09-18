@@ -15,8 +15,20 @@ class SubscriptionPlanObserver
 {
     public function __construct()
     {
-        if (config('cashier.secret')) {
-            Stripe::setApiKey(config('cashier.secret'));
+        $this->configureStripe();
+    }
+
+    private function configureStripe(): void
+    {
+        try {
+            $stripeConfig = \App\Models\AdminSetting::getStripeConfig();
+            if (!empty($stripeConfig['secret_key'])) {
+                Stripe::setApiKey($stripeConfig['secret_key']);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to configure Stripe in SubscriptionPlanObserver', [
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
@@ -49,10 +61,14 @@ class SubscriptionPlanObserver
      */
     protected function syncToStripe(SubscriptionPlan $plan): void
     {
-        if (!config('cashier.secret')) {
+        $stripeConfig = \App\Models\AdminSetting::getStripeConfig();
+        if (empty($stripeConfig['secret_key'])) {
             Log::info('Stripe secret key not configured, skipping sync', ['plan_id' => $plan->id]);
             return;
         }
+
+        // Ensure Stripe is configured with current key
+        Stripe::setApiKey($stripeConfig['secret_key']);
 
         try {
             // Create or update Stripe product
@@ -228,9 +244,13 @@ class SubscriptionPlanObserver
      */
     protected function archiveStripeResources(SubscriptionPlan $plan): void
     {
-        if (!config('cashier.key')) {
+        $stripeConfig = \App\Models\AdminSetting::getStripeConfig();
+        if (empty($stripeConfig['secret_key'])) {
             return;
         }
+
+        // Ensure Stripe is configured with current key
+        Stripe::setApiKey($stripeConfig['secret_key']);
 
         try {
             // Archive all prices

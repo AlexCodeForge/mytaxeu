@@ -51,6 +51,9 @@ class AdminSetting extends Model
                 \Log::error('Failed to decrypt admin setting', [
                     'key' => $this->key,
                     'error' => $e->getMessage(),
+                    'value_length' => strlen($value),
+                    'value_preview' => substr($value, 0, 50),
+                    'app_key_set' => !empty(config('app.key')),
                 ]);
                 return null;
             }
@@ -70,7 +73,24 @@ class AdminSetting extends Model
         }
 
         if ($this->encrypted) {
-            $this->attributes['value'] = encrypt($value);
+            try {
+                $encrypted = encrypt($value);
+                $this->attributes['value'] = $encrypted;
+                \Log::info('Successfully encrypted admin setting', [
+                    'key' => $this->key,
+                    'original_length' => strlen($value),
+                    'encrypted_length' => strlen($encrypted),
+                    'app_key_set' => !empty(config('app.key')),
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to encrypt admin setting', [
+                    'key' => $this->key,
+                    'error' => $e->getMessage(),
+                    'value_length' => strlen($value),
+                    'app_key_set' => !empty(config('app.key')),
+                ]);
+                throw $e;
+            }
         } else {
             $this->attributes['value'] = $value;
         }
@@ -90,14 +110,36 @@ class AdminSetting extends Model
      */
     public static function setValue(string $key, ?string $value, bool $encrypted = false, ?string $description = null): self
     {
-        return self::updateOrCreate(
-            ['key' => $key],
-            [
-                'value' => $value,
-                'encrypted' => $encrypted,
-                'description' => $description,
-            ]
-        );
+        \Log::info('setValue called', [
+            'key' => $key,
+            'has_value' => !empty($value),
+            'value_length' => strlen($value ?? ''),
+            'encrypted' => $encrypted,
+            'has_description' => !empty($description),
+        ]);
+
+        // Find existing setting or create new one
+        $setting = self::firstOrNew(['key' => $key]);
+
+        // Set the encrypted flag first so the mutator knows what to do
+        $setting->encrypted = $encrypted;
+        $setting->description = $description;
+
+        // Now set the value - this will trigger the mutator if needed
+        $setting->value = $value;
+
+        // Save the model
+        $setting->save();
+
+        \Log::info('setValue completed', [
+            'key' => $key,
+            'setting_id' => $setting->id,
+            'setting_encrypted' => $setting->encrypted,
+            'raw_value_length' => strlen($setting->attributes['value'] ?? ''),
+            'mutator_used' => $encrypted,
+        ]);
+
+        return $setting;
     }
 
     /**
@@ -118,21 +160,34 @@ class AdminSetting extends Model
      */
     public static function setStripeConfig(array $config): void
     {
+        \Log::info('setStripeConfig called', [
+            'has_public_key' => isset($config['public_key']),
+            'has_secret_key' => isset($config['secret_key']),
+            'has_webhook_secret' => isset($config['webhook_secret']),
+            'has_test_mode' => isset($config['test_mode']),
+        ]);
+
         if (isset($config['public_key'])) {
+            \Log::info('Setting public key');
             self::setValue('stripe_public_key', $config['public_key'], false, 'Stripe Publishable Key');
         }
 
         if (isset($config['secret_key'])) {
+            \Log::info('Setting secret key with encryption');
             self::setValue('stripe_secret_key', $config['secret_key'], true, 'Stripe Secret Key (Encrypted)');
         }
 
         if (isset($config['webhook_secret'])) {
+            \Log::info('Setting webhook secret with encryption');
             self::setValue('stripe_webhook_secret', $config['webhook_secret'], true, 'Stripe Webhook Secret (Encrypted)');
         }
 
         if (isset($config['test_mode'])) {
+            \Log::info('Setting test mode');
             self::setValue('stripe_test_mode', $config['test_mode'] ? '1' : '0', false, 'Stripe Test Mode');
         }
+
+        \Log::info('setStripeConfig completed');
     }
 
     /**

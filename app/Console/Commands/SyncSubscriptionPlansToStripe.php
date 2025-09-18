@@ -36,12 +36,13 @@ class SyncSubscriptionPlansToStripe extends Command
      */
     public function handle(): int
     {
-        if (!config('cashier.secret')) {
-            $this->error('Stripe secret key not configured. Please set STRIPE_SECRET in your .env file.');
+        $stripeConfig = \App\Models\AdminSetting::getStripeConfig();
+        if (empty($stripeConfig['secret_key'])) {
+            $this->error('Stripe secret key not configured. Please configure it in the admin panel.');
             return 1;
         }
 
-        Stripe::setApiKey(config('cashier.secret'));
+        Stripe::setApiKey($stripeConfig['secret_key']);
 
         $this->info('Starting Stripe synchronization...');
 

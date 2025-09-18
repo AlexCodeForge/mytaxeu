@@ -61,10 +61,9 @@ class SetupStripeProducts extends Command
     {
         $testMode = $this->option('test');
 
-        // Set Stripe API key
-        $apiKey = $testMode
-            ? config('cashier.secret')
-            : config('cashier.secret');
+        // Set Stripe API key from database configuration
+        $stripeConfig = \App\Models\AdminSetting::getStripeConfig();
+        $apiKey = $stripeConfig['secret_key'];
 
         if (empty($apiKey)) {
             $this->error('Stripe API key not configured. Please set STRIPE_SECRET in your .env file.');
