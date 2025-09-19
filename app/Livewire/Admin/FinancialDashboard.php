@@ -9,6 +9,7 @@ use Livewire\Attributes\Layout;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use App\Models\CreditTransaction;
 use App\Services\FinancialDataService;
 use Laravel\Cashier\Subscription;
@@ -26,6 +27,12 @@ class FinancialDashboard extends Component
     public bool $loading = false;
     public bool $hasError = false;
     public int $perPage = 10;
+
+    /**
+     * Cache TTL for subscriptions in seconds (default: 5 minutes)
+     * Can be overridden in config or environment
+     */
+    protected int $subscriptionsCacheTtl = 300;
 
     protected ?FinancialDataService $financialService = null;
 
@@ -46,9 +53,13 @@ class FinancialDashboard extends Component
 
         $this->financialService = app(FinancialDataService::class);
 
+        // Initialize cache TTL from config if available
+        $this->subscriptionsCacheTtl = config('financial_dashboard.subscriptions_cache_ttl', 300);
+
         Log::debug('FinancialDashboard: Component mounted', [
             'user_id' => auth()->id(),
             'time_period' => $this->timePeriod,
+            'cache_ttl' => $this->subscriptionsCacheTtl,
         ]);
     }
 
@@ -131,12 +142,27 @@ class FinancialDashboard extends Component
 
         if ($propertyName === 'perPage') {
             $this->resetPage();
+            $this->clearSubscriptionsCache();
         }
     }
 
     public function updatedPerPage(): void
     {
         $this->resetPage();
+        $this->clearSubscriptionsCache();
+    }
+
+    /**
+     * Handle pagination changes - DON'T clear cache for performance!
+     */
+    public function updatingPage(): void
+    {
+        // Don't clear cache here - let caching work properly for fast pagination
+        // Cache should only be cleared when data actually changes, not on navigation
+        Log::debug('FinancialDashboard: Page changing', [
+            'page' => $this->getPage(),
+            'perPage' => $this->perPage
+        ]);
     }
 
     /**
@@ -155,8 +181,50 @@ class FinancialDashboard extends Component
     public function refreshData(): void
     {
         $this->resetFinancialData();
+        $this->clearSubscriptionsCache();
         $this->dispatch('financial-data-refreshed');
         $this->dispatch('chart-data-updated');
+    }
+
+    /**
+     * Force refresh subscriptions data (bypass cache)
+     */
+    public function forceRefreshSubscriptions(): void
+    {
+        $this->clearSubscriptionsCache();
+        $this->dispatch('subscriptions-refreshed');
+    }
+
+    /**
+     * Clear subscriptions cache for all pages and perPage values
+     */
+    private function clearSubscriptionsCache(): void
+    {
+        // Use cache tags for more efficient cache management if available
+        if (method_exists(Cache::getFacadeRoot(), 'tags')) {
+            Cache::tags(['subscriptions', 'user_' . auth()->id()])->flush();
+        } else {
+            // Clear Alpine.js cache first
+            Cache::forget('all_subscriptions_alpine_user_' . auth()->id());
+
+            // Fallback: Clear specific cache keys
+            $perPageOptions = [10, 20, 25, 50];
+            foreach ($perPageOptions as $perPage) {
+                for ($page = 1; $page <= 20; $page++) { // Increased to 20 pages to be safe
+                    Cache::forget(sprintf(
+                        'subscriptions_list_%d_page_%d_user_%d_order_created_at_desc',
+                        $perPage,
+                        $page,
+                        auth()->id()
+                    ));
+                }
+            }
+        }
+
+        Log::debug('FinancialDashboard: Subscriptions cache cleared', [
+            'user_id' => auth()->id(),
+            'method' => method_exists(Cache::getFacadeRoot(), 'tags') ? 'tags' : 'keys'
+        ]);
     }
 
 
@@ -220,15 +288,104 @@ class FinancialDashboard extends Component
         }
 
         try {
-            return Subscription::with(['user:id,name,email'])
-                ->orderBy('created_at', 'desc')
-                ->paginate($this->perPage);
+            $page = $this->getPage();
+            $perPage = $this->perPage;
+
+            // Use a comprehensive cache key that includes order and filters
+            $cacheKey = sprintf(
+                'subscriptions_list_%d_page_%d_user_%d_order_created_at_desc',
+                $perPage,
+                $page,
+                auth()->id()
+            );
+
+            return Cache::remember($cacheKey, $this->subscriptionsCacheTtl, function () use ($perPage) {
+                return Subscription::with(['user:id,name,email'])
+                    ->orderBy('created_at', 'desc')
+                    ->paginate($perPage);
+            });
         } catch (\Exception $e) {
             Log::error('FinancialDashboard: Failed to load subscriptions list', [
                 'error' => $e->getMessage(),
+                'perPage' => $this->perPage,
+                'page' => $this->getPage(),
             ]);
             return new \Illuminate\Pagination\LengthAwarePaginator([], 0, $this->perPage);
         }
+    }
+
+    /**
+     * Get ALL subscriptions for Alpine.js client-side pagination
+     * This enables ultra-fast navigation without server round-trips
+     */
+    public function getAllSubscriptionsForAlpineProperty()
+    {
+        // Ensure user is still admin
+        if (!Auth::user() || !Auth::user()->isAdmin()) {
+            abort(403, 'Access denied');
+        }
+
+        try {
+            // Cache ALL subscriptions for Alpine.js pagination - longer cache since it's bulk data
+            $cacheKey = 'all_subscriptions_alpine_user_' . auth()->id();
+
+            return Cache::remember($cacheKey, $this->subscriptionsCacheTtl * 2, function () { // 2x cache time for bulk data
+                return Subscription::with(['user:id,name,email'])
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function ($subscription) {
+                        $nextBilling = $this->getSubscriptionNextBillingDate($subscription);
+
+                        return [
+                            'id' => $subscription->id,
+                            'user_name' => $subscription->user->name ?? 'Usuario Desconocido',
+                            'user_email' => $subscription->user->email ?? '',
+                            'stripe_status' => $subscription->stripe_status,
+                            'stripe_id' => $subscription->stripe_id,
+                            'created_at' => $subscription->created_at->format('d/m/Y'),
+                            'created_at_timestamp' => $subscription->created_at->timestamp,
+                            'next_billing' => $nextBilling ? $nextBilling->format('d/m/Y') : null,
+                            'status_color' => $this->getStatusColor($subscription->stripe_status),
+                            'status_text' => $this->getStatusText($subscription->stripe_status),
+                        ];
+                    })->toArray();
+            });
+        } catch (\Exception $e) {
+            Log::error('FinancialDashboard: Failed to load all subscriptions for Alpine', [
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Get status color for subscription status
+     */
+    private function getStatusColor(string $status): string
+    {
+        return match($status) {
+            'active' => 'bg-green-100 text-green-800',
+            'canceled' => 'bg-red-100 text-red-800',
+            'past_due' => 'bg-yellow-100 text-yellow-800',
+            'incomplete' => 'bg-gray-100 text-gray-800',
+            'trialing' => 'bg-blue-100 text-blue-800',
+            default => 'bg-gray-100 text-gray-800'
+        };
+    }
+
+    /**
+     * Get human-readable status text
+     */
+    private function getStatusText(string $status): string
+    {
+        return match($status) {
+            'active' => 'Activa',
+            'canceled' => 'Cancelada',
+            'past_due' => 'Pago Vencido',
+            'incomplete' => 'Incompleta',
+            'trialing' => 'Prueba',
+            default => ucfirst($status)
+        };
     }
 
     /**

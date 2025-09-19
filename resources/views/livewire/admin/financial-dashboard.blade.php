@@ -300,19 +300,38 @@
     </div>
   </div>
 
-  <!-- Subscriptions Table -->
+  <!-- Subscriptions Table with Alpine.js Ultra-Fast Pagination -->
   @if(!$loading && !$hasError)
-    <div class="rounded-lg bg-white shadow overflow-hidden">
+    <div class="rounded-lg bg-white shadow overflow-hidden"
+         x-data="subscriptionsPagination()"
+         x-init="initData(@js($this->allSubscriptionsForAlpine))">
+
       <div class="px-6 py-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
-          <h3 class="text-lg font-medium leading-6 text-gray-900">Suscripciones Recientes</h3>
-          <div class="text-sm text-gray-500">
-            Últimas {{ $subscriptionsList->count() }} suscripciones
+          <h3 class="text-lg font-medium leading-6 text-gray-900">Suscripciones</h3>
+          <div class="flex items-center space-x-4">
+            <div class="text-sm text-gray-500">
+              <span x-text="totalItems"></span> suscripciones total
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-sm text-gray-500">Por página:</label>
+              <select x-model="perPage" @change="changePerPage()"
+                      class="rounded border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+            <button @click="$wire.forceRefreshSubscriptions()"
+                    class="text-indigo-600 hover:text-indigo-900 text-sm">
+              Actualizar
+            </button>
           </div>
         </div>
       </div>
 
-      @if($subscriptionsList && $subscriptionsList->count() > 0)
+      <div x-show="currentPageData.length > 0">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
@@ -321,100 +340,100 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stripe ID</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Inicio</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finaliza</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Próxima Facturación</th>
                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              @foreach($subscriptionsList as $subscription)
+              <template x-for="subscription in currentPageData" :key="subscription.id">
                 <tr class="hover:bg-gray-50">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                       <div class="flex-shrink-0 h-8 w-8">
-                        <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-medium">
-                          {{ strtoupper(substr($subscription->user->name ?? 'U', 0, 1)) }}
+                        <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-medium"
+                             x-text="subscription.user_name.charAt(0).toUpperCase()">
                         </div>
                       </div>
                       <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900">
-                          {{ $subscription->user->name ?? 'Usuario Desconocido' }}
-                        </div>
-                        <div class="text-sm text-gray-500">
-                          {{ $subscription->user->email ?? 'Email no disponible' }}
-                        </div>
+                        <div class="text-sm font-medium text-gray-900" x-text="subscription.user_name"></div>
+                        <div class="text-sm text-gray-500" x-text="subscription.user_email"></div>
                       </div>
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                      @if($subscription->stripe_status === 'active') bg-green-100 text-green-800
-                      @elseif($subscription->stripe_status === 'canceled') bg-red-100 text-red-800
-                      @elseif($subscription->stripe_status === 'past_due') bg-yellow-100 text-yellow-800
-                      @elseif($subscription->stripe_status === 'incomplete') bg-orange-100 text-orange-800
-                      @elseif($subscription->stripe_status === 'trialing') bg-blue-100 text-blue-800
-                      @else bg-gray-100 text-gray-800
-                      @endif">
-                      @if($subscription->stripe_status === 'active') Activa
-                      @elseif($subscription->stripe_status === 'canceled') Cancelada
-                      @elseif($subscription->stripe_status === 'past_due') Vencida
-                      @elseif($subscription->stripe_status === 'incomplete') Incompleta
-                      @elseif($subscription->stripe_status === 'trialing') En Prueba
-                      @else {{ ucfirst($subscription->stripe_status) }}
-                      @endif
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="subscription.status_color"
+                          x-text="subscription.status_text">
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                    {{ Str::limit($subscription->stripe_id, 20) }}
+                    <span x-text="subscription.stripe_id.substring(0, 20) + (subscription.stripe_id.length > 20 ? '...' : '')"></span>
                   </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="subscription.created_at"></td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ $subscription->created_at ? $subscription->created_at->format('d/m/Y H:i') : 'N/A' }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    @if($subscription->stripe_status === 'active')
-                      @php
-                        $nextBilling = $this->getSubscriptionNextBillingDate($subscription);
-                      @endphp
-                      @if($nextBilling)
-                        {{ $nextBilling->format('d/m/Y H:i') }}
-                      @else
-                        <span class="text-gray-500">Renovación automática</span>
-                      @endif
-                    @elseif($subscription->ends_at)
-                      {{ $subscription->ends_at->format('d/m/Y H:i') }}
-                    @else
-                      <span class="text-gray-500">Sin fecha</span>
-                    @endif
+                    <span x-text="subscription.next_billing || 'Sin fecha'"
+                          :class="subscription.next_billing ? '' : 'text-gray-500'"></span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div class="flex items-center justify-end space-x-2">
-                      <a href="https://dashboard.stripe.com/subscriptions/{{ $subscription->stripe_id }}"
-                         target="_blank"
-                         class="text-indigo-600 hover:text-indigo-900 text-xs">
-                        Ver en Stripe
-                      </a>
-                    </div>
+                    <a :href="'https://dashboard.stripe.com/subscriptions/' + subscription.stripe_id"
+                       target="_blank"
+                       class="text-indigo-600 hover:text-indigo-900 text-xs">
+                      Ver en Stripe
+                    </a>
                   </td>
                 </tr>
-              @endforeach
+              </template>
             </tbody>
           </table>
         </div>
 
-        <!-- Pagination -->
-        @if($subscriptionsList->hasPages())
-        <div class="px-6 py-4 border-t border-gray-200">
-          {{ $subscriptionsList->links('custom.pagination') }}
+        <!-- Ultra-Fast Alpine.js Pagination -->
+        <div x-show="totalPages > 1" class="px-6 py-4 border-t border-gray-200">
+          <div class="flex items-center justify-between">
+            <!-- Page Info -->
+            <div class="text-sm text-gray-700">
+              Mostrando <span x-text="startItem"></span> a <span x-text="endItem"></span> de <span x-text="totalItems"></span> resultados
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="flex items-center space-x-2">
+              <!-- Previous Button -->
+              <button @click="previousPage()"
+                      :disabled="currentPage === 1"
+                      :class="currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'"
+                      class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                Anterior
+              </button>
+
+              <!-- Page Numbers -->
+              <template x-for="page in visiblePages" :key="page">
+                <button @click="goToPage(page)"
+                        :class="page === currentPage ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                        class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        x-text="page">
+                </button>
+              </template>
+
+              <!-- Next Button -->
+              <button @click="nextPage()"
+                      :disabled="currentPage === totalPages"
+                      :class="currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'"
+                      class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                Siguiente
+              </button>
+            </div>
+          </div>
         </div>
-        @endif
-      @else
-        <div class="px-6 py-12 text-center">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-          <h4 class="mt-2 text-sm font-medium text-gray-900">No hay suscripciones</h4>
-          <p class="mt-1 text-sm text-gray-500">Aún no se han creado suscripciones en el sistema.</p>
-        </div>
-      @endif
+      </div>
+
+      <!-- Empty State -->
+      <div x-show="currentPageData.length === 0" class="px-6 py-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+        <h4 class="mt-2 text-sm font-medium text-gray-900">No hay suscripciones</h4>
+        <p class="mt-1 text-sm text-gray-500">Aún no se han creado suscripciones en el sistema.</p>
+      </div>
     </div>
   @endif
 
@@ -424,6 +443,120 @@
 
 @script
 <script>
+  // Ultra-Fast Alpine.js Pagination Component
+  Alpine.data('subscriptionsPagination', () => ({
+    // Data state
+    allData: [],
+    currentPageData: [],
+
+    // Pagination state
+    currentPage: 1,
+    perPage: 10,
+    totalItems: 0,
+    totalPages: 0,
+
+    // Computed properties for pagination info
+    get startItem() {
+      return ((this.currentPage - 1) * this.perPage) + 1;
+    },
+
+    get endItem() {
+      const end = this.currentPage * this.perPage;
+      return end > this.totalItems ? this.totalItems : end;
+    },
+
+    get visiblePages() {
+      const pages = [];
+      const maxVisible = 5;
+      const halfVisible = Math.floor(maxVisible / 2);
+
+      let start = Math.max(1, this.currentPage - halfVisible);
+      let end = Math.min(this.totalPages, start + maxVisible - 1);
+
+      if (end - start + 1 < maxVisible) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      return pages;
+    },
+
+    // Initialize with data from Livewire
+    initData(data) {
+      this.allData = data || [];
+      this.totalItems = this.allData.length;
+      this.calculateTotalPages();
+      this.updateCurrentPageData();
+
+      console.log('Alpine pagination initialized:', {
+        totalItems: this.totalItems,
+        totalPages: this.totalPages,
+        perPage: this.perPage
+      });
+    },
+
+    // Calculate total pages
+    calculateTotalPages() {
+      this.totalPages = Math.ceil(this.totalItems / this.perPage);
+    },
+
+    // Update current page data based on pagination
+    updateCurrentPageData() {
+      const start = (this.currentPage - 1) * this.perPage;
+      const end = start + this.perPage;
+      this.currentPageData = this.allData.slice(start, end);
+
+      console.log('Page updated:', {
+        page: this.currentPage,
+        showing: this.currentPageData.length,
+        start: start + 1,
+        end: Math.min(end, this.totalItems)
+      });
+    },
+
+    // Navigation methods
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+        this.updateCurrentPageData();
+      }
+    },
+
+    previousPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.updateCurrentPageData();
+      }
+    },
+
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+        this.updateCurrentPageData();
+      }
+    },
+
+    // Change items per page
+    changePerPage() {
+      this.currentPage = 1; // Reset to first page
+      this.calculateTotalPages();
+      this.updateCurrentPageData();
+
+      console.log('Per page changed to:', this.perPage);
+    },
+
+    // Refresh data from Livewire
+    refreshData() {
+      this.$wire.forceRefreshSubscriptions().then(() => {
+        // Data will be refreshed via Livewire events
+        console.log('Data refresh requested');
+      });
+    }
+  }));
+
   Alpine.data('financialDashboard', () => ({
     revenueChartId: 'financial-revenue-chart',
     subscriptionChartId: 'financial-subscription-chart',
@@ -468,6 +601,13 @@
         console.log('Chart data updated');
         this.updateChart();
         this.updateSubscriptionChart();
+      });
+
+      // Listen for subscriptions refresh to update Alpine pagination
+      this.$wire.on('subscriptions-refreshed', () => {
+        console.log('Subscriptions refreshed, updating Alpine pagination');
+        // The Alpine component will automatically get fresh data from Livewire
+        // when the page re-renders with updated allSubscriptionsForAlpine
       });
 
 
