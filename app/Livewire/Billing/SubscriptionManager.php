@@ -348,6 +348,12 @@ class SubscriptionManager extends Component
             $sessionData = [
                 'customer' => $user->stripe_id,
                 'payment_method_types' => ['card'],
+                'billing_address_collection' => 'required',
+                'tax_id_collection' => ['enabled' => true],
+                'customer_update' => [
+                    'name' => 'auto',
+                    'address' => 'auto',
+                ],
                 'line_items' => [
                     [
                         'price_data' => [

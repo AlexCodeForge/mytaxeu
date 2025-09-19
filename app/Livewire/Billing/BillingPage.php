@@ -385,7 +385,7 @@ class BillingPage extends Component
                 session()->flash('info', 'Tu suscripción se renovará automáticamente.');
             } else {
                 // Cancel at period end
-                $subscription->cancelAt($subscription->asStripeSubscription()->current_period_end);
+                $subscription->cancel();
                 session()->flash('info', 'Tu suscripción se cancelará al final del período actual.');
             }
 
