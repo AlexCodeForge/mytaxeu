@@ -22,8 +22,6 @@ class FinancialDashboard extends Component
 {
     use WithPagination;
     public string $timePeriod = 'monthly';
-    public ?string $startDate = null;
-    public ?string $endDate = null;
     public bool $loading = false;
     public bool $hasError = false;
     public int $perPage = 10;
@@ -38,8 +36,6 @@ class FinancialDashboard extends Component
 
     protected $queryString = [
         'timePeriod' => ['except' => 'monthly'],
-        'startDate' => ['except' => ''],
-        'endDate' => ['except' => ''],
         'perPage' => ['except' => 10],
         'page' => ['except' => 1],
     ];
@@ -78,9 +74,7 @@ class FinancialDashboard extends Component
     public function rules(): array
     {
         return [
-            'timePeriod' => ['required', 'string', 'in:monthly,quarterly,yearly,custom'],
-            'startDate' => ['nullable', 'date', 'required_if:timePeriod,custom'],
-            'endDate' => ['nullable', 'date', 'required_if:timePeriod,custom', 'after_or_equal:startDate'],
+            'timePeriod' => ['required', 'string', 'in:monthly,3months,yearly'],
         ];
     }
 
@@ -89,55 +83,22 @@ class FinancialDashboard extends Component
         return [
             'timePeriod.required' => 'El período de tiempo es obligatorio.',
             'timePeriod.in' => 'El período de tiempo seleccionado no es válido.',
-            'startDate.required_if' => 'La fecha de inicio es obligatoria para el rango personalizado.',
-            'startDate.date' => 'La fecha de inicio debe ser una fecha válida.',
-            'endDate.required_if' => 'La fecha de fin es obligatoria para el rango personalizado.',
-            'endDate.date' => 'La fecha de fin debe ser una fecha válida.',
-            'endDate.after_or_equal' => 'La fecha de fin debe ser posterior o igual a la fecha de inicio.',
         ];
     }
 
     public function updated($propertyName): void
     {
-        if (in_array($propertyName, ['timePeriod', 'startDate', 'endDate'])) {
+        if ($propertyName === 'timePeriod') {
             $this->validateOnly($propertyName);
 
-            if ($propertyName === 'timePeriod') {
-                // Reset custom dates when switching away from custom period
-                if ($this->timePeriod !== 'custom') {
-                    $this->startDate = null;
-                    $this->endDate = null;
-                }
+            Log::debug('FinancialDashboard: Time period changed', [
+                'new_period' => $this->timePeriod,
+                'user_id' => auth()->id(),
+            ]);
 
-                // Auto-refresh data - force re-calculation by resetting computed properties
-                $this->resetFinancialData();
-                $this->dispatch('time-period-changed', $this->timePeriod);
-                $this->dispatch('chart-data-updated');
-                $this->dispatch('financial-data-refreshed');
-            }
-
-            // Auto-refresh when custom date range is complete
-            if (in_array($propertyName, ['startDate', 'endDate'])) {
-                if ($this->timePeriod === 'custom' && $this->startDate && $this->endDate) {
-                    try {
-                        // Validate the date range
-                        $this->validate([
-                            'startDate' => 'required|date',
-                            'endDate' => 'required|date|after_or_equal:startDate'
-                        ]);
-
-                        // Auto-refresh with new date range
-                        $this->resetFinancialData();
-                    } catch (ValidationException $e) {
-                        // Validation errors will be displayed automatically
-                    }
-                } elseif ($this->timePeriod === 'custom') {
-                    // Still in custom mode but missing one date - no refresh yet
-                } else {
-                    // Not in custom mode, refresh immediately
-                    $this->resetFinancialData();
-                }
-            }
+            // Auto-refresh data - force re-calculation by resetting computed properties
+            $this->resetFinancialData();
+            $this->dispatch('financial-data-refreshed');
         }
 
         if ($propertyName === 'perPage') {
@@ -170,9 +131,11 @@ class FinancialDashboard extends Component
      */
     private function resetFinancialData(): void
     {
+        // Clear relevant financial data caches
+        $this->clearFinancialDataCache();
+
         // Force Livewire to re-compute computed properties by dispatching events
         $this->dispatch('financial-data-refreshed');
-        $this->dispatch('chart-data-updated');
     }
 
     /**
@@ -180,10 +143,10 @@ class FinancialDashboard extends Component
      */
     public function refreshData(): void
     {
-        $this->resetFinancialData();
+        $this->clearFinancialDataCache();
         $this->clearSubscriptionsCache();
+        $this->resetFinancialData();
         $this->dispatch('financial-data-refreshed');
-        $this->dispatch('chart-data-updated');
     }
 
     /**
@@ -227,22 +190,64 @@ class FinancialDashboard extends Component
         ]);
     }
 
-
     /**
-     * Test method to ensure date filtering is working
+     * Clear financial data caches when filters change
      */
-    public function testDateFilter(): array
+    private function clearFinancialDataCache(): void
     {
-        $dateRange = $this->getDateRange();
+        try {
+            // Clear date-specific caches
+            $dateRange = $this->getDateRange();
+            $startDate = $dateRange['start'];
+            $endDate = $dateRange['end'];
 
-        return [
-            'period' => $this->timePeriod,
-            'start_date' => $dateRange['start']->format('Y-m-d'),
-            'end_date' => $dateRange['end']->format('Y-m-d'),
-            'custom_start' => $this->startDate,
-            'custom_end' => $this->endDate,
-        ];
+            // Clear financial summary cache
+            $summaryCacheKey = "financial_summary_{$startDate->format('Y-m-d')}_{$endDate->format('Y-m-d')}";
+            Cache::forget($summaryCacheKey);
+
+            // Clear revenue trend data cache for this date range
+            $trendCacheKey = "revenue_trend_data_{$startDate->format('Y-m-d')}_{$endDate->format('Y-m-d')}";
+            Cache::forget($trendCacheKey);
+
+            // Clear period revenue cache
+            $periodRevenueCacheKey = "period_revenue_{$startDate->format('Y-m-d')}_{$endDate->format('Y-m-d')}";
+            Cache::forget($periodRevenueCacheKey);
+
+            // Clear ARPU cache for this period
+            $arpuCacheKey = "arpu_{$startDate->format('Y-m-d')}_{$endDate->format('Y-m-d')}";
+            Cache::forget($arpuCacheKey);
+
+            // Clear growth calculation caches (current and previous periods)
+            $periodLength = $endDate->diffInDays($startDate);
+            $previousStart = $startDate->copy()->subDays($periodLength + 1);
+            $previousEnd = $startDate->copy()->subDay();
+
+            $previousPeriodCacheKey = "period_revenue_{$previousStart->format('Y-m-d')}_{$previousEnd->format('Y-m-d')}";
+            Cache::forget($previousPeriodCacheKey);
+
+            Log::debug('FinancialDashboard: Financial data cache cleared for date range', [
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'cleared_keys' => [
+                    $summaryCacheKey,
+                    $trendCacheKey,
+                    $periodRevenueCacheKey,
+                    $arpuCacheKey,
+                    $previousPeriodCacheKey
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('FinancialDashboard: Failed to clear financial data cache', [
+                'error' => $e->getMessage(),
+                'time_period' => $this->timePeriod,
+                'start_date' => $this->startDate,
+                'end_date' => $this->endDate,
+            ]);
+        }
     }
+
+
 
 
 
@@ -265,8 +270,13 @@ class FinancialDashboard extends Component
             abort(403, 'Access denied');
         }
 
+        $dateRange = $this->getDateRange();
+
         return [
-            'revenue_trend' => $this->getFinancialService()->getRevenueTrendData(6)
+            'revenue_trend' => $this->getFinancialService()->getRevenueTrendData(
+                $dateRange['start'],
+                $dateRange['end']
+            )
         ];
     }
 
@@ -505,20 +515,15 @@ class FinancialDashboard extends Component
                     'start' => now()->startOfMonth(),
                     'end' => now()->endOfMonth(),
                 ];
-            case 'quarterly':
+            case '3months':
                 return [
-                    'start' => now()->firstOfQuarter(),
-                    'end' => now()->lastOfQuarter(),
+                    'start' => now()->subMonths(2)->startOfMonth(),
+                    'end' => now()->endOfMonth(),
                 ];
             case 'yearly':
                 return [
                     'start' => now()->startOfYear(),
                     'end' => now()->endOfYear(),
-                ];
-            case 'custom':
-                return [
-                    'start' => Carbon::parse($this->startDate),
-                    'end' => Carbon::parse($this->endDate),
                 ];
             default:
                 return [

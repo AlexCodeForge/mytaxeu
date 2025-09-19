@@ -11,23 +11,13 @@
     </div>
     <div class="mt-4 flex md:ml-4 md:mt-0">
       <div class="flex items-center space-x-4">
-        <button @click="refreshData()"
-                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-          </svg>
-          Actualizar
-        </button>
+
         <div class="flex items-center text-sm text-gray-500">
           <svg wire:loading class="animate-spin mr-2 h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span wire:loading wire:target="timePeriod,startDate,endDate,refreshData">Cargando datos...</span>
-          <span wire:loading.remove wire:target="timePeriod,startDate,endDate,refreshData" class="flex items-center">
-            <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-            Datos en tiempo real
-          </span>
+
         </div>
       </div>
     </div>
@@ -38,45 +28,20 @@
     <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Período de Análisis</h3>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700">Tipo de Período</label>
+        <label class="block text-sm font-medium text-gray-700">Período de Tiempo</label>
         <select x-model="timePeriod" @change="onTimePeriodChange()" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
-          <option value="monthly">Mensual</option>
-          <option value="quarterly">Trimestral</option>
-          <option value="yearly">Anual</option>
-          <option value="custom">Rango Personalizado</option>
+          <option value="monthly">Este Mes</option>
+          <option value="3months">Últimos 3 Meses</option>
+          <option value="yearly">Este Año</option>
         </select>
-      </div>
-
-      <div x-show="timePeriod === 'custom'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
-        <label class="block text-sm font-medium text-gray-700">Fecha Inicio</label>
-        <input x-model="startDate" @change="onDateChange()" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-        <span x-show="dateError" x-text="dateError" class="text-red-600 text-sm"></span>
-      </div>
-
-      <div x-show="timePeriod === 'custom'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
-        <label class="block text-sm font-medium text-gray-700">Fecha Fin</label>
-        <input x-model="endDate" @change="onDateChange()" type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-        <span x-show="dateError" x-text="dateError" class="text-red-600 text-sm"></span>
       </div>
 
       <div class="sm:col-span-2 lg:col-span-1 flex items-end">
         <div class="text-sm text-gray-500">
           <span x-show="timePeriod === 'monthly'">Este mes</span>
-          <span x-show="timePeriod === 'quarterly'">Este trimestre</span>
+          <span x-show="timePeriod === '3months'">Últimos 3 meses</span>
           <span x-show="timePeriod === 'yearly'">Este año</span>
-          <span x-show="timePeriod === 'custom'">Rango seleccionado</span>
         </div>
-      </div>
-
-      <!-- Debug Info (remove in production) -->
-      <div class="sm:col-span-4 text-xs text-gray-400 p-2 bg-gray-50 rounded">
-        <span>Período: </span><span x-text="timePeriod"></span> |
-        <span x-show="timePeriod === 'custom'">
-          Inicio: <span x-text="startDate || 'no seleccionado'"></span> |
-          Fin: <span x-text="endDate || 'no seleccionado'"></span>
-        </span>
-        <span x-show="timePeriod !== 'custom'">Auto-calculado</span>
-        | <span>Última actualización: </span><span x-text="lastUpdate"></span>
       </div>
     </div>
   </div>
@@ -157,12 +122,12 @@
         <div class="mt-2 text-sm text-gray-500">
           @if($timePeriod === 'monthly')
             Este mes
-          @elseif($timePeriod === 'quarterly')
-            Este trimestre
+          @elseif($timePeriod === '3months')
+            Últimos 3 meses
           @elseif($timePeriod === 'yearly')
             Este año
           @else
-            Período seleccionado
+            Período actual
           @endif
         </div>
       </div>
@@ -187,28 +152,26 @@
     </div>
   @endif
 
+
   <!-- Charts Section -->
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
     <!-- Revenue Trend Chart -->
     <div class="rounded-lg bg-white p-6 shadow">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-medium leading-6 text-gray-900">Tendencia de Ingresos</h3>
-        <div class="flex space-x-2">
-          <button @click="toggleChartType('line')"
-                  :class="chartType === 'line' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'"
-                  class="px-3 py-1 rounded-md text-sm font-medium">
-            Línea
-          </button>
-          <button @click="toggleChartType('bar')"
-                  :class="chartType === 'bar' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'"
-                  class="px-3 py-1 rounded-md text-sm font-medium">
-            Barras
-          </button>
+        <div class="text-sm text-gray-500">
+          <span x-show="timePeriod === 'monthly'">Este mes</span>
+          <span x-show="timePeriod === '3months'">Últimos 3 meses</span>
+          <span x-show="timePeriod === 'yearly'">Este año</span>
         </div>
       </div>
 
       <div class="relative h-64">
-        @if(count($chartData['revenue_trend']['data'] ?? []) > 0)
+        @php
+          $hasChartData = count($chartData['revenue_trend']['data'] ?? []) > 0;
+          $dataSum = array_sum($chartData['revenue_trend']['data'] ?? []);
+        @endphp
+        @if($hasChartData && $dataSum > 0)
           <canvas id="revenueChart"
                   x-ref="revenueChart"
                   class="w-full h-full"
@@ -560,13 +523,9 @@
   Alpine.data('financialDashboard', () => ({
     revenueChartId: 'financial-revenue-chart',
     subscriptionChartId: 'financial-subscription-chart',
-    chartType: 'line',
 
     // Filtering state
     timePeriod: @js($timePeriod ?? 'monthly'),
-    startDate: @js($startDate ?? ''),
-    endDate: @js($endDate ?? ''),
-    dateError: '',
     lastUpdate: new Date().toLocaleTimeString(),
 
 
@@ -592,16 +551,6 @@
         this.updateSubscriptionChart();
       });
 
-      this.$wire.on('time-period-changed', (period) => {
-        console.log('Time period changed to:', period);
-        this.updateChart();
-      });
-
-      this.$wire.on('chart-data-updated', () => {
-        console.log('Chart data updated');
-        this.updateChart();
-        this.updateSubscriptionChart();
-      });
 
       // Listen for subscriptions refresh to update Alpine pagination
       this.$wire.on('subscriptions-refreshed', () => {
@@ -637,17 +586,19 @@
       }
 
       const canvas = this.$refs.revenueChart;
-      const chartData = @js($chartData['revenue_trend'] ?? ['labels' => [], 'data' => []]);
+      const chartData = @js($chartData ?? ['revenue_trend' => ['labels' => [], 'data' => []]]);
+      const trendData = chartData.revenue_trend || chartData;
+
 
       const chartConfig = {
-        type: this.chartType,
+        type: 'line',
         data: {
-          labels: chartData.labels || [],
+          labels: trendData.labels || [],
           datasets: [{
-            label: 'Ingresos ($)',
-            data: chartData.data || [],
+            label: 'Ingresos (€)',
+            data: trendData.data || [],
             borderColor: 'rgb(99, 102, 241)',
-            backgroundColor: this.chartType === 'bar' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
+            backgroundColor: 'rgba(99, 102, 241, 0.05)',
             borderWidth: 2,
             fill: true,
             tension: 0.4,
@@ -882,89 +833,120 @@
     },
 
     updateChart() {
-      const chart = window.chartManager.getChart(this.revenueChartId);
-      if (!chart) {
-        this.initializeChart();
-        return;
-      }
+      // Wait for next tick to ensure Livewire is ready
+      this.$nextTick(() => {
+        const chart = window.chartManager.getChart(this.revenueChartId);
+        if (!chart) {
+          this.initializeChart();
+          return;
+        }
 
-      // Get fresh chart data from Livewire
-      this.$wire.get('chartData').then(chartData => {
-        const trendData = chartData.revenue_trend || {labels: [], data: []};
+        // Use a more reliable method to get chart data
+        try {
+          this.$wire.call('getChartDataProperty').then(chartData => {
+            const trendData = chartData.revenue_trend || {labels: [], data: []};
 
-        const newData = {
-          labels: trendData.labels,
-          datasets: [{
-            ...chart.data.datasets[0],
-            data: trendData.data
-          }]
-        };
+            // If no data, show empty state
+            if (!trendData.labels || trendData.labels.length === 0 || trendData.data.every(val => val === 0)) {
+              const newData = {
+                labels: ['Sin datos'],
+                datasets: [{
+                  ...chart.data.datasets[0],
+                  data: [0]
+                }]
+              };
+              window.chartManager.updateChart(this.revenueChartId, newData, 'active');
+              return;
+            }
 
-        window.chartManager.updateChart(this.revenueChartId, newData, 'active');
+            const newData = {
+              labels: trendData.labels,
+              datasets: [{
+                ...chart.data.datasets[0],
+                data: trendData.data
+              }]
+            };
+
+            window.chartManager.updateChart(this.revenueChartId, newData, 'active');
+            console.log('Chart updated with new data:', trendData.labels.length, 'points');
+          }).catch(error => {
+            console.error('Failed to get chart data:', error);
+            // Fallback: re-initialize chart
+            this.initializeChart();
+          });
+        } catch (error) {
+          console.error('Error updating chart:', error);
+          // Final fallback: destroy and recreate chart
+          window.chartManager.destroyChart(this.revenueChartId);
+          this.initializeChart();
+        }
       });
     },
 
     updateSubscriptionChart() {
-      const chart = window.chartManager.getChart(this.subscriptionChartId);
-      if (!chart) {
-        this.initializeSubscriptionChart();
-        return;
-      }
-
-      // Get fresh subscription data from Livewire
-      this.$wire.get('subscriptionBreakdown').then(subscriptionData => {
-        if (!subscriptionData || Object.keys(subscriptionData).length === 0) {
+      this.$nextTick(() => {
+        const chart = window.chartManager.getChart(this.subscriptionChartId);
+        if (!chart) {
+          this.initializeSubscriptionChart();
           return;
         }
 
-        const statusColors = {
-          'active': '#10B981',      // green-500
-          'canceled': '#EF4444',    // red-500
-          'past_due': '#F59E0B',    // yellow-500
-          'incomplete': '#F97316',  // orange-500
-          'trialing': '#3B82F6',    // blue-500
-          'default': '#6B7280'      // gray-500
-        };
+        // Get fresh subscription data from Livewire
+        try {
+          this.$wire.call('getSubscriptionBreakdownProperty').then(subscriptionData => {
+            if (!subscriptionData || Object.keys(subscriptionData).length === 0) {
+              return;
+            }
 
-        const labels = Object.keys(subscriptionData).map(status => {
-          switch(status) {
-            case 'active': return 'Activas';
-            case 'canceled': return 'Canceladas';
-            case 'past_due': return 'Vencidas';
-            case 'incomplete': return 'Incompletas';
-            case 'trialing': return 'En Prueba';
-            default: return status.charAt(0).toUpperCase() + status.slice(1);
-          }
-        });
+            const statusColors = {
+              'active': '#10B981',      // green-500
+              'canceled': '#EF4444',    // red-500
+              'past_due': '#F59E0B',    // yellow-500
+              'incomplete': '#F97316',  // orange-500
+              'trialing': '#3B82F6',    // blue-500
+              'default': '#6B7280'      // gray-500
+            };
 
-        const data = Object.values(subscriptionData);
-        const backgroundColors = Object.keys(subscriptionData).map(status =>
-          statusColors[status] || statusColors.default
-        );
+            const labels = Object.keys(subscriptionData).map(status => {
+              switch(status) {
+                case 'active': return 'Activas';
+                case 'canceled': return 'Canceladas';
+                case 'past_due': return 'Vencidas';
+                case 'incomplete': return 'Incompletas';
+                case 'trialing': return 'En Prueba';
+                default: return status.charAt(0).toUpperCase() + status.slice(1);
+              }
+            });
 
-        const newData = {
-          labels: labels,
-          datasets: [{
-            ...chart.data.datasets[0],
-            data: data,
-            backgroundColor: backgroundColors
-          }]
-        };
+            const data = Object.values(subscriptionData);
+            const backgroundColors = Object.keys(subscriptionData).map(status =>
+              statusColors[status] || statusColors.default
+            );
 
-        // Update will trigger the empty state plugin if all values are 0
-        window.chartManager.updateChart(this.subscriptionChartId, newData, 'active');
+            const newData = {
+              labels: labels,
+              datasets: [{
+                ...chart.data.datasets[0],
+                data: data,
+                backgroundColor: backgroundColors
+              }]
+            };
+
+            // Update will trigger the empty state plugin if all values are 0
+            window.chartManager.updateChart(this.subscriptionChartId, newData, 'active');
+            console.log('Subscription chart updated');
+          }).catch(error => {
+            console.error('Failed to get subscription data:', error);
+            this.initializeSubscriptionChart();
+          });
+        } catch (error) {
+          console.error('Error updating subscription chart:', error);
+          window.chartManager.destroyChart(this.subscriptionChartId);
+          this.initializeSubscriptionChart();
+        }
       });
     },
 
-    toggleChartType(type) {
-      if (this.chartType === type) return;
-
-      this.chartType = type;
-
-      // Destroy and recreate chart with new type
-      window.chartManager.destroyChart(this.revenueChartId);
-      this.initializeChart();
-    },
 
 
     showToast(type, message) {
@@ -1017,37 +999,8 @@
     onTimePeriodChange() {
       console.log('Time period changed to:', this.timePeriod);
 
-      // Reset custom dates when switching away from custom
-      if (this.timePeriod !== 'custom') {
-        this.startDate = '';
-        this.endDate = '';
-      }
-
-      // Clear any existing error
-      this.dateError = '';
-
-      // Update server with debounce
+      // Update server - charts will be updated via Livewire event
       this.updateFiltersWithDebounce();
-    },
-
-    onDateChange() {
-      console.log('Date changed:', this.startDate, this.endDate);
-
-      // Validate dates if both are provided
-      if (this.timePeriod === 'custom' && this.startDate && this.endDate) {
-        if (this.startDate > this.endDate) {
-          this.dateError = 'La fecha de fin debe ser posterior a la fecha de inicio';
-          return;
-        }
-      }
-
-      // Clear error if validation passes
-      this.dateError = '';
-
-      // Update server only if both dates are provided (for custom) or if not custom
-      if (this.timePeriod !== 'custom' || (this.startDate && this.endDate)) {
-        this.updateFiltersWithDebounce();
-      }
     },
 
     updateFiltersWithDebounce() {
@@ -1056,19 +1009,15 @@
         clearTimeout(this.filterDebounce);
       }
 
-      // Set new timer for 300ms debounce
+      // Set new timer for 200ms debounce
       this.filterDebounce = setTimeout(() => {
         this.updateLastUpdate();
 
         // Update Livewire component
         this.$wire.set('timePeriod', this.timePeriod);
-        if (this.timePeriod === 'custom') {
-          this.$wire.set('startDate', this.startDate);
-          this.$wire.set('endDate', this.endDate);
-        }
 
-        console.log('Filters updated on server');
-      }, 300);
+        console.log('Period updated on server:', this.timePeriod);
+      }, 200);
     },
 
 
@@ -1082,11 +1031,18 @@
       this.updateLastUpdate();
 
       // Trigger Livewire refresh
-      this.$wire.call('refreshData');
+      this.$wire.call('refreshData').then(() => {
+        // Force chart refresh after data is refreshed
+        setTimeout(() => {
+          this.updateChart();
+          this.updateSubscriptionChart();
+        }, 300);
+      });
 
       // Show feedback
       this.showToast('info', 'Actualizando datos...');
     },
+
 
   }));
 </script>

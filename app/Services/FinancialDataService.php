@@ -346,8 +346,107 @@ class FinancialDataService
 
     /**
      * Generate revenue trend data for charts (optimized with batch queries).
+     * Now supports custom date ranges for proper filtering.
      */
-    public function getRevenueTrendData(int $months = 6): array
+    public function getRevenueTrendData(?Carbon $startDate = null, ?Carbon $endDate = null, int $months = 6): array
+    {
+        // If no custom date range provided, use default behavior (last N months)
+        if ($startDate === null || $endDate === null) {
+            return $this->getDefaultRevenueTrendData($months);
+        }
+
+        $this->validateDateRange($startDate, $endDate);
+
+        $cacheKey = "revenue_trend_data_{$startDate->format('Y-m-d')}_{$endDate->format('Y-m-d')}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($startDate, $endDate) {
+            try {
+                $labels = [];
+                $data = [];
+
+                // Determine the appropriate interval based on date range
+                $daysDiff = $startDate->diffInDays($endDate);
+
+                if ($daysDiff <= 31) {
+                    // Daily data for periods up to 1 month
+                    $dateRanges = $this->generateDailyRanges($startDate, $endDate);
+                } elseif ($daysDiff <= 93) {
+                    // Weekly data for periods up to 3 months
+                    $dateRanges = $this->generateWeeklyRanges($startDate, $endDate);
+                } else {
+                    // Monthly data for longer periods
+                    $dateRanges = $this->generateMonthlyRanges($startDate, $endDate);
+                }
+
+                // Get all transactions in the date range
+                $transactions = CreditTransaction::where('type', 'purchased')
+                    ->where('description', 'NOT LIKE', '%TEST%')
+                    ->where('description', 'LIKE', '%Pago de suscripción%')
+                    ->whereBetween('created_at', [$startDate, $endDate])
+                    ->select('amount', 'created_at')
+                    ->get();
+
+                // Group transactions by period in PHP (database-agnostic)
+                $revenueResults = [];
+                foreach ($transactions as $transaction) {
+                    $date = Carbon::parse($transaction->created_at);
+
+                    if ($daysDiff <= 31) {
+                        // Daily grouping
+                        $key = $date->format('Y-m-d');
+                    } elseif ($daysDiff <= 93) {
+                        // Weekly grouping
+                        $key = $date->format('Y-W');
+                    } else {
+                        // Monthly grouping
+                        $key = $date->format('Y-m-01');
+                    }
+
+                    if (!isset($revenueResults[$key])) {
+                        $revenueResults[$key] = 0;
+                    }
+                    $revenueResults[$key] += $transaction->amount;
+                }
+
+                // Map results to date ranges
+                foreach ($dateRanges as $range) {
+                    $revenue = $revenueResults[$range['key']] ?? 0;
+                    $labels[] = $range['label'];
+                    $data[] = $revenue / 100; // Convert cents to euros
+                }
+
+                $result = [
+                    'labels' => $labels,
+                    'data' => $data,
+                ];
+
+                Log::debug('FinancialDataService: Custom trend data generated', [
+                    'start_date' => $startDate->toDateString(),
+                    'end_date' => $endDate->toDateString(),
+                    'data_points' => count($data),
+                    'days_diff' => $daysDiff,
+                ]);
+
+                return $result;
+
+            } catch (\Exception $e) {
+                Log::error('FinancialDataService: Failed to generate custom trend data', [
+                    'error' => $e->getMessage(),
+                    'start_date' => $startDate->toDateString(),
+                    'end_date' => $endDate->toDateString(),
+                ]);
+                return [
+                    'labels' => [],
+                    'data' => [],
+                ];
+            }
+        });
+    }
+
+    /**
+     * Generate default revenue trend data (backwards compatibility).
+     */
+    private function getDefaultRevenueTrendData(int $months): array
     {
         $cacheKey = "revenue_trend_data_{$months}_months";
 
@@ -370,21 +469,26 @@ class FinancialDataService
                     ];
                 }
 
-                // Batch query all revenue data at once
-                $revenueResults = CreditTransaction::where('type', 'purchased')
+                // Get all transactions in the date range (database-agnostic)
+                $transactions = CreditTransaction::where('type', 'purchased')
                     ->where('description', 'NOT LIKE', '%TEST%')
                     ->where('description', 'LIKE', '%Pago de suscripción%')
                     ->whereBetween('created_at', [
                         $dateRanges[0]['start'], // Earliest start date
                         $dateRanges[count($dateRanges) - 1]['end'] // Latest end date
                     ])
-                    ->selectRaw('
-                        SUM(amount) as revenue,
-                        DATE_FORMAT(created_at, "%Y-%m-01") as month_year
-                    ')
-                    ->groupBy('month_year')
-                    ->pluck('revenue', 'month_year')
-                    ->toArray();
+                    ->select('amount', 'created_at')
+                    ->get();
+
+                // Group by month in PHP (database-agnostic)
+                $revenueResults = [];
+                foreach ($transactions as $transaction) {
+                    $monthKey = Carbon::parse($transaction->created_at)->format('Y-m-01');
+                    if (!isset($revenueResults[$monthKey])) {
+                        $revenueResults[$monthKey] = 0;
+                    }
+                    $revenueResults[$monthKey] += $transaction->amount;
+                }
 
                 // Map results to date ranges
                 foreach ($dateRanges as $range) {
@@ -399,7 +503,7 @@ class FinancialDataService
                     'data' => $data,
                 ];
 
-                Log::debug('FinancialDataService: Trend data generated efficiently', [
+                Log::debug('FinancialDataService: Default trend data generated', [
                     'months' => $months,
                     'data_points' => count($data),
                 ]);
@@ -407,7 +511,7 @@ class FinancialDataService
                 return $result;
 
             } catch (\Exception $e) {
-                Log::error('FinancialDataService: Failed to generate trend data', [
+                Log::error('FinancialDataService: Failed to generate default trend data', [
                     'error' => $e->getMessage(),
                 ]);
                 return [
@@ -416,6 +520,68 @@ class FinancialDataService
                 ];
             }
         });
+    }
+
+    /**
+     * Generate daily date ranges for short periods.
+     */
+    private function generateDailyRanges(Carbon $startDate, Carbon $endDate): array
+    {
+        $ranges = [];
+        $current = $startDate->copy();
+
+        while ($current->lte($endDate)) {
+            $ranges[] = [
+                'key' => $current->format('Y-m-d'),
+                'label' => $current->format('M j')
+            ];
+            $current->addDay();
+        }
+
+        return $ranges;
+    }
+
+    /**
+     * Generate weekly date ranges for medium periods.
+     */
+    private function generateWeeklyRanges(Carbon $startDate, Carbon $endDate): array
+    {
+        $ranges = [];
+        $current = $startDate->copy()->startOfWeek();
+
+        while ($current->lte($endDate)) {
+            $weekEnd = $current->copy()->endOfWeek();
+            if ($weekEnd->gt($endDate)) {
+                $weekEnd = $endDate->copy();
+            }
+
+            $ranges[] = [
+                'key' => $current->format('Y-W'), // Year-Week format
+                'label' => $current->format('M j') . '-' . $weekEnd->format('j')
+            ];
+            $current->addWeek();
+        }
+
+        return $ranges;
+    }
+
+    /**
+     * Generate monthly date ranges for long periods.
+     */
+    private function generateMonthlyRanges(Carbon $startDate, Carbon $endDate): array
+    {
+        $ranges = [];
+        $current = $startDate->copy()->startOfMonth();
+
+        while ($current->lte($endDate)) {
+            $ranges[] = [
+                'key' => $current->format('Y-m-01'),
+                'label' => $current->format('M Y')
+            ];
+            $current->addMonth();
+        }
+
+        return $ranges;
     }
 
     /**
@@ -458,7 +624,7 @@ class FinancialDataService
                     'active_subscriptions' => $this->getActiveSubscriptionsCount(),
                     'arpu' => $this->calculateAverageRevenuePerUser($startDate, $endDate),
                     'subscription_breakdown' => $this->getSubscriptionStatusBreakdown(),
-                    'trend_data' => $this->getRevenueTrendData(),
+                    'trend_data' => $this->getRevenueTrendData($startDate, $endDate),
                 ];
 
                 Log::info('FinancialDataService: Financial summary generated', [
