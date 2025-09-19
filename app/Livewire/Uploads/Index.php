@@ -108,7 +108,7 @@ class Index extends Component
                 'user_id' => auth()->id(),
                 'user_email' => auth()->user()->email,
             ]);
-            
+
             $upload = Upload::findOrFail($uploadId);
             Log::info("USER DOWNLOAD: Found upload", [
                 'upload_id' => $upload->id,
@@ -196,13 +196,13 @@ class Index extends Component
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
             ]);
-            
+
             $this->dispatch('flash-message', [
                 'type' => 'error',
                 'message' => 'No tienes permisos para descargar este archivo.'
             ]);
             return;
-            
+
         } catch (\Exception $e) {
             Log::error("USER DOWNLOAD: Download failed with exception", [
                 'upload_id' => $uploadId,
@@ -210,7 +210,7 @@ class Index extends Component
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             $this->dispatch('flash-message', [
                 'type' => 'error',
                 'message' => 'Error al descargar el archivo: ' . $e->getMessage()

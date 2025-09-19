@@ -148,6 +148,53 @@ class StripeWebhookController extends WebhookController
                 'subscription_id' => $subscription->id,
                 'local_subscription_id' => $localSubscription->id,
             ]);
+        } else {
+            // Update existing subscription if it was created by subscription.updated webhook
+            // But only if the new status is better or equal (don't downgrade from active to incomplete)
+            $previousStatus = $localSubscription->stripe_status;
+            $newStatus = $subscription->status;
+
+            // Define status hierarchy (higher number = better status)
+            $statusPriority = [
+                'incomplete' => 1,
+                'incomplete_expired' => 1,
+                'canceled' => 2,
+                'unpaid' => 3,
+                'past_due' => 4,
+                'trialing' => 5,
+                'active' => 6,
+            ];
+
+            $currentPriority = $statusPriority[$previousStatus] ?? 0;
+            $newPriority = $statusPriority[$newStatus] ?? 0;
+
+            if ($newPriority >= $currentPriority) {
+                $localSubscription->stripe_status = $newStatus;
+                $statusUpdated = true;
+            } else {
+                $statusUpdated = false;
+                Log::info('🚫 Preventing status downgrade', [
+                    'user_id' => $user->id,
+                    'subscription_id' => $subscription->id,
+                    'current_status' => $previousStatus,
+                    'attempted_new_status' => $newStatus,
+                    'reason' => 'New status has lower priority',
+                ]);
+            }
+
+            // Always update price and quantity regardless of status
+            $localSubscription->stripe_price = $subscription->items->data[0]->price->id ?? $localSubscription->stripe_price;
+            $localSubscription->quantity = $subscription->items->data[0]->quantity ?? $localSubscription->quantity;
+            $localSubscription->save();
+
+            Log::info('✅ Existing subscription record processed during creation', [
+                'user_id' => $user->id,
+                'subscription_id' => $subscription->id,
+                'local_subscription_id' => $localSubscription->id,
+                'previous_status' => $previousStatus,
+                'new_status' => $statusUpdated ? $newStatus : $previousStatus,
+                'status_updated' => $statusUpdated,
+            ]);
         }
 
         // Handle discount code usage if present
@@ -201,19 +248,64 @@ class StripeWebhookController extends WebhookController
             ->first();
 
         if (!$localSubscription) {
-            Log::warning('❌ Local subscription not found for update', [
+            Log::warning('❌ Local subscription not found for update, creating it now', [
                 'user_id' => $user->id,
                 'stripe_subscription_id' => $subscription->id,
             ]);
-            return;
+
+            // Create the local subscription record since it doesn't exist yet
+            // This handles the case where subscription.updated webhook arrives before subscription.created
+            $localSubscription = $user->subscriptions()->create([
+                'type' => 'default',
+                'stripe_id' => $subscription->id,
+                'stripe_status' => $subscription->status,
+                'stripe_price' => $subscription->items->data[0]->price->id ?? null,
+                'quantity' => $subscription->items->data[0]->quantity ?? 1,
+                'trial_ends_at' => $subscription->trial_end ? \Carbon\Carbon::createFromTimestamp($subscription->trial_end) : null,
+                'ends_at' => null,
+            ]);
+
+            Log::info('✅ Local subscription record created during update', [
+                'user_id' => $user->id,
+                'subscription_id' => $subscription->id,
+                'local_subscription_id' => $localSubscription->id,
+                'initial_status' => $subscription->status,
+            ]);
         }
 
         // Track what changed
         $previousStatus = $localSubscription->stripe_status;
         $newStatus = $subscription->status;
 
-        // Update the subscription status and other relevant fields
-        $localSubscription->stripe_status = $newStatus;
+        // Define status hierarchy (higher number = better status)
+        $statusPriority = [
+            'incomplete' => 1,
+            'incomplete_expired' => 1,
+            'canceled' => 2,
+            'unpaid' => 3,
+            'past_due' => 4,
+            'trialing' => 5,
+            'active' => 6,
+        ];
+
+        $currentPriority = $statusPriority[$previousStatus] ?? 0;
+        $newPriority = $statusPriority[$newStatus] ?? 0;
+
+        // Only update status if it's better or equal (prevent downgrades)
+        if ($newPriority >= $currentPriority) {
+            $localSubscription->stripe_status = $newStatus;
+            $statusUpdated = true;
+        } else {
+            $statusUpdated = false;
+            Log::info('🚫 Preventing status downgrade in update', [
+                'user_id' => $user->id,
+                'subscription_id' => $subscription->id,
+                'current_status' => $previousStatus,
+                'attempted_new_status' => $newStatus,
+                'reason' => 'New status has lower priority',
+            ]);
+        }
+
         $localSubscription->quantity = $subscription->quantity ?? 1;
 
         // Update period information
@@ -231,16 +323,18 @@ class StripeWebhookController extends WebhookController
 
         $localSubscription->save();
 
-        Log::info('✅ Local subscription status updated', [
+        Log::info('✅ Local subscription status processed', [
             'user_id' => $user->id,
             'subscription_id' => $subscription->id,
             'previous_status' => $previousStatus,
-            'new_status' => $newStatus,
-            'status_changed' => $previousStatus !== $newStatus,
+            'attempted_status' => $newStatus,
+            'final_status' => $localSubscription->stripe_status,
+            'status_updated' => $statusUpdated,
+            'status_changed' => $statusUpdated && ($previousStatus !== $newStatus),
         ]);
 
         // If subscription became active from incomplete, log special success message
-        if ($previousStatus === 'incomplete' && $newStatus === 'active') {
+        if ($statusUpdated && $previousStatus === 'incomplete' && $newStatus === 'active') {
             Log::info('🎉 Subscription activated successfully', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
