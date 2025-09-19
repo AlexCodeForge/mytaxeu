@@ -63,3 +63,17 @@ app(Schedule::class)->command('subscriptions:check-renewals')
     ->onFailure(function () {
         \Log::error('Subscription renewal check failed');
     });
+
+// Rate Management Schedules
+
+// Daily rate updates - every day at 6:00 AM (early morning before business hours)
+app(Schedule::class)->command('rates:update')
+    ->dailyAt('06:00')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onSuccess(function () {
+        \Log::info('Daily rate update completed successfully');
+    })
+    ->onFailure(function () {
+        \Log::error('Daily rate update failed');
+    });

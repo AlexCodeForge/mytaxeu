@@ -60,6 +60,9 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
             Route::get('/', \App\Livewire\Admin\EmailSettingsIndex::class)->name('index');
         });
 
+        // Rate Management
+        Route::get('/rate-management', \App\Livewire\Admin\RateManagement::class)->name('rate.management');
+
         // Subscription Plans Management
         Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
             Route::get('/plans', \App\Livewire\Admin\Subscriptions\PlanManagement::class)->name('plans');

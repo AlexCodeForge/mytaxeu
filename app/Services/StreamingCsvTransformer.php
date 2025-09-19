@@ -11,6 +11,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Font;
 use PhpOffice\PhpSpreadsheet\Style\Color;
+use App\Services\RateService;
 
 /**
  * True Streaming CSV Transformer
@@ -60,21 +61,19 @@ class StreamingCsvTransformer
         'PT', 'RO', 'SE', 'SI', 'SK'
     ];
 
-    private const EXCHANGE_RATES = [
-        'PLN' => 0.319033, 'EUR' => 1.0, 'SEK' => 0.087, 'GBP' => 1.169827,
-    ];
-
-    private const OSS_VAT_RATES = [
-        'AT' => 0.20, 'BE' => 0.21, 'BG' => 0.20, 'CY' => 0.19, 'CZ' => 0.21,
-        'DE' => 0.19, 'DK' => 0.25, 'EE' => 0.20, 'ES' => 0.21, 'FI' => 0.24,
-        'FR' => 0.20, 'GR' => 0.24, 'HR' => 0.25, 'HU' => 0.27, 'IE' => 0.23,
-        'IT' => 0.22, 'LT' => 0.21, 'LU' => 0.17, 'LV' => 0.21, 'NL' => 0.21,
-        'PL' => 0.23, 'PT' => 0.23, 'RO' => 0.19, 'SE' => 0.25, 'SI' => 0.22,
-    ];
+    // Dynamic rates loaded from database
+    private array $exchangeRates;
+    private array $ossVatRates;
 
     private array $categoryAggregates;
     private array $activityPeriods;
     private int $processedRows;
+    private RateService $rateService;
+
+    public function __construct(RateService $rateService)
+    {
+        $this->rateService = $rateService;
+    }
 
     public function transform(string $inputPath, string $outputPath): void
     {
@@ -82,12 +81,17 @@ class StreamingCsvTransformer
         $initialMemory = memory_get_usage(true);
         $maxExecutionTime = 540; // 9 minutes (less than job timeout of 10 minutes)
 
+        // Load current rates from database
+        $this->loadCurrentRates();
+
         $this->log("Starting streaming CSV transformation", [
             'input' => $inputPath,
             'output' => $outputPath,
             'size_mb' => round(filesize($inputPath) / 1024 / 1024, 2),
             'initial_memory_mb' => round($initialMemory / 1024 / 1024, 2),
-            'max_execution_time' => $maxExecutionTime
+            'max_execution_time' => $maxExecutionTime,
+            'exchange_rates_loaded' => count($this->exchangeRates),
+            'vat_rates_loaded' => count($this->ossVatRates)
         ]);
 
         try {
@@ -138,6 +142,46 @@ class StreamingCsvTransformer
                 'memory_at_failure_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
             ]);
             throw $e;
+        }
+    }
+
+    private function loadCurrentRates(): void
+    {
+        try {
+            // Load exchange rates from database with fallback
+            $this->exchangeRates = $this->rateService->getExchangeRatesForTransformer();
+
+            // Load VAT rates from database with fallback
+            $this->ossVatRates = $this->rateService->getVatRatesForTransformer();
+
+            $this->log("Rates loaded successfully", [
+                'exchange_rates_count' => count($this->exchangeRates),
+                'vat_rates_count' => count($this->ossVatRates),
+                'exchange_rates' => $this->exchangeRates,
+                'sample_vat_rates' => array_slice($this->ossVatRates, 0, 5, true)
+            ]);
+
+        } catch (Exception $e) {
+            $this->log("Failed to load rates from database, using hardcoded fallbacks", [
+                'error' => $e->getMessage()
+            ]);
+
+            // Fallback to hardcoded values if database fails - ALL supported currencies
+            $this->exchangeRates = [
+                'EUR' => 1.0,      'GBP' => 1.169827, 'PLN' => 0.319033, 'SEK' => 0.087,
+                'DKK' => 0.134,    'CZK' => 0.041,    'HUF' => 0.0025,   'RON' => 0.201,
+                'BGN' => 0.511,    'HRK' => 0.133,    'NOK' => 0.087,    'CHF' => 1.081,
+                'USD' => 0.926,    'CAD' => 0.679,    'AUD' => 0.602,    'JPY' => 0.0062,
+                'CNY' => 0.129,    'INR' => 0.011,    'BRL' => 0.162,    'MXN' => 0.047,
+            ];
+
+            $this->ossVatRates = [
+                'AT' => 0.20, 'BE' => 0.21, 'BG' => 0.20, 'CY' => 0.19, 'CZ' => 0.21,
+                'DE' => 0.19, 'DK' => 0.25, 'EE' => 0.20, 'ES' => 0.21, 'FI' => 0.24,
+                'FR' => 0.20, 'GR' => 0.24, 'HR' => 0.25, 'HU' => 0.27, 'IE' => 0.23,
+                'IT' => 0.22, 'LT' => 0.21, 'LU' => 0.17, 'LV' => 0.21, 'MT' => 0.18,
+                'NL' => 0.21, 'PL' => 0.23, 'PT' => 0.23, 'RO' => 0.19, 'SE' => 0.25, 'SI' => 0.22, 'SK' => 0.20,
+            ];
         }
     }
 
@@ -298,8 +342,8 @@ class StreamingCsvTransformer
         // Store original currency before conversion
         $transaction['ORIGINAL_CURRENCY'] = $currency;
 
-        if ($currency !== 'EUR' && isset(self::EXCHANGE_RATES[$currency])) {
-            $rate = self::EXCHANGE_RATES[$currency];
+        if ($currency !== 'EUR' && isset($this->exchangeRates[$currency])) {
+            $rate = $this->exchangeRates[$currency];
             foreach (self::NUMERIC_COLUMNS as $column) {
                 if (isset($transaction[$column])) {
                     $transaction[$column] = round($transaction[$column] * $rate, 2);
@@ -595,7 +639,7 @@ class StreamingCsvTransformer
     {
         $origin = $transaction['SALE_DEPART_COUNTRY'] ?? '';
         $arrivalCountry = $transaction['SALE_ARRIVAL_COUNTRY'] ?? '';
-        $vatRate = self::OSS_VAT_RATES[$arrivalCountry] ?? 0;
+        $vatRate = $this->ossVatRates[$arrivalCountry] ?? 0;
         $destination = $arrivalCountry . ' - ' . number_format($vatRate * 100, 2) . '%';
         $key = $origin . '|' . $destination;
 

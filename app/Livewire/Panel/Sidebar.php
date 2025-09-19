@@ -35,6 +35,7 @@ class Sidebar extends Component
             ['label' => 'Panel Financiero', 'icon' => 'fa-euro-sign', 'route' => 'admin.financial.dashboard'],
             ['label' => 'Usuarios', 'icon' => 'fa-users', 'route' => 'admin.users.enhanced'],
             ['label' => 'Gestión de Uploads', 'icon' => 'fa-file-upload', 'route' => 'admin.uploads'],
+            ['label' => 'Gestión de Tarifas', 'icon' => 'fa-exchange-alt', 'route' => 'admin.rate.management'],
             ['label' => 'Planes de Suscripción', 'icon' => 'fa-credit-card', 'route' => 'admin.subscriptions.plans'],
             ['label' => 'Códigos de Descuento', 'icon' => 'fa-tags', 'route' => 'admin.subscriptions.discount-codes'],
             // ['label' => 'Análisis de Uso', 'icon' => 'fa-chart-bar', 'route' => 'admin.usage.analytics'],
