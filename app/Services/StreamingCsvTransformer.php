@@ -63,7 +63,7 @@ class StreamingCsvTransformer
 
     // Dynamic rates loaded from database
     private array $exchangeRates;
-    private array $ossVatRates;
+    private array $ossVatRates; // Kept for fallback compatibility, but Amazon VAT rates are used primarily
 
     private array $categoryAggregates;
     private array $activityPeriods;
@@ -555,29 +555,16 @@ class StreamingCsvTransformer
             ];
         }
 
-        // POWER BI LOGIC: Different logic per country based on analysis
-        if ($jurisdiction === 'POLAND') {
-            // POLAND SPECIAL: 23% VAT → Calc Base (using 0.319 rate), 0% VAT → No IVA
-            if (abs($vatRate - 0.23) < 0.001) {
-                $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $baseAmount;
-            } elseif (abs($vatRate - 0.0) < 0.001) {
-                $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['No IVA (€)'] += $baseAmount;
-            }
-        } elseif ($jurisdiction === 'UNITED KINGDOM') {
-            // UK SPECIAL: Exclude 0% VAT entirely, only 20% VAT goes to Calc Base
-            if (abs($vatRate - 0.20) < 0.001) {
+        // SIMPLIFIED LOGIC: Use Amazon's VAT rates directly - no hardcoded assumptions
+        if ($jurisdiction === 'UNITED KINGDOM') {
+            // UK SPECIAL: Exclude 0% VAT entirely (per original Power BI logic)
+            if ($vatRate > 0.0) {
                 $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $baseAmount;
             }
             // 0% VAT is excluded entirely for UK (not added to No IVA)
         } else {
-            // STANDARD LOGIC: Standard VAT rate → Calc Base, 0% VAT → No IVA
-            $standardVatRates = [
-                'ITALY' => 0.22, 'SPAIN' => 0.21, 'FRANCE' => 0.20, 'GERMANY' => 0.19, 'CZECH REPUBLIC' => 0.21
-            ];
-
-            $standardRate = $standardVatRates[$jurisdiction] ?? 0.22;
-
-            if (abs($vatRate - $standardRate) < 0.001) {
+            // STANDARD LOGIC: Trust Amazon's VAT rates - any VAT > 0 → Calc Base, 0% VAT → No IVA
+            if ($vatRate > 0.0) {
                 $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['Calculated Base (€)'] += $baseAmount;
             } elseif (abs($vatRate - 0.0) < 0.001) {
                 $this->categoryAggregates['Ventas locales al consumidor final - B2C y B2B (EUR)'][$jurisdiction]['No IVA (€)'] += $baseAmount;
@@ -639,7 +626,8 @@ class StreamingCsvTransformer
     {
         $origin = $transaction['SALE_DEPART_COUNTRY'] ?? '';
         $arrivalCountry = $transaction['SALE_ARRIVAL_COUNTRY'] ?? '';
-        $vatRate = $this->ossVatRates[$arrivalCountry] ?? 0;
+        // Use Amazon's provided VAT rate instead of hardcoded rates
+        $vatRate = (float)($transaction['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0);
         $destination = $arrivalCountry . ' - ' . number_format($vatRate * 100, 2) . '%';
         $key = $origin . '|' . $destination;
 
@@ -715,8 +703,9 @@ class StreamingCsvTransformer
     {
         $origin = $transaction['SALE_DEPART_COUNTRY'] ?? '';
         $arrivalCountry = $transaction['ARRIVAL_COUNTRY'] ?? '';
-        $vatRate = $transaction['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0;
-        $destination = $arrivalCountry . ' - ' . $vatRate . '%';
+        // Use Amazon's provided VAT rate (already correctly using it, but format consistently)
+        $vatRate = (float)($transaction['PRICE_OF_ITEMS_VAT_RATE_PERCENT'] ?? 0);
+        $destination = $arrivalCountry . ' - ' . number_format($vatRate * 100, 2) . '%';
         $key = $origin . '|' . $destination;
 
         if (!isset($this->categoryAggregates['Ventanilla Única - IOSS esquema de importación (EUR)'][$key])) {
@@ -1035,11 +1024,13 @@ class StreamingCsvTransformer
     private function log(string $message, array $context = []): void
     {
         try {
-            if (class_exists('Illuminate\Support\Facades\Log')) {
+            if (class_exists('Illuminate\Support\Facades\Log') && Log::getFacadeRoot()) {
                 Log::info($message, $context);
+            } else {
+                echo "LOG: $message\n";
             }
         } catch (Exception $e) {
-            echo "$message\n";
+            echo "LOG: $message\n";
         }
     }
 }

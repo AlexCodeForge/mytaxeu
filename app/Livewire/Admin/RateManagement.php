@@ -62,12 +62,13 @@ class RateManagement extends Component
         // Ensure all required rates exist
         $this->ensureRequiredRatesExist();
 
-        // Get all required exchange rates
+        // Get all required exchange rates (most recent per currency)
         $exchangeRates = collect();
         foreach (self::REQUIRED_EXCHANGE_CURRENCIES as $currency) {
             $rate = RateSetting::exchangeRates()
                 ->where('currency', $currency)
                 ->where('is_active', true)
+                ->orderBy('last_updated_at', 'desc')
                 ->first();
 
             if ($rate) {
@@ -77,12 +78,13 @@ class RateManagement extends Component
         // Sort alphabetically by currency code
         $exchangeRates = $exchangeRates->sortBy('currency')->values();
 
-        // Get all required VAT rates
+        // Get all required VAT rates (most recent per country)
         $vatRates = collect();
         foreach (self::REQUIRED_VAT_COUNTRIES as $country) {
             $rate = RateSetting::vatRates()
                 ->where('country', $country)
                 ->where('is_active', true)
+                ->orderBy('last_updated_at', 'desc')
                 ->first();
 
             if ($rate) {
@@ -140,6 +142,7 @@ class RateManagement extends Component
             $existing = RateSetting::exchangeRates()
                 ->where('currency', $currency)
                 ->where('is_active', true)
+                ->orderBy('last_updated_at', 'desc')
                 ->first();
 
             if (!$existing) {
@@ -162,6 +165,7 @@ class RateManagement extends Component
             $existing = RateSetting::vatRates()
                 ->where('country', $country)
                 ->where('is_active', true)
+                ->orderBy('last_updated_at', 'desc')
                 ->first();
 
             if (!$existing) {
@@ -217,6 +221,7 @@ class RateManagement extends Component
         $rate = RateSetting::exchangeRates()
             ->where('currency', $currency)
             ->where('is_active', true)
+            ->orderBy('last_updated_at', 'desc')
             ->first();
 
         if ($rate) {
@@ -267,6 +272,7 @@ class RateManagement extends Component
         $rate = RateSetting::vatRates()
             ->where('country', $country)
             ->where('is_active', true)
+            ->orderBy('last_updated_at', 'desc')
             ->first();
 
         if ($rate) {

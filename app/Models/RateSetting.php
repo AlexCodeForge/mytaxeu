@@ -78,7 +78,7 @@ class RateSetting extends Model
             $rate = self::exchangeRates()
                 ->active()
                 ->where('currency', $currency)
-                ->current()
+                ->orderBy('last_updated_at', 'desc')
                 ->first();
 
             return $rate ? (float) $rate->rate : 1.0;
@@ -91,7 +91,7 @@ class RateSetting extends Model
             $rate = self::vatRates()
                 ->active()
                 ->where('country', $country)
-                ->current()
+                ->orderBy('last_updated_at', 'desc')
                 ->first();
 
             return $rate ? (float) $rate->rate : 0.0;
@@ -102,13 +102,24 @@ class RateSetting extends Model
     public static function getCurrentExchangeRates(): array
     {
         return Cache::remember('all_exchange_rates', 3600, function () {
-            $rates = self::exchangeRates()
+            // Get the most recent rate for each currency to handle duplicates
+            $rates = [];
+            $currencies = self::exchangeRates()
                 ->active()
-                ->current()
-                ->get()
-                ->keyBy('currency')
-                ->map(fn($rate) => (float) $rate->rate)
-                ->toArray();
+                ->distinct()
+                ->pluck('currency');
+
+            foreach ($currencies as $currency) {
+                $rate = self::exchangeRates()
+                    ->active()
+                    ->where('currency', $currency)
+                    ->orderBy('last_updated_at', 'desc')
+                    ->first();
+
+                if ($rate) {
+                    $rates[$currency] = (float) $rate->rate;
+                }
+            }
 
             // Ensure EUR is always 1.0
             $rates['EUR'] = 1.0;
@@ -121,17 +132,30 @@ class RateSetting extends Model
     public static function getCurrentVatRates(): array
     {
         return Cache::remember('all_vat_rates', 3600, function () {
-            return self::vatRates()
+            // Get the most recent rate for each country to handle duplicates
+            $rates = [];
+            $countries = self::vatRates()
                 ->active()
-                ->current()
-                ->get()
-                ->keyBy('country')
-                ->map(fn($rate) => (float) $rate->rate)
-                ->toArray();
+                ->distinct()
+                ->pluck('country');
+
+            foreach ($countries as $country) {
+                $rate = self::vatRates()
+                    ->active()
+                    ->where('country', $country)
+                    ->orderBy('last_updated_at', 'desc')
+                    ->first();
+
+                if ($rate) {
+                    $rates[$country] = (float) $rate->rate;
+                }
+            }
+
+            return $rates;
         });
     }
 
-    // Update or create rate
+    // Update or create rate with proper handling of manual/automatic modes
     public static function updateRate(
         string $type,
         float $rate,
@@ -141,12 +165,32 @@ class RateSetting extends Model
         string $updateMode = 'manual',
         ?array $metadata = null
     ): self {
-        $effectiveDate = now()->startOfDay(); // This ensures we get YYYY-MM-DD 00:00:00 format
+        // For proper unique handling, find and update the most recent active rate
+        // instead of relying on effective_date which can cause duplicates
+
+        $query = self::where('type', $type)->where('is_active', true);
+
+        if ($currency) {
+            $query->where('currency', $currency);
+        }
+
+        if ($country) {
+            $query->where('country', $country);
+        }
+
+        $existingRate = $query->orderBy('last_updated_at', 'desc')->first();
+
+        // If updating an existing rate and it's set to manual mode, preserve manual mode
+        // unless explicitly requested to change it
+        if ($existingRate && $existingRate->update_mode === 'manual' && $source === 'api_vatcomply') {
+            // Skip API updates for manual rates
+            return $existingRate;
+        }
 
         $data = [
             'type' => $type,
             'rate' => $rate,
-            'effective_date' => $effectiveDate,
+            'effective_date' => now()->startOfDay(),
             'source' => $source,
             'update_mode' => $updateMode,
             'is_active' => true,
@@ -162,22 +206,14 @@ class RateSetting extends Model
             $data['country'] = $country;
         }
 
-        // Build unique conditions for updateOrCreate
-        if ($currency) {
-            $uniqueConditions = [
-                'type' => $type,
-                'currency' => $currency,
-                'effective_date' => $effectiveDate
-            ];
+        if ($existingRate) {
+            // Update existing rate
+            $existingRate->update($data);
+            $rateSetting = $existingRate;
         } else {
-            $uniqueConditions = [
-                'type' => $type,
-                'country' => $country,
-                'effective_date' => $effectiveDate
-            ];
+            // Create new rate
+            $rateSetting = self::create($data);
         }
-
-        $rateSetting = self::updateOrCreate($uniqueConditions, $data);
 
         // Clear relevant cache
         if ($type === 'exchange_rate') {
