@@ -12,6 +12,7 @@ use App\Notifications\EnhancedUploadProcessingStarted;
 use App\Notifications\FileUploadConfirmation;
 use App\Notifications\FileProcessingStarted;
 use App\Services\CreditService;
+use App\Services\EmailConfigService;
 use Illuminate\Support\Facades\Log;
 
 class NotificationService
@@ -31,6 +32,14 @@ class NotificationService
         }
 
         try {
+            // Check if feature is enabled
+            if (!EmailConfigService::isFeatureEnabled('file_processing_emails')) {
+                Log::debug('File processing emails are disabled, skipping success notification', [
+                    'upload_id' => $upload->id,
+                ]);
+                return false;
+            }
+
             // Create default upload metric if none provided
             if (!$uploadMetric) {
                 $uploadMetric = $this->createDefaultUploadMetric($upload);
@@ -80,6 +89,14 @@ class NotificationService
         }
 
         try {
+            // Check if feature is enabled
+            if (!EmailConfigService::isFeatureEnabled('file_processing_emails')) {
+                Log::debug('File processing emails are disabled, skipping failure notification', [
+                    'upload_id' => $upload->id,
+                ]);
+                return false;
+            }
+
             // Create default upload metric if none provided
             if (!$uploadMetric) {
                 $uploadMetric = $this->createDefaultUploadMetric($upload);
@@ -120,7 +137,7 @@ class NotificationService
     {
         try {
             // Check if feature is enabled
-            if (!config('emails.features.file_processing_emails', true)) {
+            if (!EmailConfigService::isFeatureEnabled('file_processing_emails')) {
                 Log::debug('File processing emails are disabled, skipping upload confirmation', [
                     'upload_id' => $upload->id,
                 ]);
@@ -182,7 +199,7 @@ class NotificationService
     {
         try {
             // Check if feature is enabled
-            if (!config('emails.features.file_processing_emails', true)) {
+            if (!EmailConfigService::isFeatureEnabled('file_processing_emails')) {
                 Log::debug('File processing emails are disabled, skipping processing started', [
                     'upload_id' => $upload->id,
                 ]);

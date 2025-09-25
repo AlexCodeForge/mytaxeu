@@ -73,7 +73,7 @@ class EmailSettingsSeeder extends Seeder
             [
                 'key' => 'subscription_emails_enabled',
                 'label' => 'Emails de Suscripción',
-                'description' => 'Habilitar/deshabilitar todos los emails relacionados con suscripciones',
+                'description' => 'Habilitar/deshabilitar emails relacionados con compras y suscripciones',
                 'sort_order' => 10,
             ],
             [
@@ -85,20 +85,8 @@ class EmailSettingsSeeder extends Seeder
             [
                 'key' => 'admin_notifications_enabled',
                 'label' => 'Notificaciones Administrativas',
-                'description' => 'Habilitar/deshabilitar todas las notificaciones para administradores',
+                'description' => 'Habilitar/deshabilitar notificaciones de ventas para administradores',
                 'sort_order' => 30,
-            ],
-            [
-                'key' => 'weekly_reports_enabled',
-                'label' => 'Reportes Semanales',
-                'description' => 'Habilitar/deshabilitar envío automático de reportes semanales',
-                'sort_order' => 40,
-            ],
-            [
-                'key' => 'monthly_reports_enabled',
-                'label' => 'Reportes Mensuales',
-                'description' => 'Habilitar/deshabilitar envío automático de reportes mensuales',
-                'sort_order' => 50,
             ],
         ];
 
@@ -121,15 +109,10 @@ class EmailSettingsSeeder extends Seeder
     protected function createUserNotificationSettings(): void
     {
         $notifications = [
-            'subscription_payment_confirmation' => [
-                'label' => 'Confirmación de Pago',
-                'description' => 'Email enviado tras confirmar un pago de suscripción',
-                'template' => 'emails.users.subscription-payment-confirmation',
-            ],
-            'subscription_renewal_reminder' => [
-                'label' => 'Recordatorio de Renovación',
-                'description' => 'Email enviado 7 días antes de la renovación',
-                'template' => 'emails.users.subscription-renewal-reminder',
+            'purchase_thank_you' => [
+                'label' => 'Agradecimiento por Compra',
+                'description' => 'Email de agradecimiento enviado tras una compra exitosa',
+                'template' => 'emails.users.purchase-thank-you',
             ],
             'file_upload_confirmation' => [
                 'label' => 'Confirmación de Carga',
@@ -141,25 +124,15 @@ class EmailSettingsSeeder extends Seeder
                 'description' => 'Email enviado al iniciar el procesamiento',
                 'template' => 'emails.users.file-processing-started',
             ],
-            'upload_completed' => [
-                'label' => 'Carga Completada',
-                'description' => 'Email enviado al completar la carga de un archivo',
-                'template' => 'emails.users.upload-completed',
+            'enhanced_upload_completed' => [
+                'label' => 'Procesamiento Completado (Mejorado)',
+                'description' => 'Email enviado al completar exitosamente el procesamiento',
+                'template' => 'emails.users.enhanced-upload-completed',
             ],
-            'upload_failed' => [
-                'label' => 'Carga Fallida',
-                'description' => 'Email enviado cuando falla la carga',
-                'template' => 'emails.users.upload-failed',
-            ],
-            'upload_queued' => [
-                'label' => 'Archivo en Cola',
-                'description' => 'Email enviado cuando el archivo se pone en cola',
-                'template' => 'emails.users.upload-queued',
-            ],
-            'upload_received' => [
-                'label' => 'Archivo Recibido',
-                'description' => 'Email enviado cuando se recibe el archivo',
-                'template' => 'emails.users.upload-received',
+            'enhanced_upload_failed' => [
+                'label' => 'Procesamiento Fallido (Mejorado)',
+                'description' => 'Email enviado cuando falla el procesamiento',
+                'template' => 'emails.users.enhanced-upload-failed',
             ],
         ];
 
@@ -216,30 +189,6 @@ class EmailSettingsSeeder extends Seeder
                 'description' => 'Email enviado inmediatamente tras una venta',
                 'queue' => 'priority-emails',
                 'template' => 'emails.admin.sale-notification',
-            ],
-            'weekly_sales_report' => [
-                'label' => 'Reporte Semanal',
-                'description' => 'Reporte enviado cada lunes con datos de la semana',
-                'queue' => 'report-emails',
-                'template' => 'emails.admin.weekly-sales-report',
-            ],
-            'monthly_sales_report' => [
-                'label' => 'Reporte Mensual',
-                'description' => 'Reporte ejecutivo enviado el primer día de cada mes',
-                'queue' => 'report-emails',
-                'template' => 'emails.admin.monthly-sales-report',
-            ],
-            'daily_job_status_report' => [
-                'label' => 'Reporte Diario',
-                'description' => 'Reporte operacional enviado cada mañana',
-                'queue' => 'report-emails',
-                'template' => 'emails.admin.daily-job-status-report',
-            ],
-            'failed_job_alert' => [
-                'label' => 'Alerta de Trabajo Fallido',
-                'description' => 'Alerta enviada cuando falla un trabajo crítico',
-                'queue' => 'priority-emails',
-                'template' => 'emails.admin.failed-job-alert',
             ],
         ];
 

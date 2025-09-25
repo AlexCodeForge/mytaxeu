@@ -37,11 +37,11 @@
       </div>
 
       <div class="sm:col-span-2 lg:col-span-1 flex items-end">
-        <div class="text-sm text-gray-500">
+        {{-- <div class="text-sm text-gray-500">
           <span x-show="timePeriod === 'monthly'">Este mes</span>
           <span x-show="timePeriod === '3months'">Últimos 3 meses</span>
           <span x-show="timePeriod === 'yearly'">Este año</span>
-        </div>
+        </div> --}}
       </div>
     </div>
   </div>

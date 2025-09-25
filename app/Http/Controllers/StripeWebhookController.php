@@ -9,9 +9,11 @@ use App\Models\User;
 use App\Models\CreditTransaction;
 use App\Notifications\SubscriptionPaymentConfirmation;
 use App\Notifications\SaleNotification;
+use App\Notifications\PurchaseThankYou;
 use App\Services\CreditService;
 use App\Services\DiscountCodeUsageService;
 use App\Services\EmailService;
+use App\Services\EmailConfigService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -460,9 +462,10 @@ class StripeWebhookController extends WebhookController
             'success' => $success,
         ]);
 
-        // Send payment confirmation email if credits were successfully allocated
+        // Send emails if credits were successfully allocated
         if ($success) {
             $this->sendPaymentConfirmationEmail($user, $invoice, $localSubscription, $creditsToAllocate);
+            $this->sendPurchaseThankYouEmail($user, $invoice, $localSubscription, $creditsToAllocate);
             $this->sendSaleNotificationToAdmins($user, $invoice, $localSubscription);
         }
     }
@@ -767,6 +770,96 @@ class StripeWebhookController extends WebhookController
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+        }
+    }
+
+    /**
+     * Send purchase thank you email to customer
+     */
+    protected function sendPurchaseThankYouEmail($user, $invoice, $subscription, int $creditsAllocated): void
+    {
+        try {
+            // Check if subscription emails are enabled
+            if (!EmailConfigService::isFeatureEnabled('subscription_emails')) {
+                Log::debug('Subscription emails are disabled, skipping thank you email', [
+                    'user_id' => $user->id,
+                    'invoice_id' => $invoice->id,
+                ]);
+                return;
+            }
+
+            // Prepare customer data
+            $customerData = [
+                'name' => $user->name,
+                'email' => $user->email,
+                'customer_id' => $user->stripe_id,
+                'registration_date' => $user->created_at->format('d/m/Y'),
+                'is_first_purchase' => $this->isFirstPurchase($user),
+            ];
+
+            // Prepare purchase data
+            $purchaseData = [
+                'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y H:i'),
+                'amount' => $invoice->amount_paid, // in cents
+                'amount_formatted' => '€' . number_format($invoice->amount_paid / 100, 2),
+                'payment_method' => 'Tarjeta de crédito',
+                'transaction_id' => $invoice->id,
+                'invoice_id' => $invoice->id,
+                'billing_cycle' => $invoice->billing_reason === 'subscription_create' ? 'Nuevo' : 'Renovación',
+            ];
+
+            // Prepare subscription data
+            $subscriptionData = [
+                'plan_name' => $this->determinePlanName($invoice),
+                'billing_cycle' => $subscription ? 'mensual' : 'único',
+                'next_billing_date' => $subscription && $subscription->current_period_end
+                    ? Carbon::createFromTimestamp($subscription->current_period_end)->format('d/m/Y')
+                    : null,
+                'status' => $subscription ? $subscription->status : 'completed',
+            ];
+
+            // Prepare credits data
+            $creditsData = [
+                'credits_added' => $creditsAllocated,
+                'total_credits' => $this->getUserTotalCredits($user),
+                'credits_remaining' => $this->getUserTotalCredits($user),
+            ];
+
+            // Send the notification
+            $user->notify(new PurchaseThankYou($customerData, $purchaseData, $subscriptionData, $creditsData));
+
+            Log::info('Purchase thank you email sent', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'invoice_id' => $invoice->id,
+                'credits_added' => $creditsAllocated,
+                'purchase_amount' => $purchaseData['amount_formatted'],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send purchase thank you email', [
+                'user_id' => $user->id,
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * Get user's total credits
+     */
+    protected function getUserTotalCredits($user): int
+    {
+        try {
+            $creditService = app(CreditService::class);
+            return $creditService->getCreditBalance($user);
+        } catch (\Exception $e) {
+            Log::debug('Could not get user credit balance', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return 0;
         }
     }
 

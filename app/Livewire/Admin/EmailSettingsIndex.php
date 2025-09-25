@@ -22,17 +22,12 @@ class EmailSettingsIndex extends Component
     public bool $showTestModal = false;
     public string $testEmail = '';
     public array $selectedEmailTypes = [
-        'subscription_confirmation',
+        'purchase_thank_you',
         'file_upload',
         'processing_started',
-        'upload_completed',
-        'upload_failed',
-        'upload_queued',
-        'upload_received',
-        'admin_sale',
-        'weekly_report',
-        'daily_report',
-        'monthly_report'
+        'enhanced_upload_completed',
+        'enhanced_upload_failed',
+        'admin_sale'
     ];
     public bool $isLoading = false;
     public array $testResults = [];
@@ -87,17 +82,12 @@ class EmailSettingsIndex extends Component
         $this->resetTestData();
         $this->testEmail = 'axldeth@gmail.com';
         $this->selectedEmailTypes = [
-            'subscription_confirmation',
+            'purchase_thank_you',
             'file_upload',
             'processing_started',
-            'upload_completed',
-            'upload_failed',
-            'upload_queued',
-            'upload_received',
-            'admin_sale',
-            'weekly_report',
-            'daily_report',
-            'monthly_report'
+            'enhanced_upload_completed',
+            'enhanced_upload_failed',
+            'admin_sale'
         ];
     }
 
@@ -119,9 +109,9 @@ class EmailSettingsIndex extends Component
         foreach ($this->selectedEmailTypes as $emailType) {
             try {
                 switch ($emailType) {
-                    case 'subscription_confirmation':
-                        $this->sendSubscriptionConfirmationTest($this->testEmail);
-                        $sentEmails[] = 'Confirmación de Suscripción';
+                    case 'purchase_thank_you':
+                        $this->sendPurchaseThankYouTest($this->testEmail);
+                        $sentEmails[] = 'Agradecimiento por Compra';
                         break;
 
                     case 'file_upload':
@@ -134,44 +124,19 @@ class EmailSettingsIndex extends Component
                         $sentEmails[] = 'Procesamiento Iniciado';
                         break;
 
-                    case 'upload_completed':
-                        $this->sendUploadCompletedTest($this->testEmail);
-                        $sentEmails[] = 'Procesamiento Completado';
+                    case 'enhanced_upload_completed':
+                        $this->sendEnhancedUploadCompletedTest($this->testEmail);
+                        $sentEmails[] = 'Procesamiento Completado (Mejorado)';
                         break;
 
-                    case 'upload_failed':
-                        $this->sendUploadFailedTest($this->testEmail);
-                        $sentEmails[] = 'Procesamiento Fallido';
-                        break;
-
-                    case 'upload_queued':
-                        $this->sendUploadQueuedTest($this->testEmail);
-                        $sentEmails[] = 'Archivo en Cola';
-                        break;
-
-                    case 'upload_received':
-                        $this->sendUploadReceivedTest($this->testEmail);
-                        $sentEmails[] = 'Archivo Recibido';
+                    case 'enhanced_upload_failed':
+                        $this->sendEnhancedUploadFailedTest($this->testEmail);
+                        $sentEmails[] = 'Procesamiento Fallido (Mejorado)';
                         break;
 
                     case 'admin_sale':
                         $this->sendAdminSaleTest($this->testEmail);
                         $sentEmails[] = 'Notificación de Venta (Admin)';
-                        break;
-
-                    case 'weekly_report':
-                        $this->sendWeeklyReportTest($this->testEmail);
-                        $sentEmails[] = 'Reporte Semanal';
-                        break;
-
-                    case 'daily_report':
-                        $this->sendDailyReportTest($this->testEmail);
-                        $sentEmails[] = 'Reporte Diario';
-                        break;
-
-                    case 'monthly_report':
-                        $this->sendMonthlyReportTest($this->testEmail);
-                        $sentEmails[] = 'Reporte Mensual';
                         break;
                 }
             } catch (\Exception $e) {
@@ -530,18 +495,125 @@ class EmailSettingsIndex extends Component
     public function getEmailTypeLabels(): array
     {
         return [
-            'subscription_confirmation' => 'Confirmación de Suscripción',
+            'purchase_thank_you' => 'Agradecimiento por Compra',
             'file_upload' => 'Confirmación de Carga',
             'processing_started' => 'Procesamiento Iniciado',
-            'upload_completed' => 'Procesamiento Completado',
-            'upload_failed' => 'Procesamiento Fallido',
-            'upload_queued' => 'Archivo en Cola',
-            'upload_received' => 'Archivo Recibido',
+            'enhanced_upload_completed' => 'Procesamiento Completado (Mejorado)',
+            'enhanced_upload_failed' => 'Procesamiento Fallido (Mejorado)',
             'admin_sale' => 'Notificación de Venta',
-            'weekly_report' => 'Reporte Semanal',
-            'daily_report' => 'Reporte Diario',
-            'monthly_report' => 'Reporte Mensual',
         ];
+    }
+
+    private function sendPurchaseThankYouTest(string $email): void
+    {
+        $testUser = new \App\Models\User([
+            'name' => 'Usuario de Prueba',
+            'email' => $email,
+            'email_verified_at' => now(),
+        ]);
+
+        $customerData = [
+            'name' => 'Usuario de Prueba',
+            'email' => $email,
+            'customer_id' => 'cust_test_123456',
+            'registration_date' => now()->subDays(1)->format('d/m/Y'),
+        ];
+
+        $purchaseData = [
+            'date' => now()->format('d/m/Y H:i'),
+            'amount' => 2999, // 29.99 EUR in cents
+            'amount_formatted' => '€29.99',
+            'payment_method' => 'Tarjeta de crédito',
+            'transaction_id' => 'pi_test_' . time(),
+            'invoice_id' => 'in_test_' . time(),
+        ];
+
+        $subscriptionData = [
+            'plan_name' => 'Plan Premium',
+            'billing_cycle' => 'mensual',
+            'next_billing_date' => now()->addMonth()->format('d/m/Y'),
+            'status' => 'active',
+        ];
+
+        $creditsData = [
+            'credits_added' => 100,
+            'total_credits' => 250,
+            'credits_remaining' => 250,
+        ];
+
+        $notification = new \App\Notifications\PurchaseThankYou($customerData, $purchaseData, $subscriptionData, $creditsData);
+        $testUser->notifyNow($notification);
+    }
+
+    private function sendEnhancedUploadCompletedTest(string $email): void
+    {
+        $testUser = new \App\Models\User([
+            'name' => 'Usuario de Prueba',
+            'email' => $email,
+            'email_verified_at' => now(),
+        ]);
+
+        $fakeUpload = new \App\Models\Upload([
+            'id' => 1001,
+            'original_name' => 'datos-fiscales-mejorado.csv',
+            'user_id' => $testUser->id ?? 1,
+            'status' => 'completed',
+            'size_bytes' => 2048576,
+            'rows_count' => 1234,
+            'processed_at' => now(),
+            'created_at' => now()->subMinutes(5),
+        ]);
+
+        $fakeUploadMetric = new \App\Models\UploadMetric([
+            'id' => 501,
+            'upload_id' => $fakeUpload->id,
+            'user_id' => $testUser->id ?? 1,
+            'file_name' => $fakeUpload->original_name,
+            'file_size_bytes' => $fakeUpload->size_bytes,
+            'line_count' => $fakeUpload->rows_count,
+            'processing_duration_seconds' => 287,
+            'credits_consumed' => 1,
+            'status' => 'completed',
+        ]);
+
+        $notification = new \App\Notifications\EnhancedUploadCompleted($fakeUpload, $fakeUploadMetric);
+        $testUser->notifyNow($notification);
+    }
+
+    private function sendEnhancedUploadFailedTest(string $email): void
+    {
+        $testUser = new \App\Models\User([
+            'name' => 'Usuario de Prueba',
+            'email' => $email,
+            'email_verified_at' => now(),
+        ]);
+
+        $fakeUpload = new \App\Models\Upload([
+            'id' => 1002,
+            'original_name' => 'datos-fiscales-error.csv',
+            'user_id' => $testUser->id ?? 1,
+            'status' => 'failed',
+            'size_bytes' => 1024768,
+            'rows_count' => 567,
+            'failure_reason' => 'Error de formato en línea 45: formato de fecha inválido',
+            'created_at' => now()->subMinutes(3),
+        ]);
+
+        $fakeUploadMetric = new \App\Models\UploadMetric([
+            'id' => 502,
+            'upload_id' => $fakeUpload->id,
+            'user_id' => $testUser->id ?? 1,
+            'file_name' => $fakeUpload->original_name,
+            'file_size_bytes' => $fakeUpload->size_bytes,
+            'line_count' => $fakeUpload->rows_count,
+            'processing_duration_seconds' => 78,
+            'credits_consumed' => 0,
+            'status' => 'failed',
+            'error_message' => $fakeUpload->failure_reason,
+        ]);
+
+        $notification = new \App\Notifications\EnhancedUploadFailed($fakeUpload, $fakeUploadMetric);
+        $testUser->notifyNow($notification);
     }
 
     public function render()

@@ -318,6 +318,12 @@ class SubscriptionManager extends Component
                 return;
             }
 
+            // Check if user is trying to subscribe to the free plan
+            if ($planId === 'free') {
+                session()->flash('error', 'El Plan Gratuito se asigna automáticamente a todos los usuarios. No necesitas suscribirte a él.');
+                return;
+            }
+
             // Check if user is trying to subscribe to the same plan they already have
             if ($this->currentPlanId === $planId) {
                 session()->flash('error', 'Ya tienes este plan activo. No puedes suscribirte al mismo plan nuevamente.');
@@ -537,7 +543,7 @@ class SubscriptionManager extends Component
      */
     public function isPlanButtonDisabled(string $planId): bool
     {
-        return $this->isCurrentPlan($planId) || $this->loading;
+        return $this->isCurrentPlan($planId) || $this->loading || $planId === 'free';
     }
 
     public function toggleDiscountField(): void

@@ -42,12 +42,26 @@ class Dashboard extends Component
         $failedUploads = Upload::where('status', Upload::STATUS_FAILED)->count();
         $errorRate = $totalUploads > 0 ? ($failedUploads / $totalUploads) * 100 : 0;
 
-        // Active users (users who uploaded in the last 30 days)
-        $activeUsers = User::whereHas('uploads', function ($query) {
-            $query->where('created_at', '>=', now()->subDays(30));
+        // Users with active subscriptions
+        $activeUsers = User::whereHas('subscriptions', function ($query) {
+            $query->where(function ($validQuery) {
+                // Active subscriptions
+                $validQuery->where('stripe_status', 'active')
+                    // OR on trial (trial_ends_at is in the future)
+                    ->orWhere(function ($trialQuery) {
+                        $trialQuery->whereNotNull('trial_ends_at')
+                                   ->where('trial_ends_at', '>', now());
+                    })
+                    // OR on grace period (ends_at is in the future but not canceled)
+                    ->orWhere(function ($graceQuery) {
+                        $graceQuery->where('stripe_status', '!=', 'canceled')
+                                   ->whereNotNull('ends_at')
+                                   ->where('ends_at', '>', now());
+                    });
+            });
         })->count();
 
-        // Active percentage
+        // Active subscription percentage
         $activePercentage = $totalUsers > 0 ? ($activeUsers / $totalUsers) * 100 : 0;
 
         return [
@@ -119,11 +133,20 @@ class Dashboard extends Component
             ->whereDate('created_at', today())
             ->count();
 
+        // Check database connectivity
+        $databaseStatus = $this->checkDatabaseHealth();
+
+        // Check storage status
+        $storageStatus = $this->checkStorageHealth();
+
         // Simple health scoring
         $healthScore = 100;
         if ($queuedJobs > 50) $healthScore -= 20;
         if ($processingJobs > 20) $healthScore -= 15;
         if ($failedJobsToday > 10) $healthScore -= 25;
+        if ($databaseStatus !== 'healthy') $healthScore -= 30;
+        if ($storageStatus === 'warning') $healthScore -= 10;
+        if ($storageStatus === 'critical') $healthScore -= 20;
 
         $healthStatus = match (true) {
             $healthScore >= 90 => 'excellent',
@@ -139,7 +162,8 @@ class Dashboard extends Component
             'processing_jobs' => $processingJobs,
             'failed_jobs_today' => $failedJobsToday,
             'queue_status' => $queuedJobs < 50 ? 'healthy' : 'warning',
-            'storage_status' => 'healthy', // Will be updated based on actual storage limits
+            'storage_status' => $storageStatus,
+            'database_status' => $databaseStatus,
         ];
     }
 
@@ -230,6 +254,49 @@ class Dashboard extends Component
             return round($seconds / 60, 1) . 'm';
         } else {
             return round($seconds / 3600, 1) . 'h';
+        }
+    }
+
+    private function checkDatabaseHealth(): string
+    {
+        try {
+            // Test database connectivity with a simple query
+            DB::connection()->getPdo();
+
+            // Additional test: try a simple SELECT query
+            DB::select('SELECT 1');
+
+            return 'healthy';
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            \Log::error('Database health check failed: ' . $e->getMessage());
+            return 'error';
+        }
+    }
+
+    private function checkStorageHealth(): string
+    {
+        try {
+            $totalStorageUsed = Upload::sum('size_bytes') ?? 0;
+
+            // Convert to GB for easier checking
+            $usedGB = $totalStorageUsed / (1024 * 1024 * 1024);
+
+            // Define storage thresholds (can be configured via env)
+            $warningThreshold = (float) config('app.storage_warning_gb', 50); // 50GB default
+            $criticalThreshold = (float) config('app.storage_critical_gb', 80); // 80GB default
+
+            if ($usedGB >= $criticalThreshold) {
+                return 'critical';
+            } elseif ($usedGB >= $warningThreshold) {
+                return 'warning';
+            }
+
+            return 'healthy';
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            \Log::error('Storage health check failed: ' . $e->getMessage());
+            return 'error';
         }
     }
 

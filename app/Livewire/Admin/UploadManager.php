@@ -23,7 +23,6 @@ class UploadManager extends Component
 
     // Filter properties
     public string $statusFilter = '';
-    public string $userFilter = '';
     public string $search = '';
     public string $dateFrom = '';
     public string $dateTo = '';
@@ -44,7 +43,6 @@ class UploadManager extends Component
 
     protected $queryString = [
         'statusFilter' => ['except' => ''],
-        'userFilter' => ['except' => ''],
         'search' => ['except' => ''],
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
@@ -75,10 +73,6 @@ class UploadManager extends Component
         $this->resetPage();
     }
 
-    public function updatedUserFilter(): void
-    {
-        $this->resetPage();
-    }
 
     public function updatedDateFrom(): void
     {
@@ -120,7 +114,6 @@ class UploadManager extends Component
     public function clearFilters(): void
     {
         $this->statusFilter = '';
-        $this->userFilter = '';
         $this->search = '';
         $this->dateFrom = '';
         $this->dateTo = '';
@@ -423,9 +416,6 @@ class UploadManager extends Component
             ->when($this->statusFilter, function (Builder $query): void {
                 $query->where('status', $this->statusFilter);
             })
-            ->when($this->userFilter, function (Builder $query): void {
-                $query->where('user_id', $this->userFilter);
-            })
             ->when($this->search, function (Builder $query): void {
                 $query->where(function (Builder $subQuery): void {
                     $subQuery->where('original_name', 'like', '%' . $this->search . '%')
@@ -450,14 +440,6 @@ class UploadManager extends Component
             ->orderBy($this->sortField, $this->sortDirection);
     }
 
-    public function getUsersProperty(): \Illuminate\Support\Collection
-    {
-        return User::query()
-            ->select(['id', 'name', 'email'])
-            ->whereHas('uploads')
-            ->orderBy('name')
-            ->get();
-    }
 
     public function getStatusCountsProperty(): array
     {
@@ -477,7 +459,6 @@ class UploadManager extends Component
     {
         return view('livewire.admin.upload-manager', [
             'uploads' => $this->getUploads(),
-            'users' => $this->users,
             'statusCounts' => $this->statusCounts,
         ])->layout('layouts.panel');
     }

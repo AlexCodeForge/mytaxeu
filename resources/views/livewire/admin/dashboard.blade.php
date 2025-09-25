@@ -84,12 +84,12 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-user-clock text-white"></i>
+                        <i class="fas fa-credit-card text-white"></i>
                     </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Usuarios Activos</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Usuarios Suscritos</dt>
                         <dd class="text-2xl font-semibold text-gray-900">{{ number_format($metrics['active_users']) }}</dd>
                     </dl>
                 </div>
@@ -97,7 +97,7 @@
             <div class="mt-4">
                 <div class="flex items-center text-sm">
                     <span class="text-purple-600 font-medium">{{ number_format($metrics['active_percentage'], 1) }}%</span>
-                    <span class="text-gray-500 ml-2">del total</span>
+                    <span class="text-gray-500 ml-2">con suscripción activa</span>
                 </div>
             </div>
         </div>
@@ -143,7 +143,12 @@
                 {{-- Storage Status --}}
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                        <div class="w-3 h-3 rounded-full {{ $systemHealth['storage_status'] === 'healthy' ? 'bg-green-500' : 'bg-yellow-500' }} mr-3"></div>
+                        <div class="w-3 h-3 rounded-full
+                            @if($systemHealth['storage_status'] === 'healthy') bg-green-500
+                            @elseif($systemHealth['storage_status'] === 'warning') bg-yellow-500
+                            @elseif($systemHealth['storage_status'] === 'critical') bg-red-500
+                            @else bg-gray-500
+                            @endif mr-3"></div>
                         <span class="text-sm font-medium text-gray-900">Almacenamiento</span>
                     </div>
                     <span class="text-sm text-gray-500">
@@ -154,10 +159,12 @@
                 {{-- Database Status --}}
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                        <div class="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+                        <div class="w-3 h-3 rounded-full {{ $systemHealth['database_status'] === 'healthy' ? 'bg-green-500' : 'bg-red-500' }} mr-3"></div>
                         <span class="text-sm font-medium text-gray-900">Base de Datos</span>
                     </div>
-                    <span class="text-sm text-gray-500">Operacional</span>
+                    <span class="text-sm text-gray-500">
+                        {{ $systemHealth['database_status'] === 'healthy' ? 'Operacional' : 'Error de Conexión' }}
+                    </span>
                 </div>
             </div>
         </div>
@@ -299,76 +306,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-6">
-                {{-- Credits Received --}}
-                <div class="bg-green-50 p-4 rounded-lg">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                            </svg>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['total_credits_allocated'] ?? 0) }}</p>
-                            <p class="text-sm text-gray-600">Créditos Recibidos</p>
-                        </div>
-                    </div>
-                </div>
 
-                {{-- Credits Consumed --}}
-                <div class="bg-orange-50 p-4 rounded-lg">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                            </svg>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['total_credits_consumed'] ?? 0) }}</p>
-                            <p class="text-sm text-gray-600">Créditos Consumidos</p>
-                        </div>
-                    </div>
-                </div>
 
-                {{-- Credits in Circulation --}}
-                <div class="bg-purple-50 p-4 rounded-lg">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                            </svg>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-2xl font-bold text-gray-900">{{ number_format($usageAnalytics['total_credits_in_circulation'] ?? 0) }}</p>
-                            <p class="text-sm text-gray-600">Créditos en Circulación</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {{-- Processing Time --}}
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <h4 class="text-sm font-medium text-gray-900 mb-2">Tiempo Total de Procesamiento</h4>
-                    <p class="text-lg font-semibold">{{ gmdate('H:i:s', $usageAnalytics['total_processing_time_seconds'] ?? 0) }}</p>
-                </div>
-
-                {{-- Average Processing Time --}}
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <h4 class="text-sm font-medium text-gray-900 mb-2">Tiempo Promedio por Archivo</h4>
-                    <p class="text-lg font-semibold">{{ number_format($usageAnalytics['average_processing_time_seconds'] ?? 0, 1) }}s</p>
-                </div>
-
-                {{-- Successful vs Failed --}}
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <h4 class="text-sm font-medium text-gray-900 mb-2">Exitosos / Fallidos</h4>
-                    <p class="text-lg font-semibold">
-                        <span class="text-green-600">{{ number_format($usageAnalytics['successful_uploads'] ?? 0) }}</span>
-                        /
-                        <span class="text-red-600">{{ number_format($usageAnalytics['failed_uploads'] ?? 0) }}</span>
-                    </p>
-                </div>
-            </div>
         </div>
     </div>
 
