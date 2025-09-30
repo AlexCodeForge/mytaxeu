@@ -60,6 +60,12 @@ Route::middleware(['auth', 'verified', 'ensure.admin'])
             Route::get('/', \App\Livewire\Admin\EmailSettingsIndex::class)->name('index');
         });
 
+        // Customer Email Management routes
+        Route::prefix('customer-emails')->name('customer-emails.')->group(function () {
+            Route::get('/', \App\Livewire\Admin\CustomerEmails\Index::class)->name('index');
+            Route::get('/{conversation}', \App\Livewire\Admin\CustomerEmails\Show::class)->name('show');
+        });
+
         // Rate Management
         Route::get('/rate-management', \App\Livewire\Admin\RateManagement::class)->name('rate.management');
 

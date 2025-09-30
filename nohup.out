@@ -1,9 +1,0 @@
-Thu 18 Sep 17:30:03 CEST 2025: Starting worker process
-Command: php /var/www/mytaxeu/artisan queue:work redis --queue=emails,default --sleep=3 --tries=3 --max-time=3600 --memory=2048 --verbose --timeout=300
-PID: $$
-====================
-Thu 18 Sep 18:24:04 CEST 2025: Starting worker process
-Command: php /var/www/mytaxeu/artisan queue:work redis --queue=emails,default,slow,high-priority --sleep=3 --tries=3 --max-time=3600 --memory=2048 --verbose --timeout=300
-PID: $$
-====================
-  2025-09-18 16:24:04 App\Jobs\ProcessUploadJob mHVGjTCVZ1GZnxv3sBvzxSl79MTXzfh9 redis slow  RUNNING

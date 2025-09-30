@@ -115,8 +115,15 @@
                                    class="group relative flex items-center text-gray-700 rounded-lg hover:bg-blue-50 sidebar-nav-link transition-all duration-200 ease-in-out {{ $this->isActiveRoute($link['route']) ? 'active-nav-item' : '' }}"
                                    :class="collapsed ? 'px-4 py-3 justify-center mx-1' : 'px-4 py-3'"
                                    :title="collapsed ? '{{ $link['label'] }}' : ''">
-                                    <i class="fas {{ $link['icon'] }} transition-all duration-300 ease-in-out flex-shrink-0"
-                                       :class="collapsed ? 'text-base' : 'mr-3 text-base'"></i>
+                                    @if(!empty($link['isSvg']))
+                                        <span class="transition-all duration-300 ease-in-out flex-shrink-0"
+                                              :class="collapsed ? '' : 'mr-3'">
+                                            {!! $link['icon'] !!}
+                                        </span>
+                                    @else
+                                        <i class="fas {{ $link['icon'] }} transition-all duration-300 ease-in-out flex-shrink-0"
+                                           :class="collapsed ? 'text-base' : 'mr-3 text-base'"></i>
+                                    @endif
                                     <span x-show="!collapsed"
                                           x-transition:enter="transition ease-out duration-300 delay-100"
                                           x-transition:enter-start="opacity-0 transform translate-x-4"

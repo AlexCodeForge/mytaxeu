@@ -64,6 +64,20 @@ app(Schedule::class)->command('subscriptions:check-renewals')
         \Log::error('Subscription renewal check failed');
     });
 
+// Customer Email System Schedules
+
+// Fetch emails from IMAP server - every 1 minute for real-time updates
+app(Schedule::class)->command('email:fetch-imap --limit=20 --mark-seen')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onSuccess(function () {
+        \Log::info('IMAP email fetch completed successfully');
+    })
+    ->onFailure(function () {
+        \Log::error('IMAP email fetch failed');
+    });
+
 // Rate Management Schedules
 
 // Daily rate updates - every day at 6:00 AM (early morning before business hours)

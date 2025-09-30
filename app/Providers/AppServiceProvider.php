@@ -38,6 +38,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Register event listeners for job status tracking
         $this->registerEventListeners();
+
+        // Register customer email mailboxes
+        $this->registerMailboxes();
     }
 
     /**
@@ -70,5 +73,26 @@ class AppServiceProvider extends ServiceProvider
             \App\Events\JobLogCreated::class,
             \App\Listeners\JobLogNotificationListener::class
         );
+    }
+
+    /**
+     * Register customer email mailboxes.
+     */
+    private function registerMailboxes(): void
+    {
+        if (class_exists(\BeyondCode\Mailbox\Facades\Mailbox::class)) {
+            // Route support emails to our customer support handler
+            \BeyondCode\Mailbox\Facades\Mailbox::to('soporte@mytaxeu.com', \App\Mailboxes\CustomerSupportMailbox::class);
+
+            // Also handle common support variations
+            \BeyondCode\Mailbox\Facades\Mailbox::to('support@mytaxeu.com', \App\Mailboxes\CustomerSupportMailbox::class);
+            \BeyondCode\Mailbox\Facades\Mailbox::to('help@mytaxeu.com', \App\Mailboxes\CustomerSupportMailbox::class);
+
+            // Handle the user's Mailcow email address
+            \BeyondCode\Mailbox\Facades\Mailbox::to('no-reply@alexcodeforge.com', \App\Mailboxes\CustomerSupportMailbox::class);
+
+            // Catch-all for any emails that don't match specific handlers
+            \BeyondCode\Mailbox\Facades\Mailbox::fallback(\App\Mailboxes\CustomerSupportMailbox::class);
+        }
     }
 }
