@@ -35,12 +35,18 @@
                 </div>
 
                 <div class="flex items-center space-x-4 hidden md:flex">
-                    <a href="{{ route('login') }}" class="bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg text-primary font-medium transition-all">
-                        <i class="fas fa-cog mr-2"></i>Admin
-                    </a>
-                    <button class="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105 shadow-md">
+                    @auth
+                        <a href="{{ route('dashboard') }}" class="bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg text-primary font-medium transition-all">
+                            <i class="fas fa-cog mr-2"></i>Admin
+                        </a>
+                    @else
+                        <a href="{{ route('login') }}" class="bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg text-primary font-medium transition-all">
+                            <i class="fas fa-sign-in-alt mr-2"></i>Ingresa
+                        </a>
+                    @endauth
+                    <a href="{{ route('register') }}" class="bg-primary text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105 shadow-md">
                         Empezar Gratis
-                    </button>
+                    </a>
                 </div>
 
                 <!-- Mobile menu button -->
@@ -59,12 +65,18 @@
                     <a href="#precios" @click="mobileMenuOpen = false" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">Precios</a>
                     <a href="#faq" @click="mobileMenuOpen = false" class="block px-3 py-2 text-gray-800 hover:text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">FAQ</a>
                     <div class="border-t border-blue-100 pt-2">
-                        <a href="{{ route('admin.index') }}" @click="mobileMenuOpen = false" class="block px-3 py-2 text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">
-                            <i class="fas fa-cog mr-2"></i>Admin
-                        </a>
-                        <button @click="mobileMenuOpen = false" class="w-full mt-2 bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all">
+                        @auth
+                            <a href="{{ route('dashboard') }}" @click="mobileMenuOpen = false" class="block px-3 py-2 text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">
+                                <i class="fas fa-cog mr-2"></i>Admin
+                            </a>
+                        @else
+                            <a href="{{ route('login') }}" @click="mobileMenuOpen = false" class="block px-3 py-2 text-primary hover:bg-blue-50 rounded-md transition-colors font-medium">
+                                <i class="fas fa-sign-in-alt mr-2"></i>Ingresa
+                            </a>
+                        @endauth
+                        <a href="{{ route('register') }}" @click="mobileMenuOpen = false" class="w-full mt-2 bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all block text-center">
                             Empezar Gratis
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -86,9 +98,9 @@
                     </p>
 
                     <div class="flex flex-col sm:flex-row gap-4 mb-8">
-                        <button class="bg-yellow-400 text-black px-8 py-4 rounded-xl font-black text-lg hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-2xl">
+                        <a href="{{ route('register') }}" class="bg-yellow-400 text-black px-8 py-4 rounded-xl font-black text-lg hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-2xl text-center">
                             <i class="fas fa-rocket mr-2"></i>EMPEZAR GRATIS HOY
-                        </button>
+                        </a>
                         <button class="glass bg-white/80 text-black px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white transition-all">
                             <i class="fas fa-play mr-2"></i>Ver Demo
                         </button>
@@ -402,9 +414,9 @@
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-                <button class="bg-yellow-400 text-black px-8 py-4 rounded-xl font-black text-lg hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-2xl">
+                <a href="{{ route('register') }}" class="bg-yellow-400 text-black px-8 py-4 rounded-xl font-black text-lg hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-2xl text-center">
                     <i class="fas fa-rocket mr-2"></i>EMPEZAR GRATIS AHORA
-                </button>
+                </a>
                 <button class="glass text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white hover:bg-opacity-20 transition-all">
                     <i class="fas fa-phone mr-2"></i>Hablar con Experto
                 </button>

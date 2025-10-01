@@ -46,9 +46,9 @@
                                         </li>
                                     @endforeach
                                 </ul>
-                                <button class="w-full bg-yellow-400 text-black py-3 rounded-xl font-bold hover:bg-yellow-300 transition-all">
+                                <a href="{{ route('register') }}" class="w-full bg-yellow-400 text-black py-3 rounded-xl font-bold hover:bg-yellow-300 transition-all block text-center">
                                     EMPEZAR AHORA
-                                </button>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -67,9 +67,9 @@
                                     </li>
                                 @endforeach
                             </ul>
-                            <button class="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all">
+                            <a href="{{ route('register') }}" class="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all block text-center">
                                 Empezar Gratis
-                            </button>
+                            </a>
                         </div>
                     </div>
                 @elseif($plan->slug === 'enterprise')
@@ -87,9 +87,9 @@
                                     </li>
                                 @endforeach
                             </ul>
-                            <button class="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all">
+                            <a href="{{ route('register') }}" class="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all block text-center">
                                 Contactar
-                            </button>
+                            </a>
                         </div>
                     </div>
                 @endif
