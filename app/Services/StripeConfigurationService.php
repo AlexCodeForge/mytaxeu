@@ -217,8 +217,40 @@ class StripeConfigurationService
     {
         $config = $this->getConfig();
 
+        $hasKeys = !empty($config['public_key']) && !empty($config['secret_key']);
+        $isValid = false;
+        $validationError = null;
+
+        // Only validate if keys exist
+        if ($hasKeys) {
+            Log::info('Validating Stripe configuration with API test', [
+                'has_public_key' => !empty($config['public_key']),
+                'has_secret_key' => !empty($config['secret_key']),
+                'test_mode' => $config['test_mode'],
+            ]);
+
+            try {
+                // Test the API key to verify it actually works
+                $isValid = $this->testApiKey($config['secret_key']);
+
+                if (!$isValid) {
+                    $validationError = 'Las claves API están configuradas pero no son válidas. Verifica que sean correctas en tu panel de Stripe.';
+                    Log::warning('Stripe configuration has keys but API validation failed');
+                }
+            } catch (\Exception $e) {
+                $validationError = 'Error al validar la configuración de Stripe: ' . $e->getMessage();
+                Log::error('Stripe configuration validation threw exception', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+        }
+
         return [
-            'configured' => $this->isConfigured(),
+            'configured' => $hasKeys && $isValid,
+            'has_keys' => $hasKeys,
+            'is_valid' => $isValid,
+            'validation_error' => $validationError,
             'has_public_key' => !empty($config['public_key']),
             'has_secret_key' => !empty($config['secret_key']),
             'has_webhook_secret' => !empty($config['webhook_secret']),
