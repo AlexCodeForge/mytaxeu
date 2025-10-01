@@ -56,21 +56,18 @@ class Sidebar extends Component
     {
         // Exact match
         if ($this->currentRoute === $route) {
+            \Log::info('Sidebar: Exact route match', ['route' => $route, 'currentRoute' => $this->currentRoute]);
             return true;
         }
 
         // Handle email settings sub-routes
         if ($route === 'admin.email-settings.index' && str_starts_with($this->currentRoute, 'admin.email-settings.')) {
+            \Log::info('Sidebar: Email settings sub-route match', ['route' => $route, 'currentRoute' => $this->currentRoute]);
             return true;
         }
 
-        // Handle subscription sub-routes
-        if ($route === 'admin.subscriptions.plans' && str_starts_with($this->currentRoute, 'admin.subscriptions.')) {
-            return true;
-        }
-        if ($route === 'admin.subscriptions.discount-codes' && str_starts_with($this->currentRoute, 'admin.subscriptions.')) {
-            return true;
-        }
+        // Note: Subscription routes (admin.subscriptions.plans and admin.subscriptions.discount-codes)
+        // use exact matching only - no sub-routes exist, so prefix matching is not needed
 
         return false;
     }
