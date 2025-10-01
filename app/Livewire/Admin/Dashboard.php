@@ -195,10 +195,10 @@ class Dashboard extends Component
         $processedCount = UploadMetric::where('status', UploadMetric::STATUS_COMPLETED)->count();
 
         return [
-            'average_processing_time' => round($averageProcessingTime, 2),
-            'total_processing_time' => $totalProcessingTime,
+            'average_processing_time' => round((float) $averageProcessingTime, 2),
+            'total_processing_time' => (float) $totalProcessingTime,
             'processed_count' => $processedCount,
-            'average_processing_time_formatted' => $this->formatDuration($averageProcessingTime),
+            'average_processing_time_formatted' => $this->formatDuration((float) $averageProcessingTime),
         ];
     }
 

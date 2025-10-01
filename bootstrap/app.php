@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'ensure.admin' => \App\Http\Middleware\EnsureAdmin::class,
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
             'check.upload.limits' => \App\Http\Middleware\CheckUploadLimits::class,
+            'check.suspension' => \App\Http\Middleware\CheckUserSuspension::class,
         ]);
 
         // Exclude Stripe webhooks from CSRF protection

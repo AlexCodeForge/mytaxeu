@@ -15,7 +15,7 @@ Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::cl
 // Thank You Page (after successful payment) - No authentication required for redirect from Stripe
 Route::get('thank-you', [\App\Http\Controllers\ThankYouController::class, 'show'])->name('thank-you');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'check.suspension'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
     Route::get('uploads', \App\Livewire\Uploads\Index::class)->name('uploads.index');
     Route::get('uploads/new', \App\Livewire\Uploads\UploadCsv::class)->name('uploads.create');
@@ -38,10 +38,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::view('profile', 'profile')
-    ->middleware(['auth'])
+    ->middleware(['auth', 'check.suspension'])
     ->name('profile');
 
-Route::middleware(['auth', 'verified', 'ensure.admin'])
+Route::middleware(['auth', 'verified', 'check.suspension', 'ensure.admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
