@@ -178,7 +178,7 @@
                                     @else
                                         <i class="fas fa-file-csv text-2xl mb-2"></i>
                                         <p>No has subido ningún archivo CSV todavía</p>
-                                        <a href="{{ route('dashboard') }}" wire:navigate class="text-primary hover:text-blue-700 mt-2">
+                                        <a href="{{ route('uploads.create') }}" wire:navigate class="text-primary hover:text-blue-700 mt-2">
                                             Subir mi primer archivo
                                         </a>
                                     @endif
