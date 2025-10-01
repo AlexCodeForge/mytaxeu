@@ -183,9 +183,9 @@ class UsageMeteringService
             'total_uploads' => $metrics->count(),
             'current_month_usage' => $this->getCurrentMonthUsage($user),
             'remaining_monthly_limit' => max(0, self::FREE_TIER_MONTHLY_LIMIT - $this->getCurrentMonthUsage($user)),
-            'average_file_size' => $metrics->count() > 0 ? round($metrics->avg('file_size_bytes')) : 0,
+            'average_file_size' => $metrics->count() > 0 ? round((float) $metrics->avg('file_size_bytes')) : 0,
             'average_processing_time' => $metricsWithProcessingTime->count() > 0
-                ? round($metricsWithProcessingTime->avg('processing_duration_seconds'))
+                ? round((float) $metricsWithProcessingTime->avg('processing_duration_seconds'))
                 : 0,
         ];
 
@@ -243,10 +243,10 @@ class UsageMeteringService
             'failed_uploads' => $failedMetrics,
             'success_rate_percentage' => $totalMetrics > 0 ? round(($completedMetrics / $totalMetrics) * 100, 2) : 0,
             'total_lines_processed' => $totalLinesProcessed,
-            'total_processing_time_seconds' => $totalProcessingTime,
-            'average_processing_time_seconds' => round($averageProcessingTime ?? 0, 2),
+            'total_processing_time_seconds' => (float) $totalProcessingTime,
+            'average_processing_time_seconds' => round((float) ($averageProcessingTime ?? 0), 2),
             'total_file_size_bytes' => $totalFileSize,
-            'total_file_size_mb' => round($totalFileSize / 1024 / 1024, 2),
+            'total_file_size_mb' => round((float) $totalFileSize / 1024 / 1024, 2),
             'active_users_count' => User::whereHas('uploadMetrics')->count(),
             'total_credits_consumed' => $totalCreditsConsumed,
             'total_credits_allocated' => $totalCreditsAllocated,
