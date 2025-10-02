@@ -11,6 +11,12 @@ class PricingSection extends Component
     {
         $plans = SubscriptionPlan::active()->ordered()->get();
 
+        \Log::info('🔍 Pricing Section Plans Loaded', [
+            'count' => $plans->count(),
+            'slugs' => $plans->pluck('slug')->toArray(),
+            'free_plan_exists' => $plans->where('slug', 'free')->first() ? 'yes' : 'no'
+        ]);
+
         return view('livewire.landing.pricing-section', [
             'plans' => $plans
         ]);
