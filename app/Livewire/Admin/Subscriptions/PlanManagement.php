@@ -33,6 +33,7 @@ class PlanManagement extends Component
     public string $slug = '';
     public string $description = '';
     public ?float $monthlyPrice = null;
+    public int $minimumCommitmentMonths = 3;
     public array $features = [];
     public ?int $maxAlertsPerMonth = null;
     public bool $isActive = true;
@@ -43,6 +44,7 @@ class PlanManagement extends Component
         'slug' => 'required|string|max:255|alpha_dash',
         'description' => 'nullable|string',
         'monthlyPrice' => 'nullable|numeric|min:0',
+        'minimumCommitmentMonths' => 'required|integer|min:3',
         'features' => 'array',
         'features.*' => 'string',
         'maxAlertsPerMonth' => 'nullable|integer|min:0',
@@ -113,17 +115,24 @@ class PlanManagement extends Component
             return;
         }
 
-        SubscriptionPlan::create([
+        $plan = SubscriptionPlan::create([
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
             'monthly_price' => $this->monthlyPrice,
+            'minimum_commitment_months' => $this->minimumCommitmentMonths,
             'is_monthly_enabled' => true,
             'features' => array_filter($this->features),
             'max_alerts_per_month' => $this->maxAlertsPerMonth,
             'is_active' => $this->isActive,
             'is_featured' => $this->isFeatured,
             'sort_order' => SubscriptionPlan::max('sort_order') + 1,
+        ]);
+
+        Log::info('✅ Plan created with minimum commitment', [
+            'plan_id' => $plan->id,
+            'plan_name' => $plan->name,
+            'commitment_months' => $this->minimumCommitmentMonths,
         ]);
 
         $this->dispatch('plan-created');
@@ -147,10 +156,17 @@ class PlanManagement extends Component
             'slug' => $this->slug,
             'description' => $this->description,
             'monthly_price' => $this->monthlyPrice,
+            'minimum_commitment_months' => $this->minimumCommitmentMonths,
             'features' => array_filter($this->features),
             'max_alerts_per_month' => $this->maxAlertsPerMonth,
             'is_active' => $this->isActive,
             'is_featured' => $this->isFeatured,
+        ]);
+
+        Log::info('✅ Plan updated with minimum commitment', [
+            'plan_id' => $this->editingPlan->id,
+            'plan_name' => $this->editingPlan->name,
+            'commitment_months' => $this->minimumCommitmentMonths,
         ]);
 
         $this->dispatch('plan-updated');
@@ -198,6 +214,7 @@ class PlanManagement extends Component
         $this->slug = '';
         $this->description = '';
         $this->monthlyPrice = null;
+        $this->minimumCommitmentMonths = 3; // Reset to default minimum
         $this->features = [];
         $this->maxAlertsPerMonth = null;
         $this->isActive = true;
@@ -210,6 +227,7 @@ class PlanManagement extends Component
         $this->slug = $plan->slug;
         $this->description = $plan->description ?? '';
         $this->monthlyPrice = $plan->monthly_price ? (float) $plan->monthly_price : null;
+        $this->minimumCommitmentMonths = $plan->minimum_commitment_months ?? 3;
         $this->features = $plan->features ?? [];
         $this->maxAlertsPerMonth = $plan->max_alerts_per_month;
         $this->isActive = $plan->is_active;
@@ -421,6 +439,7 @@ class PlanManagement extends Component
                 'metadata' => [
                     'plan_id' => (string) $plan->id,
                     'plan_slug' => $plan->slug,
+                    'minimum_commitment_months' => (string) $plan->getMinimumCommitmentMonths(),
                 ],
             ]);
         } catch (\Exception $e) {

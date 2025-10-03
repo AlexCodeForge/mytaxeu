@@ -128,9 +128,16 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">
+                                    <div class="flex items-center mb-1">
+                                        <span class="text-xs text-gray-500 w-24">Precio:</span>
+                                        <span class="font-medium">{{ $plan->getFormattedPrice() }}/mes</span>
+                                    </div>
                                     <div class="flex items-center">
-                                        <span class="text-xs text-gray-500 w-16">Mensual:</span>
-                                        <span class="font-medium">{{ $plan->getFormattedPrice() }}</span>
+                                        <span class="text-xs text-gray-500 w-24">Compromiso:</span>
+                                        <span class="text-xs font-medium text-blue-600">
+                                            <i class="fas fa-calendar-check mr-1"></i>
+                                            {{ $plan->getFormattedCommitment() }}
+                                        </span>
                                     </div>
                                 </div>
                             </td>

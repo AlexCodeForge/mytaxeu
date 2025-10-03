@@ -19,6 +19,7 @@ class SubscriptionPlan extends Model
         'slug',
         'description',
         'monthly_price',
+        'minimum_commitment_months',
         'stripe_monthly_price_id',
         'is_monthly_enabled',
         'features',
@@ -30,6 +31,7 @@ class SubscriptionPlan extends Model
 
     protected $casts = [
         'monthly_price' => 'decimal:2',
+        'minimum_commitment_months' => 'integer',
         'is_monthly_enabled' => 'boolean',
         'features' => 'array',
         'max_alerts_per_month' => 'integer',
@@ -77,6 +79,43 @@ class SubscriptionPlan extends Model
         return $this->stripe_monthly_price_id;
     }
 
+    /**
+     * Get the minimum commitment period in months
+     */
+    public function getMinimumCommitmentMonths(): int
+    {
+        return $this->minimum_commitment_months ?? 3;
+    }
+
+    /**
+     * Calculate the commitment end date for a subscription
+     *
+     * @param \Carbon\Carbon $startDate The subscription start date
+     * @return \Carbon\Carbon The commitment end date
+     */
+    public function getCommitmentEndDate(\Carbon\Carbon $startDate): \Carbon\Carbon
+    {
+        $commitmentMonths = $this->getMinimumCommitmentMonths();
+
+        Log::info('📅 Calculating commitment end date', [
+            'plan_id' => $this->id,
+            'plan_slug' => $this->slug,
+            'start_date' => $startDate->toDateString(),
+            'commitment_months' => $commitmentMonths,
+        ]);
+
+        return $startDate->copy()->addMonths($commitmentMonths);
+    }
+
+    /**
+     * Get formatted commitment information
+     */
+    public function getFormattedCommitment(): string
+    {
+        $months = $this->getMinimumCommitmentMonths();
+        return "{$months} " . ($months === 1 ? 'mes' : 'meses');
+    }
+
     // API Serialization
     public function toApiArray(): array
     {
@@ -86,6 +125,7 @@ class SubscriptionPlan extends Model
             'slug' => $this->slug,
             'description' => $this->description,
             'monthly_price' => $this->monthly_price,
+            'minimum_commitment_months' => $this->minimum_commitment_months,
             'discounted_monthly_price' => $this->discounted_monthly_price,
             'features' => $this->features,
             'limits' => [

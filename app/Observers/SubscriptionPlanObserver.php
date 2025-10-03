@@ -108,6 +108,7 @@ class SubscriptionPlanObserver
             'metadata' => [
                 'plan_id' => (string) $plan->id,
                 'plan_slug' => $plan->slug,
+                'minimum_commitment_months' => (string) $plan->getMinimumCommitmentMonths(),
                 'created_at' => $plan->created_at->toISOString(),
             ],
         ];
@@ -199,6 +200,7 @@ class SubscriptionPlanObserver
                 'plan_slug' => $plan->slug,
                 'frequency' => 'monthly',
                 'original_price' => (string) $plan->monthly_price,
+                'minimum_commitment_months' => (string) $plan->getMinimumCommitmentMonths(),
                 'sync_source' => 'observer',
             ],
         ];

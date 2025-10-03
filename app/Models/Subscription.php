@@ -57,6 +57,14 @@ class Subscription extends Model
     }
 
     /**
+     * Get the subscription plan.
+     */
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(SubscriptionPlan::class, 'type', 'slug');
+    }
+
+    /**
      * Get the subscription items for the subscription.
      */
     public function items(): HasMany
@@ -134,14 +142,99 @@ class Subscription extends Model
     }
 
     /**
+     * Check if subscription can be cancelled based on minimum commitment period
+     *
+     * @return bool
+     */
+    public function canBeCancelled(): bool
+    {
+        // Load the plan relationship if not loaded
+        if (!$this->relationLoaded('plan')) {
+            $this->load('plan');
+        }
+
+        // If no plan or plan has no commitment, allow cancellation
+        if (!$this->plan || !$this->plan->minimum_commitment_months) {
+            return true;
+        }
+
+        $commitmentMonths = $this->plan->getMinimumCommitmentMonths();
+        $subscriptionStart = $this->created_at;
+        $commitmentEnd = $subscriptionStart->copy()->addMonths($commitmentMonths);
+
+        Log::info('🔒 Checking subscription cancellation eligibility', [
+            'subscription_id' => $this->id,
+            'plan_slug' => $this->type,
+            'start_date' => $subscriptionStart->toDateString(),
+            'commitment_months' => $commitmentMonths,
+            'commitment_end' => $commitmentEnd->toDateString(),
+            'can_cancel' => now()->gte($commitmentEnd),
+        ]);
+
+        return now()->gte($commitmentEnd);
+    }
+
+    /**
+     * Get the commitment end date for this subscription
+     *
+     * @return Carbon|null
+     */
+    public function getCommitmentEndDate(): ?Carbon
+    {
+        if (!$this->relationLoaded('plan')) {
+            $this->load('plan');
+        }
+
+        if (!$this->plan || !$this->plan->minimum_commitment_months) {
+            return null;
+        }
+
+        return $this->plan->getCommitmentEndDate($this->created_at);
+    }
+
+    /**
+     * Get the number of days remaining in the commitment period
+     *
+     * @return int
+     */
+    public function getDaysRemainingInCommitment(): int
+    {
+        $commitmentEnd = $this->getCommitmentEndDate();
+
+        if (!$commitmentEnd) {
+            return 0;
+        }
+
+        $daysRemaining = now()->diffInDays($commitmentEnd, false);
+        return max(0, (int) ceil($daysRemaining));
+    }
+
+    /**
      * Cancel the subscription at the end of the current billing period.
      */
     public function cancel(): self
     {
-        Log::info('🚫 Canceling subscription at period end', [
+        Log::info('🚫 Attempting to cancel subscription at period end', [
             'subscription_id' => $this->id,
             'stripe_id' => $this->stripe_id,
         ]);
+
+        // Check if subscription can be cancelled
+        if (!$this->canBeCancelled()) {
+            $daysRemaining = $this->getDaysRemainingInCommitment();
+            $commitmentEnd = $this->getCommitmentEndDate();
+
+            Log::warning('⛔ Cancellation blocked - minimum commitment not met', [
+                'subscription_id' => $this->id,
+                'days_remaining' => $daysRemaining,
+                'commitment_end' => $commitmentEnd?->toDateString(),
+            ]);
+
+            throw new \Exception(
+                "No puedes cancelar esta suscripción hasta el {$commitmentEnd->format('d/m/Y')}. " .
+                "Quedan {$daysRemaining} días de compromiso mínimo."
+            );
+        }
 
         try {
             // Set Stripe API key
@@ -265,10 +358,27 @@ class Subscription extends Model
      */
     public function cancelNow(): self
     {
-        Log::info('🚫 Canceling subscription immediately', [
+        Log::info('🚫 Attempting to cancel subscription immediately', [
             'subscription_id' => $this->id,
             'stripe_id' => $this->stripe_id,
         ]);
+
+        // Check if subscription can be cancelled
+        if (!$this->canBeCancelled()) {
+            $daysRemaining = $this->getDaysRemainingInCommitment();
+            $commitmentEnd = $this->getCommitmentEndDate();
+
+            Log::warning('⛔ Immediate cancellation blocked - minimum commitment not met', [
+                'subscription_id' => $this->id,
+                'days_remaining' => $daysRemaining,
+                'commitment_end' => $commitmentEnd?->toDateString(),
+            ]);
+
+            throw new \Exception(
+                "No puedes cancelar esta suscripción hasta el {$commitmentEnd->format('d/m/Y')}. " .
+                "Quedan {$daysRemaining} días de compromiso mínimo."
+            );
+        }
 
         try {
             // Set Stripe API key

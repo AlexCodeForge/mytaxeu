@@ -33,7 +33,7 @@
                 @error('description') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mt-4">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
                 <div>
                     <label for="monthlyPrice" class="block text-sm font-medium text-gray-700 mb-1">Precio Mensual (€)</label>
                     <input wire:model="monthlyPrice"
@@ -44,6 +44,23 @@
                            placeholder="0.00"
                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm @error('monthlyPrice') border-red-300 @enderror">
                     @error('monthlyPrice') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label for="minimumCommitmentMonths" class="block text-sm font-medium text-gray-700 mb-1">
+                        Compromiso Mínimo (meses) *
+                        <span class="text-red-500" title="Requerido">*</span>
+                    </label>
+                    <input wire:model="minimumCommitmentMonths"
+                           type="number"
+                           min="3"
+                           id="minimumCommitmentMonths"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm @error('minimumCommitmentMonths') border-red-300 @enderror">
+                    @error('minimumCommitmentMonths') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    <p class="mt-1 text-xs text-gray-500">
+                        <i class="fas fa-info-circle text-blue-500"></i>
+                        Mínimo 3 meses de compromiso
+                    </p>
                 </div>
 
                 <div>

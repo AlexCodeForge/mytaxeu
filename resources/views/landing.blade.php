@@ -262,7 +262,7 @@
                                                    filePhase >= 2 && filePhase <= 4 ? '0' : '1',
                                            transform: filePhase === 0 || filePhase >= 5 ? 'translateY(0px) rotate(-25deg) scale(1)' :
                                                      filePhase === 1 ? 'translateY(0px) rotate(-25deg) scale(1)' :
-                                                     'translate(130px, 130px) rotate(0deg) scale(0.2)',
+                                                     'translate(130px, 100px) rotate(0deg) scale(0.2)',
                                            transition: filePhase === 2 ? 'transform 1.5s ease-in-out, opacity 0.3s 1.5s ease-in-out' :
                                                       filePhase === 0 ? 'none' :
                                                       'opacity 0.3s ease-in-out',
@@ -279,7 +279,7 @@
                                                    filePhase >= 3 && filePhase <= 4 ? '0' : '1',
                                            transform: filePhase === 0 || filePhase >= 5 ? 'translateY(0px) scale(1)' :
                                                      filePhase === 1 || filePhase === 2 ? 'translateY(0px) scale(1)' :
-                                                     'translateY(150px) scale(0.2)',
+                                                     'translateY(115px) scale(0.2)',
                                            transition: filePhase === 3 ? 'transform 1.5s ease-in-out, opacity 0.3s 1.5s ease-in-out' :
                                                       filePhase === 0 ? 'none' :
                                                       'opacity 0.3s ease-in-out',
@@ -296,7 +296,7 @@
                                                    filePhase === 4 ? '0' : '1',
                                            transform: filePhase === 0 || filePhase >= 5 ? 'translateY(0px) rotate(25deg) scale(1)' :
                                                      filePhase >= 1 && filePhase <= 3 ? 'translateY(0px) rotate(25deg) scale(1)' :
-                                                     'translate(-130px, 130px) rotate(0deg) scale(0.2)',
+                                                     'translate(-130px, 100px) rotate(0deg) scale(0.2)',
                                            transition: filePhase === 4 ? 'transform 1.5s ease-in-out, opacity 0.3s 1.5s ease-in-out' :
                                                       filePhase === 0 ? 'none' :
                                                       'opacity 0.3s ease-in-out',
@@ -307,14 +307,15 @@
 
                             <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center pointer-events-none relative z-10">
                                 <!-- Open Box Icon - Always Visible at Center -->
-                                <div class="mt-20 mb-6 relative h-24 w-24 flex items-center justify-center">
+                                <div class="mt-20 mb-6 relative h-28 w-28 flex items-center justify-center">
                                     <i class="fas fa-box-open text-orange-500"
-                                       style="font-size: 5.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);"></i>
+                                       style="font-size: 6.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);"></i>
                                 </div>
 
                                 <!-- Text -->
                                 <p class="mb-2 text-gray-700 text-lg px-4">
-                                    <span class="font-bold text-gray-900">Arrastra tus archivos</span> o haz clic aquí para subir
+                                    <span class="font-bold text-gray-900">¡Así de simple!</span> Arrastra, suelta y listo.<br>
+                                    <span class="text-base text-gray-600">En segundos tu trabajo está hecho</span>
                                 </p>
                             </div>
                         </div>
