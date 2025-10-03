@@ -213,17 +213,103 @@
                             </div>
                         </div>
 
-                        <!-- Static Drop Zone Visual -->
-                        <div class="flex flex-col items-center justify-center w-full h-80 border-2 border-dashed border-primary bg-blue-50 rounded-xl">
-                            <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center pointer-events-none">
-                                <!-- CSV File Icon -->
-                                <div class="mb-6">
-                                    <i class="fas fa-file-csv text-6xl text-primary"></i>
+                        <!-- Animated Drop Zone Visual with 3 CSV Files -->
+                        <div class="flex flex-col items-center justify-center w-full h-80 border-2 border-dashed border-primary bg-blue-50 rounded-xl relative overflow-hidden"
+                             x-data="{
+                                 filePhase: 0,
+                                 init() {
+                                     this.startAnimation();
+                                 },
+                                 startAnimation() {
+                                     // Phase 1: All files appear together
+                                     this.filePhase = 1;
+
+                                     setTimeout(() => {
+                                         // Phase 2: First file enters box
+                                         this.filePhase = 2;
+                                     }, 1500);
+
+                                     setTimeout(() => {
+                                         // Phase 3: Second file enters box
+                                         this.filePhase = 3;
+                                     }, 3500);
+
+                                     setTimeout(() => {
+                                         // Phase 4: Third file enters box
+                                         this.filePhase = 4;
+                                     }, 5500);
+
+                                     setTimeout(() => {
+                                         // Phase 0: Reset - all files hidden
+                                         this.filePhase = 0;
+                                     }, 7500);
+
+                                     setTimeout(() => {
+                                         // Loop again
+                                         this.startAnimation();
+                                     }, 8000);
+                                 }
+                             }">
+
+                            <!-- Three CSV Files -->
+                            <div class="absolute inset-0 pointer-events-none">
+                                <!-- Left CSV - Rotated Left (File 1 - enters first) -->
+                                <div class="absolute" style="left: 20%; top: 10%;">
+                                    <i class="fas fa-file-csv text-5xl text-primary"
+                                       :style="{
+                                           opacity: filePhase === 0 ? '0' :
+                                                   filePhase === 1 ? '1' :
+                                                   filePhase >= 2 && filePhase <= 4 ? '0' : '1',
+                                           transform: filePhase === 0 || filePhase >= 5 ? 'translateY(0px) rotate(-25deg) scale(1)' :
+                                                     filePhase === 1 ? 'translateY(0px) rotate(-25deg) scale(1)' :
+                                                     'translate(130px, 130px) rotate(0deg) scale(0.2)',
+                                           transition: filePhase === 2 ? 'transform 1.5s ease-in-out, opacity 0.3s 1.5s ease-in-out' :
+                                                      filePhase === 0 ? 'none' :
+                                                      'opacity 0.3s ease-in-out',
+                                           textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
+                                       }"></i>
                                 </div>
 
-                                <!-- Open Box Icon -->
-                                <div class="mb-6">
-                                    <i class="fas fa-box-open text-6xl text-orange-500"></i>
+                                <!-- Center CSV - Straight (File 2 - enters second) -->
+                                <div class="absolute" style="left: 50%; top: 5%; transform: translateX(-50%);">
+                                    <i class="fas fa-file-csv text-6xl text-blue-600"
+                                       :style="{
+                                           opacity: filePhase === 0 ? '0' :
+                                                   filePhase === 1 || filePhase === 2 ? '1' :
+                                                   filePhase >= 3 && filePhase <= 4 ? '0' : '1',
+                                           transform: filePhase === 0 || filePhase >= 5 ? 'translateY(0px) scale(1)' :
+                                                     filePhase === 1 || filePhase === 2 ? 'translateY(0px) scale(1)' :
+                                                     'translateY(150px) scale(0.2)',
+                                           transition: filePhase === 3 ? 'transform 1.5s ease-in-out, opacity 0.3s 1.5s ease-in-out' :
+                                                      filePhase === 0 ? 'none' :
+                                                      'opacity 0.3s ease-in-out',
+                                           textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
+                                       }"></i>
+                                </div>
+
+                                <!-- Right CSV - Rotated Right (File 3 - enters third) -->
+                                <div class="absolute" style="right: 20%; top: 10%;">
+                                    <i class="fas fa-file-csv text-5xl text-indigo-600"
+                                       :style="{
+                                           opacity: filePhase === 0 ? '0' :
+                                                   filePhase >= 1 && filePhase <= 3 ? '1' :
+                                                   filePhase === 4 ? '0' : '1',
+                                           transform: filePhase === 0 || filePhase >= 5 ? 'translateY(0px) rotate(25deg) scale(1)' :
+                                                     filePhase >= 1 && filePhase <= 3 ? 'translateY(0px) rotate(25deg) scale(1)' :
+                                                     'translate(-130px, 130px) rotate(0deg) scale(0.2)',
+                                           transition: filePhase === 4 ? 'transform 1.5s ease-in-out, opacity 0.3s 1.5s ease-in-out' :
+                                                      filePhase === 0 ? 'none' :
+                                                      'opacity 0.3s ease-in-out',
+                                           textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
+                                       }"></i>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center pointer-events-none relative z-10">
+                                <!-- Open Box Icon - Always Visible at Center -->
+                                <div class="mt-20 mb-6 relative h-24 w-24 flex items-center justify-center">
+                                    <i class="fas fa-box-open text-orange-500"
+                                       style="font-size: 5.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);"></i>
                                 </div>
 
                                 <!-- Text -->
