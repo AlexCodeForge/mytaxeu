@@ -455,16 +455,14 @@
     @livewire('landing.pricing-section')
 
     <!-- Pricing Additional Info -->
-    <section class="py-12 bg-white">
+    <section class="py-6 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center">
                 <p class="text-lg text-gray-600 mb-4">
                     <i class="fas fa-clock text-primary mr-2"></i>
-                    <strong>Oferta limitada:</strong> 7 días de prueba gratuita + setup sin coste
+                    <strong>Oferta limitada:</strong> Setup sin coste
                 </p>
                 <div class="flex justify-center items-center space-x-6 text-gray-500">
-                    <span><i class="fas fa-credit-card mr-2"></i>Sin permanencia</span>
-                    <span><i class="fas fa-shield-alt mr-2"></i>Garantía 30 días</span>
                     <span><i class="fas fa-headset mr-2"></i>Soporte 24/7</span>
                 </div>
             </div>
@@ -608,13 +606,6 @@
                 <a href="{{ route('register') }}" class="bg-yellow-400 text-black px-8 py-4 rounded-xl font-black text-lg hover:bg-yellow-300 transition-all transform hover:scale-105 shadow-2xl text-center">
                     <i class="fas fa-rocket mr-2"></i>EMPEZAR GRATIS AHORA
                 </a>
-                <button class="glass text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white hover:bg-opacity-20 transition-all">
-                    <i class="fas fa-phone mr-2"></i>Hablar con Experto
-                </button>
-            </div>
-
-            <div class="text-blue-200 text-sm">
-                ⚡ Setup en 30 minutos • 💰 7 días gratis • 🛡️ Garantía 30 días
             </div>
         </div>
     </section>

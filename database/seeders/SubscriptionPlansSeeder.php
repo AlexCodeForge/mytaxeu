@@ -19,23 +19,27 @@ class SubscriptionPlansSeeder extends Seeder
                 'slug' => 'free',
                 'description' => 'Plan básico gratuito para comenzar',
                 'monthly_price' => 0.00,
+                'minimum_commitment_months' => 3,
                 'is_monthly_enabled' => true,
                 'features' => [
-                    'Límite básico de transacciones',
-                    'Soporte por email básico'
+                    'Hasta 100 transacciones/mes',
+                    'Informes automáticos',
+                    'Soporte por email'
                 ],
-                'max_alerts_per_month' => 10,
+                'max_alerts_per_month' => 100,
                 'is_active' => true,
                 'is_featured' => false,
                 'sort_order' => 0,
             ],
             [
-                'name' => 'Plan Starter',
+                'name' => 'Seller Individual',
                 'slug' => 'starter',
-                'description' => 'Perfecto para comenzar con Amazon',
+                'description' => 'Perfecto para vendedores individuales de Amazon',
                 'monthly_price' => 25.00,
+                'minimum_commitment_months' => 3,
                 'is_monthly_enabled' => true,
                 'features' => [
+                    'Transacciones ilimitadas',
                     '1 cliente Amazon/mes',
                     'Informes automáticos',
                     'Soporte por email'
@@ -46,16 +50,17 @@ class SubscriptionPlansSeeder extends Seeder
                 'sort_order' => 1,
             ],
             [
-                'name' => 'Plan Business',
+                'name' => 'Plan Gestoría',
                 'slug' => 'business',
-                'description' => 'Ideal para empresas en crecimiento',
-                'monthly_price' => 125.00,
+                'description' => 'Ideal para gestorías y asesores fiscales',
+                'monthly_price' => 100.00,
+                'minimum_commitment_months' => 3,
                 'is_monthly_enabled' => true,
                 'features' => [
-                    '5 clientes Amazon/mes',
+                    'Transacciones ilimitadas',
+                    '5 clientes o vendedores Amazon/mes',
                     'Todo del plan anterior',
-                    'Soporte prioritario',
-                    'Ahorro: €3000/mes'
+                    'Soporte prioritario'
                 ],
                 'max_alerts_per_month' => 5,
                 'is_active' => true,
@@ -66,13 +71,14 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Plan Enterprise',
                 'slug' => 'enterprise',
                 'description' => 'Solución completa para grandes empresas',
-                'monthly_price' => 500.00,
+                'monthly_price' => 400.00,
+                'minimum_commitment_months' => 3,
                 'is_monthly_enabled' => true,
                 'features' => [
+                    'Transacciones ilimitadas',
                     '20 clientes Amazon/mes',
                     'Todo de planes anteriores',
-                    'Soporte dedicado',
-                    'Ahorro: €12000/mes'
+                    'Soporte dedicado'
                 ],
                 'max_alerts_per_month' => 20,
                 'is_active' => true,
