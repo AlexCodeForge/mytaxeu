@@ -110,7 +110,7 @@
                                             <label class="flex items-center space-x-2">
                                                 <input
                                                     type="checkbox"
-                                                    wire:model="selectedEmailTypes"
+                                                    wire:model.live="selectedEmailTypes"
                                                     value="{{ $type }}"
                                                     class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                                                 >
@@ -138,10 +138,17 @@
                                 </button>
                                 <button
                                     type="submit"
-                                    class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
-                                    @if(count($selectedEmailTypes) === 0) disabled @endif
+                                    wire:loading.attr="disabled"
+                                    wire:target="sendTestEmails"
+                                    class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                    @disabled(count($selectedEmailTypes) === 0)
                                 >
-                                    <i class="fas fa-paper-plane mr-1"></i>Enviar {{ count($selectedEmailTypes) }} Emails
+                                    <span wire:loading.remove wire:target="sendTestEmails">
+                                        <i class="fas fa-paper-plane mr-1"></i>Enviar {{ count($selectedEmailTypes) }} Emails
+                                    </span>
+                                    <span wire:loading wire:target="sendTestEmails">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>Enviando...
+                                    </span>
                                 </button>
                             </div>
                         </form>
