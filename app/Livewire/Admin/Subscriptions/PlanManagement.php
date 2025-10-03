@@ -428,18 +428,25 @@ class PlanManagement extends Component
                 }
             }
 
-            // Create new price
+            // Create new price with quarterly billing interval
+            // Charge total for commitment period (e.g., €25/month × 3 months = €75 every 3 months)
+            $commitmentMonths = $plan->getMinimumCommitmentMonths();
+            $totalAmountForPeriod = $plan->monthly_price * $commitmentMonths;
+
             return Price::create([
                 'product' => $stripeProduct->id,
-                'unit_amount' => (int) ($plan->monthly_price * 100), // Convert to cents
+                'unit_amount' => (int) ($totalAmountForPeriod * 100), // Total amount for commitment period in cents
                 'currency' => 'eur',
                 'recurring' => [
                     'interval' => 'month',
+                    'interval_count' => $commitmentMonths, // Bill every X months
                 ],
                 'metadata' => [
                     'plan_id' => (string) $plan->id,
                     'plan_slug' => $plan->slug,
-                    'minimum_commitment_months' => (string) $plan->getMinimumCommitmentMonths(),
+                    'minimum_commitment_months' => (string) $commitmentMonths,
+                    'monthly_price' => (string) $plan->monthly_price,
+                    'total_per_period' => (string) $totalAmountForPeriod,
                 ],
             ]);
         } catch (\Exception $e) {

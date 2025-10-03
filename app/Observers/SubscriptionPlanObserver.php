@@ -139,9 +139,12 @@ class SubscriptionPlanObserver
      */
     protected function syncPricingToStripe(SubscriptionPlan $plan, Product $stripeProduct): void
     {
+        // Get commitment months for proper interval_count
+        $commitmentMonths = $plan->getMinimumCommitmentMonths();
+
         $frequencies = [
             'weekly' => ['interval' => 'week', 'interval_count' => 1],
-            'monthly' => ['interval' => 'month', 'interval_count' => 1],
+            'monthly' => ['interval' => 'month', 'interval_count' => $commitmentMonths],
             'yearly' => ['interval' => 'year', 'interval_count' => 1],
         ];
 
@@ -166,11 +169,14 @@ class SubscriptionPlanObserver
             }
 
             // Determine the price to use (discounted if available)
+            // Charge total for commitment period (e.g., €25/month × 3 months = €75 every 3 months)
             $finalPrice = $discountedPrice ?? $price;
-            $unitAmount = (int) round($finalPrice * 100); // Convert to cents
+            $totalAmountForPeriod = $finalPrice * $commitmentMonths;
+            $unitAmount = (int) round($totalAmountForPeriod * 100); // Convert to cents
 
-            // Check if we need to create a new price
-            $needsNewPrice = !$currentStripeId || $this->priceChanged($currentStripeId, $unitAmount);
+            // Check if we need to create a new price (also check interval_count change)
+            $needsNewPrice = !$currentStripeId || $this->priceChanged($currentStripeId, $unitAmount) ||
+                             $this->intervalCountChanged($currentStripeId, $commitmentMonths);
 
             if ($needsNewPrice) {
                 // Archive old price if it exists
@@ -181,6 +187,13 @@ class SubscriptionPlanObserver
                 // Create new price
                 $newPrice = $this->createStripePrice($stripeProduct, $unitAmount, $stripeInterval, $plan);
                 $plan->update(["stripe_monthly_price_id" => $newPrice->id]);
+
+                Log::info('Created new Stripe price with updated interval', [
+                    'plan_id' => $plan->id,
+                    'plan_slug' => $plan->slug,
+                    'commitment_months' => $commitmentMonths,
+                    'stripe_price_id' => $newPrice->id,
+                ]);
             }
         }
     }
@@ -190,6 +203,10 @@ class SubscriptionPlanObserver
      */
     protected function createStripePrice(Product $product, int $unitAmount, array $interval, SubscriptionPlan $plan): Price
     {
+        $commitmentMonths = $plan->getMinimumCommitmentMonths();
+        $monthlyPrice = $plan->monthly_price;
+        $totalPerPeriod = $monthlyPrice * $commitmentMonths;
+
         $priceData = [
             'product' => $product->id,
             'unit_amount' => $unitAmount,
@@ -199,8 +216,10 @@ class SubscriptionPlanObserver
                 'plan_id' => (string) $plan->id,
                 'plan_slug' => $plan->slug,
                 'frequency' => 'monthly',
-                'original_price' => (string) $plan->monthly_price,
-                'minimum_commitment_months' => (string) $plan->getMinimumCommitmentMonths(),
+                'monthly_price' => (string) $monthlyPrice,
+                'minimum_commitment_months' => (string) $commitmentMonths,
+                'total_per_period' => (string) $totalPerPeriod,
+                'calculation' => "{$monthlyPrice} × {$commitmentMonths} months",
                 'sync_source' => 'observer',
             ],
         ];
@@ -218,6 +237,24 @@ class SubscriptionPlanObserver
             return $price->unit_amount !== $newUnitAmount;
         } catch (ApiErrorException $e) {
             Log::warning('Error retrieving Stripe price for comparison', [
+                'stripe_price_id' => $stripePriceId,
+                'error' => $e->getMessage(),
+            ]);
+            return true; // Assume it changed if we can't retrieve it
+        }
+    }
+
+    /**
+     * Check if interval_count has changed
+     */
+    protected function intervalCountChanged(string $stripePriceId, int $newIntervalCount): bool
+    {
+        try {
+            $price = Price::retrieve($stripePriceId);
+            $currentIntervalCount = $price->recurring->interval_count ?? 1;
+            return $currentIntervalCount !== $newIntervalCount;
+        } catch (ApiErrorException $e) {
+            Log::warning('Error retrieving Stripe price for interval comparison', [
                 'stripe_price_id' => $stripePriceId,
                 'error' => $e->getMessage(),
             ]);

@@ -61,6 +61,7 @@ class BillingPage extends Component
                 'price' => $plan->monthly_price ?? 0,
                 'currency' => 'EUR',
                 'interval' => 'month',
+                'minimum_commitment_months' => $plan->getMinimumCommitmentMonths(),
                 'features' => $plan->features ?? [],
                 'stripe_price_id' => $plan->stripe_monthly_price_id,
                 'is_featured' => $plan->is_featured,

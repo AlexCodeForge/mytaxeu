@@ -64,6 +64,7 @@ class SubscriptionManager extends Component
                 'price' => $plan->monthly_price ?? 0,
                 'currency' => 'EUR',
                 'interval' => 'month',
+                'minimum_commitment_months' => $plan->getMinimumCommitmentMonths(),
                 'features' => $plan->features ?? [],
                 'stripe_price_id' => $plan->stripe_monthly_price_id,
                 'is_featured' => $plan->is_featured,
@@ -350,6 +351,25 @@ class SubscriptionManager extends Component
                 ]);
             }
 
+            // Calculate billing amount based on commitment period
+            // Charge total for commitment period (e.g., €25/month × 3 months = €75 every 3 months)
+            $commitmentMonths = $plan['minimum_commitment_months'] ?? 1;
+            $monthlyPrice = $plan['price'];
+            $totalAmountForPeriod = $monthlyPrice * $commitmentMonths;
+            $billingAmount = (int)($totalAmountForPeriod * 100); // Convert to cents
+
+            Log::info('💰 Stripe Checkout Session - Billing Configuration', [
+                'plan_id' => $planId,
+                'plan_name' => $plan['name'],
+                'monthly_price' => $monthlyPrice,
+                'commitment_months' => $commitmentMonths,
+                'total_amount_for_period' => $totalAmountForPeriod,
+                'billing_amount_cents' => $billingAmount,
+                'billing_interval' => 'month',
+                'interval_count' => $commitmentMonths,
+                'calculation' => "{$monthlyPrice} × {$commitmentMonths} = {$totalAmountForPeriod}",
+            ]);
+
             // Prepare checkout session data
             $sessionData = [
                 'customer' => $user->stripe_id,
@@ -364,9 +384,10 @@ class SubscriptionManager extends Component
                     [
                         'price_data' => [
                             'currency' => 'eur',
-                            'unit_amount' => (int)($plan['price'] * 100), // Convert to cents
+                            'unit_amount' => $billingAmount,
                             'recurring' => [
-                                'interval' => $plan['interval'],
+                                'interval' => 'month',
+                                'interval_count' => $commitmentMonths, // Bill every X months
                             ],
                             'product_data' => [
                                 'name' => $plan['name'],
@@ -374,6 +395,7 @@ class SubscriptionManager extends Component
                                 'metadata' => [
                                     'credits' => $plan['credits'],
                                     'plan_id' => $plan['id'],
+                                    'minimum_commitment_months' => (string) $commitmentMonths,
                                 ],
                             ],
                         ],
