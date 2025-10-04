@@ -48,6 +48,19 @@ class EnhancedUserManagement extends Component
     public string $suspensionReason = '';
     public ?int $userToSuspend = null;
 
+    // User creation
+    public bool $showCreateUserModal = false;
+    public string $newUserName = '';
+    public string $newUserEmail = '';
+    public string $newUserPassword = '';
+    public string $newUserPasswordConfirmation = '';
+    public bool $newUserIsAdmin = false;
+    public int $newUserCredits = 100;
+
+    // User deletion
+    public bool $showDeleteUserModal = false;
+    public ?int $userToDelete = null;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'activityFilter' => ['except' => 'all'],
@@ -443,6 +456,231 @@ class EnhancedUserManagement extends Component
         $this->dateFrom = '';
         $this->dateTo = '';
         $this->resetPage();
+    }
+
+    // ============================================
+    // CREATE USER METHODS
+    // ============================================
+
+    public function openCreateUserModal(): void
+    {
+        logger()->info('🟢 CREATE USER: Opening create user modal', [
+            'admin_id' => Auth::id(),
+        ]);
+
+        $this->showCreateUserModal = true;
+        $this->resetCreateUserForm();
+    }
+
+    public function closeCreateUserModal(): void
+    {
+        logger()->info('🔵 CREATE USER: Closing create user modal');
+
+        $this->showCreateUserModal = false;
+        $this->resetCreateUserForm();
+        $this->resetErrorBag();
+    }
+
+    private function resetCreateUserForm(): void
+    {
+        $this->newUserName = '';
+        $this->newUserEmail = '';
+        $this->newUserPassword = '';
+        $this->newUserPasswordConfirmation = '';
+        $this->newUserIsAdmin = false;
+        $this->newUserCredits = 100;
+    }
+
+    public function createUser(): void
+    {
+        logger()->info('🟢 CREATE USER: Attempting to create new user', [
+            'admin_id' => Auth::id(),
+            'name' => $this->newUserName,
+            'email' => $this->newUserEmail,
+            'is_admin' => $this->newUserIsAdmin,
+            'credits' => $this->newUserCredits,
+        ]);
+
+        $this->validate([
+            'newUserName' => ['required', 'string', 'max:255'],
+            'newUserEmail' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'newUserPassword' => ['required', 'string', 'min:8'],
+            'newUserPasswordConfirmation' => ['required', 'same:newUserPassword'],
+            'newUserCredits' => ['required', 'integer', 'min:0'],
+        ], [
+            'newUserName.required' => 'El nombre es obligatorio.',
+            'newUserName.max' => 'El nombre no puede tener más de 255 caracteres.',
+            'newUserEmail.required' => 'El correo electrónico es obligatorio.',
+            'newUserEmail.email' => 'El correo electrónico debe ser válido.',
+            'newUserEmail.unique' => 'Este correo electrónico ya está registrado.',
+            'newUserPassword.required' => 'La contraseña es obligatoria.',
+            'newUserPassword.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'newUserPasswordConfirmation.required' => 'La confirmación de contraseña es obligatoria.',
+            'newUserPasswordConfirmation.same' => 'Las contraseñas no coinciden.',
+            'newUserCredits.required' => 'Los créditos son obligatorios.',
+            'newUserCredits.integer' => 'Los créditos deben ser un número entero.',
+            'newUserCredits.min' => 'Los créditos no pueden ser negativos.',
+        ]);
+
+        try {
+            $user = User::create([
+                'name' => $this->newUserName,
+                'email' => $this->newUserEmail,
+                'password' => \Illuminate\Support\Facades\Hash::make($this->newUserPassword),
+                'credits' => $this->newUserCredits,
+                'is_admin' => $this->newUserIsAdmin,
+            ]);
+
+            logger()->info('✅ CREATE USER: User created successfully', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'admin_id' => Auth::id(),
+            ]);
+
+            $this->logAdminAction('user_created', $user->id, "Usuario creado: {$user->email}");
+
+            $this->dispatch('show-notification',
+                message: "Usuario {$user->name} creado exitosamente",
+                type: 'success'
+            );
+
+            $this->closeCreateUserModal();
+
+        } catch (\Exception $e) {
+            logger()->error('❌ CREATE USER: Error creating user', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'admin_id' => Auth::id(),
+            ]);
+
+            $this->dispatch('show-notification',
+                message: 'Error al crear usuario: ' . $e->getMessage(),
+                type: 'error'
+            );
+        }
+    }
+
+    // ============================================
+    // DELETE USER METHODS
+    // ============================================
+
+    public function openDeleteUserModal(int $userId): void
+    {
+        logger()->info('🔴 DELETE USER: Opening delete confirmation modal', [
+            'userId' => $userId,
+            'admin_id' => Auth::id(),
+        ]);
+
+        if ($userId === Auth::id()) {
+            logger()->warning('⚠️ DELETE USER: Admin trying to delete themselves');
+            $this->dispatch('show-notification',
+                message: 'No puedes eliminarte a ti mismo',
+                type: 'error'
+            );
+            return;
+        }
+
+        $user = User::findOrFail($userId);
+
+        if ($user->isAdmin()) {
+            logger()->warning('⚠️ DELETE USER: Trying to delete admin user', [
+                'user_id' => $userId,
+                'email' => $user->email,
+            ]);
+            $this->dispatch('show-notification',
+                message: 'Los usuarios administradores no pueden ser eliminados',
+                type: 'error'
+            );
+            return;
+        }
+
+        $this->userToDelete = $userId;
+        $this->showDeleteUserModal = true;
+
+        logger()->info('🔴 DELETE USER: Modal opened successfully', [
+            'userToDelete' => $this->userToDelete,
+        ]);
+    }
+
+    public function closeDeleteUserModal(): void
+    {
+        logger()->info('🔵 DELETE USER: Closing delete modal');
+        $this->showDeleteUserModal = false;
+        $this->userToDelete = null;
+    }
+
+    public function confirmDeleteUser(): void
+    {
+        logger()->info('🔴 DELETE USER: Confirming user deletion', [
+            'userToDelete' => $this->userToDelete,
+            'admin_id' => Auth::id(),
+        ]);
+
+        if (!$this->userToDelete) {
+            logger()->error('❌ DELETE USER: No user ID found');
+            $this->addError('user', 'Usuario no encontrado.');
+            return;
+        }
+
+        try {
+            $user = User::findOrFail($this->userToDelete);
+
+            logger()->info('🔴 DELETE USER: User found, proceeding with deletion', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+            ]);
+
+            // Additional safety check
+            if ($user->isAdmin()) {
+                logger()->error('❌ DELETE USER: Cannot delete admin user', [
+                    'user_id' => $user->id,
+                ]);
+                $this->dispatch('show-notification',
+                    message: 'Los usuarios administradores no pueden ser eliminados',
+                    type: 'error'
+                );
+                $this->closeDeleteUserModal();
+                return;
+            }
+
+            $userName = $user->name;
+            $userEmail = $user->email;
+
+            // Log before deletion
+            $this->logAdminAction('user_deleted', $user->id, "Usuario eliminado: {$userEmail}");
+
+            // Delete the user
+            $user->delete();
+
+            logger()->info('✅ DELETE USER: User deleted successfully', [
+                'user_email' => $userEmail,
+                'admin_id' => Auth::id(),
+            ]);
+
+            $this->dispatch('show-notification',
+                message: "El usuario {$userName} ha sido eliminado exitosamente",
+                type: 'success'
+            );
+
+            // Close modal if showing user profile
+            if ($this->selectedUserId === $this->userToDelete) {
+                $this->closeUserModal();
+            }
+
+            $this->closeDeleteUserModal();
+
+        } catch (\Exception $e) {
+            logger()->error('❌ DELETE USER: Error deleting user', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'userToDelete' => $this->userToDelete,
+            ]);
+
+            $this->dispatch('show-notification',
+                message: 'Error al eliminar usuario: ' . $e->getMessage(),
+                type: 'error'
+            );
+        }
     }
 
     private function getUsersQuery(): Builder

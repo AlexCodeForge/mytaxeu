@@ -55,6 +55,14 @@
 
             </div>
 
+            <div>
+                <button wire:click="openCreateUserModal"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    Crear Nuevo Usuario
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -194,6 +202,12 @@
                                                     <i class="fas fa-user-times"></i>
                                                 </button>
                                             @endif
+
+                                            <button wire:click="openDeleteUserModal({{ $user->id }})"
+                                                    class="text-red-700 hover:text-red-900"
+                                                    title="Eliminar Usuario">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
                                         @endif
                                     </div>
                                 </td>
@@ -626,4 +640,272 @@
         </div>
     @endif
 
+    {{-- Create User Modal --}}
+    @if($showCreateUserModal)
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" wire:click="closeCreateUserModal">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform transition-all" wire:click.stop>
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user-plus text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Crear Nuevo Usuario</h3>
+                            <p class="text-sm text-gray-600">Complete los datos del nuevo usuario</p>
+                        </div>
+                    </div>
+                    <button wire:click="closeCreateUserModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                {{-- Modal Body --}}
+                <form wire:submit="createUser" class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {{-- Name --}}
+                        <div class="md:col-span-2">
+                            <label for="newUserName" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-user mr-1"></i>Nombre Completo
+                            </label>
+                            <input type="text" wire:model.blur="newUserName" id="newUserName"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Ingresa el nombre completo...">
+                            @error('newUserName')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Email --}}
+                        <div class="md:col-span-2">
+                            <label for="newUserEmail" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-envelope mr-1"></i>Correo Electrónico
+                            </label>
+                            <input type="email" wire:model.blur="newUserEmail" id="newUserEmail"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="correo@ejemplo.com">
+                            @error('newUserEmail')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Password --}}
+                        <div>
+                            <label for="newUserPassword" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-lock mr-1"></i>Contraseña
+                            </label>
+                            <input type="password" wire:model.blur="newUserPassword" id="newUserPassword"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Mínimo 8 caracteres">
+                            @error('newUserPassword')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Password Confirmation --}}
+                        <div>
+                            <label for="newUserPasswordConfirmation" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-lock mr-1"></i>Confirmar Contraseña
+                            </label>
+                            <input type="password" wire:model.blur="newUserPasswordConfirmation" id="newUserPasswordConfirmation"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Repite la contraseña">
+                            @error('newUserPasswordConfirmation')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Credits --}}
+                        <div>
+                            <label for="newUserCredits" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-coins mr-1"></i>Créditos Iniciales
+                            </label>
+                            <input type="number" wire:model.blur="newUserCredits" id="newUserCredits" min="0"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="100">
+                            @error('newUserCredits')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Is Admin Checkbox --}}
+                        <div class="flex items-center">
+                            <div class="flex items-center h-full">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" wire:model="newUserIsAdmin"
+                                           class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <span class="ml-2 text-sm font-medium text-gray-700">
+                                        <i class="fas fa-user-shield mr-1"></i>Usuario Administrador
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Footer --}}
+                    <div class="flex items-center justify-end space-x-3 pt-6 mt-6 border-t">
+                        <button type="button" wire:click="closeCreateUserModal"
+                                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-times mr-2"></i>Cancelar
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <div wire:loading wire:target="createUser">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Creando...
+                            </div>
+                            <div wire:loading.remove wire:target="createUser">
+                                <i class="fas fa-user-plus mr-2"></i>Crear Usuario
+                            </div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- Delete User Confirmation Modal --}}
+    @if($showDeleteUserModal && $userToDelete)
+        @php
+            $userToDeleteData = \App\Models\User::find($userToDelete);
+        @endphp
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" wire:click="closeDeleteUserModal">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transform transition-all" wire:click.stop>
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-exclamation-triangle text-red-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Eliminar Usuario</h3>
+                            <p class="text-sm text-gray-600">{{ $userToDeleteData?->name }} ({{ $userToDeleteData?->email }})</p>
+                        </div>
+                    </div>
+                    <button wire:click="closeDeleteUserModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                {{-- Modal Body --}}
+                <div class="p-6">
+                    <div class="mb-6">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exclamation-triangle text-red-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-medium text-red-800">⚠️ Advertencia: Acción Irreversible</h4>
+                                    <div class="mt-2 text-sm text-red-700">
+                                        <p class="font-semibold">Esta acción es PERMANENTE y eliminará:</p>
+                                        <ul class="list-disc list-inside mt-2 space-y-1">
+                                            <li>Toda la información del usuario</li>
+                                            <li>Su historial de subidas</li>
+                                            <li>Sus transacciones de créditos</li>
+                                            <li>Todos los registros asociados</li>
+                                        </ul>
+                                        <p class="mt-3 font-semibold">Esta operación NO se puede deshacer.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Footer --}}
+                    <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+                        <button type="button" wire:click="closeDeleteUserModal"
+                                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-times mr-2"></i>Cancelar
+                        </button>
+                        <button wire:click="confirmDeleteUser"
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                            <div wire:loading wire:target="confirmDeleteUser">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Eliminando...
+                            </div>
+                            <div wire:loading.remove wire:target="confirmDeleteUser">
+                                <i class="fas fa-trash-alt mr-2"></i>Sí, Eliminar Permanentemente
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 DOM Content Loaded');
+
+        // Toast notification system
+        function showToast(type, message) {
+            console.log('🎨 Creating toast:', { type, message });
+
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 z-[60] p-4 rounded-lg shadow-lg text-white max-w-sm transition-all duration-300 transform translate-x-full';
+
+            switch(type) {
+                case 'success':
+                    toast.className += ' bg-green-500';
+                    break;
+                case 'error':
+                    toast.className += ' bg-red-500';
+                    break;
+                case 'warning':
+                    toast.className += ' bg-yellow-500';
+                    break;
+                default:
+                    toast.className += ' bg-blue-500';
+            }
+
+            toast.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200 ml-2">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            document.body.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Listen for Livewire notification events (Livewire 3 syntax)
+        if (typeof Livewire !== 'undefined') {
+            console.log('✅ Livewire detected - Setting up notification listener');
+
+            Livewire.on('show-notification', (event) => {
+                console.log('📢 Notification event received:', event);
+                const data = event.detail ? event.detail[0] : event;
+                showToast(data.type || 'info', data.message || 'Action completed');
+            });
+        } else {
+            // If Livewire isn't loaded yet, wait for it
+            document.addEventListener('livewire:init', () => {
+                console.log('✅ Livewire initialized - Setting up notification listener');
+
+                Livewire.on('show-notification', (event) => {
+                    console.log('📢 Notification event received:', event);
+                    const data = event.detail ? event.detail[0] : event;
+                    showToast(data.type || 'info', data.message || 'Action completed');
+                });
+            });
+        }
+    });
+</script>
